@@ -2,7 +2,7 @@ Dim info As String = "
 Скприт подстраивается под внешние габариты и должен регулировать:
 1. ширину блока типа как MaxSize, но без тормозов
 2. анимацию скроллинга по всей своей поверхности в пределах фона
-Версия 0.43 (02 ноября 2016)
+Версия 0.5 (18 апреля 2018)
 "
 
 Dim fon As Container
@@ -20,6 +20,10 @@ Dim geom As Geometry
 Dim liveMode, inverseAnim As Boolean
 Dim lessMode, moreMode As Integer
 Dim keyStart, keyEnd As Keyframe
+
+'for inertion
+Dim target_y, inertion As Double
+Dim treshold As Double = 0.01
 
 Dim arrMode As Array[String]
 arrMode.Push("Наверху")
@@ -39,12 +43,13 @@ sub OnInitParameters()
 	RegisterPushButton("set_down", "Показать низ", 2)
 	RegisterPushButton("show_percent", "Показать на процент", 3)
 	RegisterParameterDouble("scroll", "Процент скролла", 0.0, -100.0, 200.0)
+	RegisterParameterBool("inverse_anim", "Инвертировать направление анимации?", true)
 	RegisterRadioButton("less_mode", "Когда высота меньше", 1, arrMode)
 	RegisterRadioButton("more_mode", "Когда высота больше", 1, arrMode)
 	RegisterParameterDouble("time_start_scroll", "Начало скролла (сек)", 0, 0, 100000.0)
 	RegisterParameterDouble("time_period_scroll", "Длительность скролла (сек)", 5.0, 0, 100000.0)
-	RegisterParameterBool("inverse_anim", "Инвертировать направление анимации?", true)
 	RegisterPushButton("create_keys", "Сделать ключи анимации", 4)
+	RegisterParameterDouble("inertion", "Инерция", 0.0, 0, 1000.0)
 end sub
 
 sub OnInit()
@@ -83,28 +88,6 @@ sub OnExecAction(buttonId As Integer)
 end sub
 
 
-sub OnExecPerField()
-	If fon == null OR liveMode == false Then Exit Sub
-	
-	fon.GetTransformedBoundingBox(v1, v2)
-	this.GetBoundingBox(v_me1, v_me2)
-	paddingX = GetParameterDouble("paddingX")
-	paddingY = GetParameterDouble("paddingY")
-	scroll = GetParameterDouble("middle")/100.0
-	If v1 == old_v1 AND v2 == old_v2 AND paddingX == old_paddingX AND paddingY == old_paddingY AND v_me1 == old_v_me1 AND v_me2 == old_v_me2 AND old_scroll == scroll Then Exit Sub
-	
-	PrepareAndPosX()
-	SetPosY()
-	
-	old_v_me1 = v_me1
-	old_v_me2 = v_me2
-	old_v1 = v1
-	old_v2 = v2
-	old_paddingX = paddingX
-	old_paddingY = paddingY
-	old_scroll = scroll
-end sub
-
 Sub PrepareAndPosX()
 	fon.RecomputeMatrix()
 	this.RecomputeMatrix()
@@ -138,12 +121,23 @@ Sub PrepareAndPosX()
 	End If
 End Sub
 
+Function IsNearToTarget() As Boolean
+	IsNearToTarget = this.Position.Y > (target_y - treshold) AND this.Position.Y < (target_y + treshold)
+End Function
+
 Sub SetByPercent(scrl as double)
+	'scrl = [0..1]
 	this.RecomputeMatrix()
-	scroll = GetParameterDouble("scroll")/100.0
+	target_y = (v_local2.y+scrl*(v_local1.y-v_local2.y)) - (v_me2.y+scrl*(v_me1.Y-v_me2.Y))*this.Scaling.Y - paddingY*(scrl-0.5)
 	
-	this.Position.Y = (v_local2.y+scrl*(v_local1.y-v_local2.y)) - (v_me2.Y+scrl*(v_me1.Y-v_me2.Y))*this.Scaling.Y - paddingY*(scrl-0.5)
-	'this.Position.Y = v_local2.y - v_me2.Y*this.Scaling.Y
+	if IsNearToTarget() then
+		'set to target
+		this.Position.Y = target_y
+		target_y = this.Position.Y
+	else
+		'inertion animation
+		this.Position.y += (target_y - this.Position.y)/(1.0 + GetParameterDouble("inertion"))
+	end if
 End Sub
 
 Sub SetPosy()
@@ -194,3 +188,28 @@ Sub CreateKeys()
 		keyEnd.FloatValue = 100
 	end if
 End Sub
+
+sub OnExecPerField()
+	If fon == null OR liveMode == false Then Exit Sub
+	
+	fon.GetTransformedBoundingBox(v1, v2)
+	this.GetBoundingBox(v_me1, v_me2)
+	paddingX = GetParameterDouble("paddingX")
+	paddingY = GetParameterDouble("paddingY")
+	scroll = GetParameterDouble("scroll")/100.0
+	
+	If v1 == old_v1 AND v2 == old_v2 AND paddingX == old_paddingX AND paddingY == old_paddingY AND v_me1 == old_v_me1 AND v_me2 == old_v_me2 AND old_scroll == scroll AND this.position.y == target_y Then
+		Exit Sub
+	End if
+	
+	PrepareAndPosX()
+	SetPosY()
+	
+	old_v_me1 = v_me1
+	old_v_me2 = v_me2
+	old_v1 = v1
+	old_v2 = v2
+	old_paddingX = paddingX
+	old_paddingY = paddingY
+	old_scroll = scroll
+end sub
