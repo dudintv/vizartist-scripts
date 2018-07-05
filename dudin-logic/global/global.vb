@@ -1,5 +1,5 @@
 Dim Info As String = "Разработчик: Дудин Дмитрий
-Версия 4.0 (28 декабря 2017)
+Версия 4.0.1 (5 июля 2018)
 -------------------------------------------------------
 Это основной скрипт для работы системы автоубирания - 
 он должен находится в дереве выше титровальных скриптов.
@@ -47,8 +47,8 @@ Sub OnInit()
  
 	'при инициализации этого скрипта заставляем проинициализироваться вниз по списку
 	'все скрипты относящиеся к системе автоубирания
-	Scene.Map[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = 5
-	Scene.Map[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = 1
+	Scene.Map[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = ""
+	Scene.Map[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = "GLOBAL SCRIPT START RELOAD ALL ELEMENTS"
  
 	this.ScriptPluginInstance.SetParameterString("console", Info)
 End Sub
@@ -480,9 +480,9 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 		End If
  
 	ElseIf mapKey = prefix & "AUTOTAKEOUT_ALL_RECALCULATE" then
-		If Scene.Map[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = "1" Then
+		If Scene.Map[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] <> "" Then
 			'println("----------")
-			'println("RELOAD ALL LOGIC-SCRIPTS")
+			println("RELOAD ALL LOGIC-SCRIPTS")
 			'println("----------")
 			OnInitParameters()
 		End If

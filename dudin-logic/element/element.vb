@@ -1,6 +1,6 @@
-Dim version As String = "4.1.1"
+Dim version As String = "4.1.2"
 Dim info As String = "Разработчик: Дудин Дмитрий
-Версия "&version&" (18 марта 2018)
+Версия "&version&" (5 июля 2018)
 -------------------------------------------------------
 Укажи (через запятую, на пробелы пофиг) какие блоки титров
 будет уходить с экрана или наоборот показываться в случаях:
@@ -512,7 +512,7 @@ Sub OnInitParameters()
 	RegisterParameterText("console", "После изменения параметров следует
 нажать Initialize чтобы они применились сразу.
 При загрузки сцены это происходит автоматически!", 450, 50)
-	RegisterParameterBool("TestFunctions", "Тестовые штучки", false)
+	RegisterParameterBool("TestFunctions", "Тестирование", false)
 	RegisterPushButton("TestTake","Take",11)
 	RegisterPushButton("TestTakeout","Takeout",10)
 	RegisterPushButton("TestChange","Change",12)
@@ -524,6 +524,7 @@ End sub
 '----------------------------------------------------------
  
 sub OnInit()
+	println(3, "OnInit()")
 	'опредлеям имя титра!
 	titr_name = GetParameterString("Name")
 	titr_name.trim()
@@ -620,12 +621,31 @@ sub OnInit()
 	Scene.SetChanged()
 	Stage.SetChanged()
 	Scene.UpdateSceneTree()
+
+	'отправляем массивы условий в глобальную часть
+	SendConditionsToGlobal()
+	
+	'сбрасываем стартовые значения в локальной памяти
+	local_memory[titr_name & "_value"] = ""
+	local_memory[titr_name & "_control"] = 5
+	local_memory[titr_name & "_status"] = 0
+	'выключаем таймер
+	passed = -1
  
-'---заполняем массивы автоубирания/автопоявления
+	'ставим директор в нулевую позицию
+	d_OnOff.Show(0)
+	
+	'устанавливаем все dropzon'ы
+	SetDropzones()
+'---инициализация завершена!
+end sub
+
+Sub SendConditionsToGlobal()
+	'---заполняем массивы автоубирания/автопоявления
 	Dim AUTOTAKEOUTonTAKE As Array[Array[String]]
 	Dim AUTOTAKEOUTonTAKEOUT As Array[Array[String]]
 	Dim cur_arr As Array[String]
-'-------Для Take
+	'-------Для Take
 	cur_arr.Clear()
 	If take_arr.UBound > -1 Then
 		cur_arr.Push(titr_name)
@@ -636,7 +656,7 @@ sub OnInit()
 			AUTOTAKEOUTonTAKE.Push(cur_arr)
 		End If
 	End If
-'-------Для TakeOut
+	'-------Для TakeOut
 	cur_arr.Clear()
 	If takeout_arr.UBound > -1 Then
 		cur_arr.Push(titr_name)
@@ -647,7 +667,7 @@ sub OnInit()
 			AUTOTAKEOUTonTAKEOUT.Push(cur_arr)
 		End If
 	End If
-'-------Для TakeThis 
+	'-------Для TakeThis 
 	For i=0 to takethis_arr.UBound
 		cur_arr.Clear()
 		cur = takethis_arr[i]
@@ -668,7 +688,7 @@ sub OnInit()
 			AUTOTAKEOUTonTAKE.Push(cur_arr)
 		End If
 	Next
-'-------Для TakeOutThis
+	'-------Для TakeOutThis
 	For i=0 to takeoutthis_arr.UBound
 		cur_arr.Clear()
 		cur = takeoutthis_arr[i]
@@ -689,34 +709,15 @@ sub OnInit()
 			AUTOTAKEOUTonTAKE.Push(cur_arr)
 		End If
 	Next
- 
-'---созданные массивы авто-управления и подмены
-'---отправляем запись в общий скрипт для занесения в общий список взаимодействия
+	
+	'созданные массивы авто-управления и подмены
+	'отправляем запись в общий скрипт для занесения в общий список взаимодействия
 	local_memory[prefix & "AddTo_AUTOTAKEOUTonTAKE"] = null
 	local_memory[prefix & "AddTo_AUTOTAKEOUTonTAKEOUT"] = null
  
 	local_memory[prefix & "AddTo_AUTOTAKEOUTonTAKE"] = AUTOTAKEOUTonTAKE
 	local_memory[prefix & "AddTo_AUTOTAKEOUTonTAKEOUT"] = AUTOTAKEOUTonTAKEOUT
- 
-	'текущее значение сбрасываем в базовое состояние
-	'memory[titr_name & "_value"] = ""
-	'memory[titr_name & "_control"] = 5
-	'memory[titr_name & "_status"] = 0
-	
-	'и в локальной памяти
-	local_memory[titr_name & "_value"] = ""
-	local_memory[titr_name & "_control"] = 5
-	local_memory[titr_name & "_status"] = 0
-	'выключаем таймер
-	passed = -1
- 
-	'ставим директор в нулевую позицию
-	d_OnOff.Show(0)
-	
-	'устанавливаем все dropzon'ы
-	SetDropzones()
-'---инициализация завершена!
-end sub
+End Sub
 '----------------------------------------------------------
  
 Sub OnExecAction(buttonId As Integer)
@@ -725,10 +726,11 @@ Sub OnExecAction(buttonId As Integer)
 		console = ""
 		'выполняем стандартные процедуры инициализации
 		OnInitParameters()
+		println(4, "OnExecAction buttonId = 1")
 		OnInit()
 		'и заставляем пересчитать всю логику АВТОУБИРАНИЯ (взаимодействия титров)
-		memory[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = 5
-		memory[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = 1
+		memory[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = ""
+		memory[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = titr_name
  
 		'выводим отчет о проделанной работе
 		'если не было зафиксировано ошибок то OK
@@ -814,6 +816,7 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 		exit sub
 	end if
 	
+	' CONTROL
 	If mapKey = titr_name & "_control" Then
 		'реакция на управляющую переменную
 		ctrl = map[titr_name & "_control"]
@@ -913,8 +916,8 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 		if ctrl <> "5" Then
 			reset_control_with_delay()
 		end if
- 
- 
+	
+	' FILL
 	ElseIf mapKey = titr_name & "_fill" Then
 		If FeelFill then
 			fill = map[titr_name & "_fill"]
@@ -924,9 +927,11 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 			End If
 		End If
 		local_memory[titr_name & "_fill"] = memory[titr_name & "_fill"]
-	ElseIf mapKey = prefix & "AUTOTAKEOUT_ALL_RECALCULATE" then
-		If memory[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = "1" Then
+	ElseIf mapKey = prefix & "AUTOTAKEOUT_ALL_RECALCULATE" and memory[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] <> "" then
+		If memory[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] <> titr_name Then
 			OnInit()
+		Else
+			SendConditionsToGlobal()
 		End If
 	End If
 End Sub
@@ -934,6 +939,7 @@ End Sub
 
 Sub CalculateDirector()
 	'найти основной директор, его ключи...
+	println(3, "CalculateDirector()")
  
 	d_OnOff = Stage.FindDirector (titr_name)
 	If d_OnOff = null Then
@@ -1402,3 +1408,5 @@ sub OnExecPerField()
 		reset_control()
 	end if
 end sub
+
+
