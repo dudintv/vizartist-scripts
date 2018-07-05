@@ -1,4 +1,4 @@
-Dim version As String = "4.1.2"
+Dim version As String = "4.1.3"
 Dim info As String = "Разработчик: Дудин Дмитрий
 Версия "&version&" (5 июля 2018)
 -------------------------------------------------------
@@ -499,10 +499,11 @@ Sub OnInitParameters()
 	RegisterParameterBool("Takeout_by_last", "└ Убирать на последней", false)
 	RegisterParameterString("Takeout_by_last_condis", "    └ При условии что 1&2", "", 40, 256, "")
 	RegisterParameterInt("Takeout_by_last_countLoop", "    └ Кол-во циклов", 1, 1, 10000)
-	RegisterParameterString("Take", "При выдаче        1,2(3&4)", "", 65, 256, "")
-	RegisterParameterString("Takeout", "При убирании     1,2(3&4)", "", 65, 256, "")
-	RegisterParameterString("TakeThis", "На что выдавать 1,2(3&4)", "", 65, 256, "")
-	RegisterParameterString("TakeoutThis", "На что убирать    1,2(3&4)", "", 65, 256, "")
+	RegisterParameterBool("LogicAutoTakeout", "Логика авто-убирания", false)
+	RegisterParameterString("Take", "└ При выдаче        1,2(3&4)", "", 65, 256, "")
+	RegisterParameterString("Takeout", "└ При убирании     1,2(3&4)", "", 65, 256, "")
+	RegisterParameterString("TakeThis", "└ На что выдавать 1,2(3&4)", "", 65, 256, "")
+	RegisterParameterString("TakeoutThis", "└ На что убирать    1,2(3&4)", "", 65, 256, "")
 	RegisterParameterBool("FeelFill", "Убирать если титр пустой", false)
 	RegisterParameterBool("AUTOTAKEOUT", "Автоматически убирать", false)
 	RegisterParameterDouble("AUTOTAKEOUTPause", "└ через (сек):", 0, 0, 10000)
@@ -524,7 +525,6 @@ End sub
 '----------------------------------------------------------
  
 sub OnInit()
-	println(3, "OnInit()")
 	'опредлеям имя титра!
 	titr_name = GetParameterString("Name")
 	titr_name.trim()
@@ -714,9 +714,11 @@ Sub SendConditionsToGlobal()
 	'отправляем запись в общий скрипт для занесения в общий список взаимодействия
 	local_memory[prefix & "AddTo_AUTOTAKEOUTonTAKE"] = null
 	local_memory[prefix & "AddTo_AUTOTAKEOUTonTAKEOUT"] = null
- 
-	local_memory[prefix & "AddTo_AUTOTAKEOUTonTAKE"] = AUTOTAKEOUTonTAKE
-	local_memory[prefix & "AddTo_AUTOTAKEOUTonTAKEOUT"] = AUTOTAKEOUTonTAKEOUT
+	
+	If GetParameterBool("LogicAutoTakeout") Then
+		local_memory[prefix & "AddTo_AUTOTAKEOUTonTAKE"] = AUTOTAKEOUTonTAKE
+		local_memory[prefix & "AddTo_AUTOTAKEOUTonTAKEOUT"] = AUTOTAKEOUTonTAKEOUT
+	End If
 End Sub
 '----------------------------------------------------------
  
@@ -726,7 +728,6 @@ Sub OnExecAction(buttonId As Integer)
 		console = ""
 		'выполняем стандартные процедуры инициализации
 		OnInitParameters()
-		println(4, "OnExecAction buttonId = 1")
 		OnInit()
 		'и заставляем пересчитать всю логику АВТОУБИРАНИЯ (взаимодействия титров)
 		memory[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = ""
@@ -773,6 +774,18 @@ sub OnGuiStatus()
 		SendGuiParameterShow("Start_by_previous", HIDE)
 	Else
 		SendGuiParameterShow("Start_by_previous", SHOW)
+	End If
+	
+	If GetParameterBool("LogicAutoTakeout") Then
+		SendGuiParameterShow("Take", SHOW)
+		SendGuiParameterShow("Takeout", SHOW)
+		SendGuiParameterShow("TakeThis", SHOW)
+		SendGuiParameterShow("TakeoutThis", SHOW)
+	Else
+		SendGuiParameterShow("Take", HIDE)
+		SendGuiParameterShow("Takeout", HIDE)
+		SendGuiParameterShow("TakeThis", HIDE)
+		SendGuiParameterShow("TakeoutThis", HIDE)
 	End If
  
 	firster = CInt(GetParameterBool("AUTOTAKEOUT"))
@@ -939,7 +952,6 @@ End Sub
 
 Sub CalculateDirector()
 	'найти основной директор, его ключи...
-	println(3, "CalculateDirector()")
  
 	d_OnOff = Stage.FindDirector (titr_name)
 	If d_OnOff = null Then
@@ -948,10 +960,10 @@ Sub CalculateDirector()
 	Else
 		'если основной директор НАЙДЕН!
 		if d_OnOff.EventChannel.KeyframeCount < 1 then
-			console &= "> В основном директоре нет стоперов!\n" & "Надо минимум один стопер добавить.\n"
+			console &= "> В основном директоре нет стоперов!\n" & "Надо добавить минимум один стопер.\n"
 			exit sub
 		elseif d_OnOff.EventChannel.KeyframeCount > 2 then
-			console &= "> В основном директоре многовато стоперов!\n" & "Надо сократить до 2-х максимум!\n"
+			console &= "> В основном директоре многовато стоперов!\n" & "Надо сократить до 2-х!\n"
 			exit sub
 		end if
 		
