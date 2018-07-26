@@ -1,6 +1,6 @@
-Dim version As String = "4.1.3"
+Dim version As String = "4.2"
 Dim info As String = "Разработчик: Дудин Дмитрий
-Версия "&version&" (5 июля 2018)
+Версия "&version&" (26 июля 2018)
 -------------------------------------------------------
 Укажи (через запятую, на пробелы пофиг) какие блоки титров
 будет уходить с экрана или наоборот показываться в случаях:
@@ -132,6 +132,13 @@ Dim i AS Integer
 'Пример fill:
 'Geo:text=Москва
 'Name=Дмитрий Дудин|Status=работаю на телеке
+
+'LOG:
+Sub Log(message As String)
+	if System.Map["AUTOTAKEOUT_LOG"] == "1" then
+		println(3, "DL::" & message)
+	end if
+End Sub
 
 'DROPZONES:
 Dim DZ_SIDE_ONLY_ONE = 0
@@ -826,6 +833,7 @@ end sub
 Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 	If NOT ( Scene.IsBacklayer() OR Scene.IsFrontlayer() OR Scene.IsMainlayer() ) then
 		'если сцена не в слое — то никак не реагировать
+		Log("Scene is not in layer. Only in scene pool.")
 		exit sub
 	end if
 	
@@ -833,6 +841,7 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 	If mapKey = titr_name & "_control" Then
 		'реакция на управляющую переменную
 		ctrl = map[titr_name & "_control"]
+		Log(titr_name & "_control = " & ctrl)
 		If ctrl = "1" Then
 			'TAKE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 			'Проверка - выдаем если только титр убран
@@ -932,6 +941,7 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 	
 	' FILL
 	ElseIf mapKey = titr_name & "_fill" Then
+		Log(titr_name & "_fill = " & ctrl)
 		If FeelFill then
 			fill = map[titr_name & "_fill"]
 			fill.trim()
@@ -1420,5 +1430,6 @@ sub OnExecPerField()
 		reset_control()
 	end if
 end sub
+
 
 
