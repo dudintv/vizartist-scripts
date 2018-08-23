@@ -1,6 +1,6 @@
-Dim version As String = "4.2.1"
+Dim version As String = "4.3"
 Dim info As String = "Разработчик: Дудин Дмитрий
-Версия "&version&" (20 августа 2018)
+Версия "&version&" (23 августа 2018)
 -------------------------------------------------------
 Укажи (через запятую, на пробелы пофиг) какие блоки титров
 будет уходить с экрана или наоборот показываться в случаях:
@@ -57,6 +57,7 @@ Dim testers   As Integer        '0 - кнопки тестирования НЕ 
 Dim firster   As Integer        '0 - начинать серии не обязательно с первой (см. start_by_previous), 1 - всегда начинать с первой
 	Dim MODE_SINGLE As Integer = 0
 	Dim MODE_SERIES As Integer = 1
+Dim take_by_fill As Boolean
 Dim d_OnOff   As Director       'основной директор анимации входа/смены/выхода
 Dim nav_OnOff As Channel        'в основном директоре action-канал с именем nav, от слова navigation
 Dim feelfill  As Boolean        'чувствительность на пустую строку fill. если  feelfill=true то нельзя будет выдать титр в котором нет текста для выдачи!
@@ -512,7 +513,8 @@ Sub OnInitParameters()
 	RegisterParameterString("TakeThis", "└ На что выдавать 1,2(3&4)", "", 65, 256, "")
 	RegisterParameterString("TakeoutThis", "└ На что убирать    1,2(3&4)", "", 65, 256, "")
 	RegisterParameterBool("FeelFill", "Убирать если титр пустой", false)
-	RegisterParameterBool("AUTOTAKEOUT", "Автоматически убирать", false)
+	RegisterParameterBool("TakeByFill", "Выдавать по изменению fill", false)
+	RegisterParameterBool("AUTOTAKEOUT", "Таймер автоубирания", false)
 	RegisterParameterDouble("AUTOTAKEOUTPause", "└ через (сек):", 0, 0, 10000)
 	RegisterParameterContainer("root", "Корень титра:")
 	RegisterPushButton("rebuild", "Initialize", 1)
@@ -581,6 +583,7 @@ sub OnInit()
 	takethis = GetParameterString("TakeThis")
 	takeoutthis = GetParameterString("TakeoutThis")
 	feelfill = GetParameterBool("FeelFill")
+	take_by_fill = GetParameterBool("TakeByFill")
 	cRoot = GetParameterContainer("root")
 	if cRoot.name == "" then	cRoot = this
 	mode = CInt(GetParameterBool("Mode"))
@@ -837,6 +840,7 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 		exit sub
 	end if
 	
+	Log(CStr(map))
 	' CONTROL
 	If mapKey = titr_name & "_control" Then
 		'реакция на управляющую переменную
@@ -851,21 +855,24 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 		If ctrl = "1" Then
 			'TAKE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 			'Проверка - выдаем если только титр убран
+			Log("TRY TAKE")
 			
 			If PlayheadIsNear(0) OR PlayheadIsMore(stoper_b) Then
-				println(4,"MUST TAKE")
 				isCanChange = false
 				isCanINtoOUT = false
 				fill = map[titr_name & "_fill"]
 				fill.trim()
 				
-				If (fill == "" AND feelfill) OR (PlayheadIsMore(stoper_b) AND d_OnOff.IsAnimationRunning()) then
+				If ( feelfill AND fill == "" ) then 
+					'OR ( PlayheadIsMore(stoper_b) AND d_OnOff.IsAnimationRunning() )
 					d_OnOff.ContinueAnimation()
 					local_memory[titr_name & "_status"] = 0
+					Log("FAIL TAKE")
 					exit sub
 				End If
 				'-------
 				'выдаем уж точно:
+				Log("DO TAKE")
 				d_OnOff.Show(0)
 				d_OnOff.ContinueAnimation()
 				take()
@@ -881,6 +888,13 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 			'Проверка - Если ползунок времени находится в пределах выданного состояния, то убираем
 			isCanChange = false
 			isCanINtoOUT = false
+			'если реагируем на fill, то обнуляем fill
+			if take_by_fill then
+				println(1,"CLEAR FILL")
+				memory[titr_name & "_fill"] = ""
+				local_memory[titr_name & "_fill"] = ""
+			end if
+			
 			If PlayheadIsMore(0) AND PlayheadIsLess(end_time) Then
 				If PlayheadIsLess(stoper_b) Then d_OnOff.Show(stoper_b)				
 				d_OnOff.ContinueAnimation()
@@ -888,6 +902,8 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 			End If
 			'объявляем текущее состояние
 			local_memory[titr_name & "_status"] = 0
+			
+			
 		ElseIf ctrl = "2" Then
 			'CHANGE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 			'Проверка - если выдан, то проигрываем блок анимации loop(в котором меняется значение)
@@ -943,14 +959,22 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 	' FILL
 	ElseIf mapKey = titr_name & "_fill" Then
 		Log(titr_name & "_fill = " & fill)
-		If FeelFill then
-			fill = map[titr_name & "_fill"]
-			fill.trim()
-			If fill == "" then
-				local_memory[titr_name & "_control"] = 0
-			End If
-		End If
+		fill = map[titr_name & "_fill"]
+		fill.trim()
+		take_by_fill = GetParameterBool("TakeByFill")
+		
 		local_memory[titr_name & "_fill"] = memory[titr_name & "_fill"]
+		
+		If FeelFill AND fill == "" then
+			local_memory[titr_name & "_control"] = 0
+		elseif take_by_fill AND fill <> "" then
+			println(1, "TAKE BY FILL")
+			println(1, "local  fill = " & local_memory[titr_name & "_fill"])
+			println(1, "global fill = " & memory[titr_name & "_fill"])
+			local_memory[titr_name & "_control"] = 2
+		End If
+		
+		
 	ElseIf mapKey = prefix & "AUTOTAKEOUT_ALL_RECALCULATE" and memory[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] <> "" then
 		If memory[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] <> titr_name Then
 			OnInit()
@@ -1433,3 +1457,4 @@ sub OnExecPerField()
 		reset_control_delay -= 1
 	end if
 end sub
+
