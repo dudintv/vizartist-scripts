@@ -1,6 +1,6 @@
-Dim version As String = "4.2"
+Dim version As String = "4.2.1"
 Dim info As String = "Разработчик: Дудин Дмитрий
-Версия "&version&" (26 июля 2018)
+Версия "&version&" (20 августа 2018)
 -------------------------------------------------------
 Укажи (через запятую, на пробелы пофиг) какие блоки титров
 будет уходить с экрана или наоборот показываться в случаях:
@@ -842,17 +842,24 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 		'реакция на управляющую переменную
 		ctrl = map[titr_name & "_control"]
 		Log(titr_name & "_control = " & ctrl)
+		
+		'сбрасываем через 2 кадра значение, чтобы реакция оставалась даже на одно и то же значение
+		if ctrl <> "5" Then
+			reset_control_with_delay()
+		end if
+		
 		If ctrl = "1" Then
 			'TAKE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 			'Проверка - выдаем если только титр убран
 			
 			If PlayheadIsNear(0) OR PlayheadIsMore(stoper_b) Then
+				println(4,"MUST TAKE")
 				isCanChange = false
 				isCanINtoOUT = false
 				fill = map[titr_name & "_fill"]
 				fill.trim()
 				
-				If (fill = "" AND feelfill) OR (PlayheadIsMore(stoper_b) AND d_OnOff.IsAnimationRunning()) then
+				If (fill == "" AND feelfill) OR (PlayheadIsMore(stoper_b) AND d_OnOff.IsAnimationRunning()) then
 					d_OnOff.ContinueAnimation()
 					local_memory[titr_name & "_status"] = 0
 					exit sub
@@ -932,16 +939,10 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 		ElseIf ctrl = "6" Then
 			ContinueGeomsAnimations()
 		End If
-		
-		'окончание блока mapKey = titr_control
-		'сбрасываем значение, чтобы реакция оставалась даже на одно и то же значение
-		if ctrl <> "5" Then
-			reset_control_with_delay()
-		end if
 	
 	' FILL
 	ElseIf mapKey = titr_name & "_fill" Then
-		Log(titr_name & "_fill = " & ctrl)
+		Log(titr_name & "_fill = " & fill)
 		If FeelFill then
 			fill = map[titr_name & "_fill"]
 			fill.trim()
@@ -1375,10 +1376,10 @@ end function
 '''''''''''''''''''''''''''''''''''''''''''''''''''''
 'обеспечение однокадровой паузы перед обнулением _control-переменной
 
-dim reset_control_status as boolean = false
+dim reset_control_delay as integer = -1
 
 sub reset_control_with_delay()
-	reset_control_status = true
+	reset_control_delay = 2
 end sub
 
 sub reset_control()
@@ -1425,11 +1426,10 @@ sub OnExecPerField()
 	end if
 	
 	'отслеживание однокадровой паузы перед обнулением _control переменной
-	if reset_control_status then
-		reset_control_status = false
+	if reset_control_delay == 0 then
+		reset_control_delay = -1
 		reset_control()
+	elseif reset_control_delay > 0 then
+		reset_control_delay -= 1
 	end if
 end sub
-
-
-
