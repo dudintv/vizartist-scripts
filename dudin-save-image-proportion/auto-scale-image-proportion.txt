@@ -1,0 +1,22 @@
+Dim return as String
+Dim arr_size as array[string]
+Dim x, y As Integer
+Dim scale As Double
+Dim name, name_prev As String
+
+Sub Rescale()
+	return = SendCommand("#"&this.texture.vizid&"*INFO GET")  	'(получаем "1024 512 20565", где x=1024, y=512, 20564 kBit)
+	return.split(" ",arr_size)	
+	x = cInt(arr_size[0])																			
+	y = cInt(arr_size[1])																			
+	scale = x/(y*1.0)
+	this.geometry.plugininstance.SetParameterDouble("width", 100*scale)
+end Sub
+
+sub OnExecPerField()
+	name = this.texture.Image.Name
+	if name <> name_prev then
+		Rescale()
+		name_prev = name
+	end if
+end sub
