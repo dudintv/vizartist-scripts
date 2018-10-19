@@ -1,4 +1,4 @@
-Dim version As String = "1.01 (19 октября 2018)"
+Dim version As String = "1.02 (19 октября 2018)"
 Dim info As String = "Авто масштабирование картинки или rect согласно пропорции. Удобно для портретов."
 
 Dim return as String
@@ -8,13 +8,17 @@ Dim image_prop, rect_prop As Double
 Dim name, name_prev As String
 
 Dim buttons As Array[String]
+buttons.Push("Off")
 buttons.Push("Scale rect width")
 buttons.Push("Scale image x")
 sub OnInitParameters()
-	RegisterRadioButton("mode", "Mode", 1, buttons)
+	RegisterRadioButton("mode", "Mode", 0, buttons)
 end sub
 sub OnInit()
 	Rescale()
+end sub
+sub OnParameterChanged(parameterName As String)
+	OnInit()
 end sub
 
 sub OnExecPerField()
@@ -34,9 +38,11 @@ Sub Rescale()
 	rect_prop = this.geometry.plugininstance.GetParameterDouble("width") / this.geometry.plugininstance.GetParameterDouble("height")
 	
 	if GetParameterInt("mode") == 0 then
+		'Off
+	elseif GetParameterInt("mode") == 1 then
 		'Scale rect width
 		this.geometry.plugininstance.SetParameterDouble("width", 100*image_prop)
-	elseif GetParameterInt("mode") == 1 then
+	elseif GetParameterInt("mode") == 2 then
 		'Scale image x
 		this.texture.MapScaling.x = image_prop / rect_prop
 	end if
