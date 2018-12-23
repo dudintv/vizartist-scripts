@@ -1,26 +1,25 @@
-Dim info As String = "Скрипт создает конструкцию для генерации 9-частной текстру
-предназначеной для растягивания центральной части тектруы
-с сохранением пропорций по краям и углам.
+Dim info As String = "The script create asset of nine sub-containers
+for stretching central parts and fixing border.
 
-Разработчик: Дудин Дмитрий.  Версия 0.41 (25 июня 2015)
+Developer: Dmitry Dudin.  Version 0.5 (24 dec 2018)
 "
 
 sub OnInitParameters()
 	RegisterInfoText(info)
-	RegisterPushButton("create_planes", "Создать базовые плейны", 1)
+	RegisterPushButton("create_planes", "Generate nine sub-containers", 1)
 	
-	RegisterParameterBool("border_simple", "Единая граница", true)
-	RegisterParameterDouble("borders", "Границы %", 0, 0, 50)
-	RegisterParameterDouble("border_left", "Граница слева %", 0, 0, 100)
-	RegisterParameterDouble("border_top", "Граница сверху %", 0, 0, 100)
-	RegisterParameterDouble("border_right", "Граница справа %", 0, 0, 100)
-	RegisterParameterDouble("border_bottom", "Граница снизу %", 0, 0, 100)
+	RegisterParameterBool("border_simple", "Common border", true)
+	RegisterParameterDouble("borders", "Border %", 0, 0, 50)
+	RegisterParameterDouble("border_left", "Left border %", 0, 0, 100)
+	RegisterParameterDouble("border_top", "Top border %", 0, 0, 100)
+	RegisterParameterDouble("border_right", "Right border %", 0, 0, 100)
+	RegisterParameterDouble("border_bottom", "Bottom border %", 0, 0, 100)
 	
-	RegisterParameterBool("size_by_gabarit", "Размер по контейнеру", true)
-	RegisterParameterDouble("width", "Ширина", 100, 0, 10000)
-	RegisterParameterDouble("height", "Высота", 100, 0, 10000)
-	RegisterParameterContainer("gabarit","Габариты брать с ")
-	RegisterParameterDouble("gabarit_multiplyer", "Коеф.увеличения", 100, 0, 100000)
+	RegisterParameterBool("size_by_gabarit", "Get size from container", true)
+	RegisterParameterDouble("width", "Width", 100, 0, 10000)
+	RegisterParameterDouble("height", "Height", 100, 0, 10000)
+	RegisterParameterContainer("gabarit", "Size source")
+	RegisterParameterDouble("gabarit_multiplyer", "Magnifier", 100, 0, 100000)
 end sub
 
 Dim c, cGabarit As Container
@@ -193,4 +192,3 @@ sub OnExecPerField()
 		end if
 	end if
 end sub
-
