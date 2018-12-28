@@ -1,6 +1,6 @@
-Dim version As String = "4.3"
+Dim version As String = "4.3.1"
 Dim info As String = "Разработчик: Дудин Дмитрий
-Версия "&version&" (23 августа 2018)
+Версия "&version&" (28 декабря 2018)
 -------------------------------------------------------
 Укажи (через запятую, на пробелы пофиг) какие блоки титров
 будет уходить с экрана или наоборот показываться в случаях:
@@ -963,14 +963,11 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 		fill.trim()
 		take_by_fill = GetParameterBool("TakeByFill")
 		
-		local_memory[titr_name & "_fill"] = memory[titr_name & "_fill"]
+		if map == memory then	local_memory[titr_name & "_fill"] = memory[titr_name & "_fill"]
 		
 		If FeelFill AND fill == "" then
 			local_memory[titr_name & "_control"] = 0
 		elseif take_by_fill AND fill <> "" then
-			println(1, "TAKE BY FILL")
-			println(1, "local  fill = " & local_memory[titr_name & "_fill"])
-			println(1, "global fill = " & memory[titr_name & "_fill"])
 			local_memory[titr_name & "_control"] = 2
 		End If
 		
@@ -1157,13 +1154,13 @@ function take_cur_series() as String
 		end if
 		
 		
-		fill = memory[titr_name & "_fill"]
+		fill = local_memory[titr_name & "_fill"]
 		fill.trim()
 		if fill.find("=") > 0 then
 			nametype = fill.left(fill.find("="))
 			fill = fill.right(fill.length - fill.find("=") - 1)
 		end if
-		fill.split(separator,arr_fill)
+		fill.split(separator, arr_fill)
 		
 		if arr_fill.size > 0 then
 			'если есть хоть одна серия:
@@ -1173,7 +1170,7 @@ function take_cur_series() as String
 				If s == "" Then arr_fill.Erase(i)
 			next
 			
-				if arr_fill.Size <= 1 then
+			if arr_fill.Size <= 1 then
 				arr_fill.push("")
 				curSeries = 0
 			else
@@ -1184,7 +1181,12 @@ function take_cur_series() as String
 				end if
 			end if
 			
-			take_cur_series = nametype & "=" & arr_fill[curSeries]
+			nametype.Trim()
+			if nametype == "" then
+				take_cur_series = arr_fill[curSeries]
+			else
+				take_cur_series = nametype & "=" & arr_fill[curSeries]
+			end if
 		else
 			'если нет ни одной серии
 			local_memory[titr_name & "_curSeries"] = 0
@@ -1457,4 +1459,5 @@ sub OnExecPerField()
 		reset_control_delay -= 1
 	end if
 end sub
+
 
