@@ -134,10 +134,6 @@ Sub Make9Part()
 	posY.Push( (borderBottom-borderTop)/2.0 )
 	posY.Push( -(borderTop + 100*scaleY[1])/2.0 )
 	
-	'posY.Push( 50-borderTop/2 )
-	'posY.Push( (borderBottom-borderTop)/2 )
-	'posY.Push( -(50-borderBottom/2) )
-	
 	posTX.Push( (50-borderLeft/2.0)/10*scaleTX[0] )
 	posTX.Push( (borderRight-borderLeft)/2/10*scaleTX[1] )
 	posTX.Push( -(50-borderRight/2.0)/10*scaleTX[2] )
@@ -170,8 +166,6 @@ Sub GetGabaritSize()
 	cGabarit.GetTransformedBoundingBox(vGabarit1, vGabarit2)
 	vLocalGabarit1 = this.WorldPosToLocalPos(vGabarit1)
 	vLocalGabarit2 = this.WorldPosToLocalPos(vGabarit2)
-	'vLocalGabarit.X = vGabarit.X / this.Scaling.X
-	'vLocalGabarit.Y = vGabarit.Y / this.Scaling.Y
 	width  = vLocalGabarit2.X - vLocalGabarit1.X - borderLeft - borderRight + 10*koeficient
 	height = vLocalGabarit2.Y - vLocalGabarit1.Y - borderTop - borderBottom + 10*koeficient
 	
