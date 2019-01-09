@@ -17,7 +17,8 @@ Dim arr_c As Array[Container]
 ' STUFF
 Dim c As Container
 Dim i As Integer
-Dim max, max2, mid As Vertex
+'use vertexes for easy world to local transformation
+Dim min, max, mid As Vertex
 Dim v1,v2, v_world, thisSize As Vertex
 Dim defY,defX As Double
 
@@ -87,7 +88,7 @@ sub OnExecPerField()
 			Next
  
 			If max.x >= 1000000 Then
-				'если не на что ориентировать и надо встать в свое стандартное место
+				'go to default pos
 				defX = GetParameterDouble("defX")
 				If this.position.x > defX - threshold AND this.position.x < defX + threshold Then
 					max.x = defX
@@ -97,22 +98,22 @@ sub OnExecPerField()
 				End If
 			Else
 				max.x += GetParameterDouble("shiftX")
-			End If	
+			End If
 			
 		ElseIf GetParameterInt("direction") == 1 Then
-			max2 = CVertex(-10000000.0,0,0)
-			max = CVertex(10000000.0,0,0)
+			max = CVertex(-10000000.0,0,0)
+			min = CVertex(10000000.0,0,0)
 			For i = 0 to quantity_of_container-1
 				arr_c[i].RecomputeMatrix()
 				arr_c[i].GetTransformedBoundingBox(v1,v2)
  
 				If v2.x > (v1.x + threshold) Then
-					If v2.x > max2.x AND (v2.x > v1.x + threshold OR v2.x < v1.x - threshold) Then max2 = v2
-					If v1.x < max.x AND (v2.x > v1.x + threshold OR v2.x < v1.x - threshold) Then max = v1
+					If v2.x > max.x AND (v2.x > v1.x + threshold OR v2.x < v1.x - threshold) Then max = v2
+					If v1.x < min.x AND (v2.x > v1.x + threshold OR v2.x < v1.x - threshold) Then min = v1
 				End If
 			Next
 			
-			mid.x = (max.x + max2.x)/2
+			mid.x = (min.x + max.x)/2
 			mid.x += GetParameterDouble("shiftX")
 			max = mid
 			
@@ -127,7 +128,7 @@ sub OnExecPerField()
 			Next
  
 			If max.x <= -1000000 Then
-				'если не на что ориентировать и надо встать в свое стандартное место
+				'go to default pos
 				defX = GetParameterDouble("defX")
 				If this.position.x > defX - threshold AND this.position.x < defX + threshold Then
 					max.x = defX
@@ -144,7 +145,7 @@ sub OnExecPerField()
 			max.x = GetParameterDouble("zeroX")
 		end if
 		
-		'ANIMATE REAL MOVE TO NEW POINT
+		'animate real move to new point
 		max = this.WorldPosToLocalPos(max)
 		If Abs(max.x - this.position.x) > thresholdMove Then
 			this.position.x += (max.x - this.position.x)/5.0
@@ -165,7 +166,7 @@ sub OnExecPerField()
 			Next
  
 			If max.y >= 1000000 Then
-				'если не на что ориентировать и надо встать в свое стандартное место
+				'go to default pos
 				defY = GetParameterDouble("defY")
 				If this.position.y > defY - threshold AND this.position.y < defY + threshold Then
 					max.y = defY
@@ -177,19 +178,19 @@ sub OnExecPerField()
 				max.y += GetParameterDouble("shiftY")
 			End If
 		ElseIf GetParameterInt("direction") == 1 Then
-			max2 = CVertex(0,-10000000.0,0)
-			max = CVertex(0,10000000.0,0)
+			max = CVertex(0,-10000000.0,0)
+			min = CVertex(0,10000000.0,0)
 			For i = 0 to quantity_of_container-1
 				arr_c[i].RecomputeMatrix()
 				arr_c[i].GetTransformedBoundingBox(v1,v2)
  
 				If v2.y > (v1.y + threshold) Then
-					If v2.y > max2.y AND (v2.y > v1.y + threshold OR v2.y < v1.y - threshold) Then max2 = v2
-					If v1.y < max.y AND (v2.y > v1.y + threshold OR v2.y < v1.y - threshold) Then max = v1
+					If v2.y > max.y AND (v2.y > v1.y + threshold OR v2.y < v1.y - threshold) Then max = v2
+					If v1.y < min.y AND (v2.y > v1.y + threshold OR v2.y < v1.y - threshold) Then min = v1
 				End If
 			Next
 			
-			mid.y = (max.y + max2.y)/2
+			mid.y = (min.y + max.y)/2
 			mid.y += GetParameterDouble("shiftY")
 			max = mid
  
@@ -205,7 +206,7 @@ sub OnExecPerField()
 			Next
  
 			If max.y <= -1000000 Then
-				'если не на что ориентировать и надо встать в свое стандартное место
+				'go to default pos
 				defY = GetParameterDouble("defY")
 				If this.position.y > defY - threshold AND this.position.y < defY + threshold Then
 					max.y = defY
