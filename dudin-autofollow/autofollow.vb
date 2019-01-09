@@ -1,8 +1,10 @@
-Dim info As String = "Скрипт определяет максимально высокую точку у выбранных контейнеров
-и располагает self-контейнер в эту точку (в глобальном измерении)
-Разработчик: Дудин Дмитрий. Vizart co.    Версия 1.1 (13 октябрь 2015)
+Dim info As String = "Autofollow for multiple containers.
+Check maximum point of selected containers
+and align this_container to this point (in global).
+Developer: Dmitry Dudin, version 1.2 (09.01.2019)
 "
- 
+
+' INTERFACE
 Dim arr_mode As Array[String]
 arr_mode.Push("[ X ]")
 arr_mode.Push("[ Y ]")
@@ -10,29 +12,33 @@ Dim arr_direction As Array[String]
 arr_direction.Push("[ > ]")
 arr_direction.Push("[ * ]")
 arr_direction.Push("[ < ]")
-Dim mode, direction As Integer
 Dim arr_c As Array[Container]
+
+' STUFF
 Dim c As Container
 Dim i As Integer
 Dim max, max2, mid As Vertex
 Dim v1,v2, v_world, thisSize As Vertex
 Dim defY,defX As Double
+
+' SETTINGS
+' just set up count of container for observing
+Dim quantity_of_container As Integer = 1
 Dim threshold As Double = 0.01
 Dim thresholdMove As Double = 1.0
-Dim quantity_of_container As Integer = 1
  
 sub OnInitParameters()
 	RegisterInfoText(info)
-	RegisterRadioButton("mode", "Следить по оси:", 0, arr_mode)
-	RegisterRadioButton("direction", "Направление:", 0, arr_direction)
-	RegisterParameterDouble("zeroX", "Позиция по X если сам пустой:", 0, -1000.0, 1000.0)
-	RegisterParameterDouble("defX", "Позиция по X без смещений:", 0, -1000.0, 1000.0)
-	RegisterParameterDouble("shiftX", "Смещение по X со смещением:", 0, -1000.0, 1000.0)
-	RegisterParameterDouble("zeroY", "Позиция по Y если сам пустой:", 0, -1000.0, 1000.0)
-	RegisterParameterDouble("defY", "Позиция по Y без смещений:", 0, -1000.0, 1000.0)
-	RegisterParameterDouble("shiftY", "Смещение по Y со смещением:", 0, -1000.0, 1000.0)
+	RegisterRadioButton("mode", "Follow axis:", 0, arr_mode)
+	RegisterRadioButton("direction", "Direction:", 0, arr_direction)
+	RegisterParameterDouble("zeroX", "X-pos if self empty:", 0, -1000.0, 1000.0)
+	RegisterParameterDouble("defX", "X-pos default:", 0, -1000.0, 1000.0)
+	RegisterParameterDouble("shiftX", "X-shift:", 0, -1000.0, 1000.0)
+	RegisterParameterDouble("zeroY", "Y-pos if self empty:", 0, -1000.0, 1000.0)
+	RegisterParameterDouble("defY", "Y-pos default:", 0, -1000.0, 1000.0)
+	RegisterParameterDouble("shiftY", "Y-shift:", 0, -1000.0, 1000.0)
 	For i = 1 to quantity_of_container
-		RegisterParameterContainer("c" & i,"Контейнер " & i & ":")
+		RegisterParameterContainer("c" & i,"Container " & i & ":")
 	Next
 end sub
  
@@ -44,16 +50,33 @@ sub OnInit()
 		If c <> null Then arr_c.Push(c)
 	Next
 end sub
+
+sub OnParameterChanged(parameterName As String)
+	OnInit()
+	If GetParameterInt("mode") == 0 Then
+		SendGuiParameterShow("zeroX",SHOW)
+		SendGuiParameterShow("zeroY",HIDE)
+		SendGuiParameterShow("defX",SHOW)
+		SendGuiParameterShow("defY",HIDE)
+		SendGuiParameterShow("shiftX",SHOW)
+		SendGuiParameterShow("shiftY",HIDE)
+	ElseIf GetParameterInt("mode") == 1 Then
+		SendGuiParameterShow("zeroX",HIDE)
+		SendGuiParameterShow("zeroY",SHOW)
+		SendGuiParameterShow("defX",HIDE)
+		SendGuiParameterShow("defY",SHOW)
+		SendGuiParameterShow("shiftX",HIDE)
+		SendGuiParameterShow("shiftY",SHOW)
+	End If
+end sub
  
 sub OnExecPerField()
- 
-	mode = GetParameterInt("mode")
-	direction = GetParameterInt("direction")
 	thisSize = this.GetTransformedBoundingBoxDimensions()
-	If mode == 0 Then
-		'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	
+	If GetParameterInt("mode") == 0 Then
+		'MODE X
 		
-		If direction == 0 Then
+		If GetParameterInt("direction") == 0 Then
 			max = CVertex(10000000.0,0,0)
 			For i = 0 to quantity_of_container-1
 				arr_c[i].RecomputeMatrix()
@@ -76,7 +99,7 @@ sub OnExecPerField()
 				max.x += GetParameterDouble("shiftX")
 			End If	
 			
-		ElseIf direction == 1 Then
+		ElseIf GetParameterInt("direction") == 1 Then
 			max2 = CVertex(-10000000.0,0,0)
 			max = CVertex(10000000.0,0,0)
 			For i = 0 to quantity_of_container-1
@@ -93,7 +116,7 @@ sub OnExecPerField()
 			mid.x += GetParameterDouble("shiftX")
 			max = mid
 			
-		ElseIf direction == 2 Then
+		ElseIf GetParameterInt("direction") == 2 Then
 			max = CVertex(-10000000.0,0,0)
 			For i = 0 to quantity_of_container-1
 				arr_c[i].RecomputeMatrix()
@@ -128,10 +151,10 @@ sub OnExecPerField()
 		End If
  
  
-	ElseIf mode == 1 Then
-		'YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY
+	ElseIf GetParameterInt("mode") == 1 Then
+		'MODE Y
  
-		If direction == 0 Then
+		If GetParameterInt("direction") == 0 Then
 			max = CVertex(0,10000000.0,0)
 			For i = 0 to quantity_of_container-1
 				arr_c[i].RecomputeMatrix()
@@ -153,7 +176,7 @@ sub OnExecPerField()
 			Else
 				max.y += GetParameterDouble("shiftY")
 			End If
-		ElseIf direction == 1 Then
+		ElseIf GetParameterInt("direction") == 1 Then
 			max2 = CVertex(0,-10000000.0,0)
 			max = CVertex(0,10000000.0,0)
 			For i = 0 to quantity_of_container-1
@@ -171,7 +194,7 @@ sub OnExecPerField()
 			max = mid
  
  
-		ElseIf direction == 2 Then
+		ElseIf GetParameterInt("direction") == 2 Then
 			max = CVertex(0,-10000000.0,0)
 			For i = 0 to quantity_of_container-1
 				arr_c[i].RecomputeMatrix()
@@ -200,31 +223,10 @@ sub OnExecPerField()
 			max.y = GetParameterDouble("zeroY")
 		end if
 		
-		'ANIMATE REAL MOVE TO NEW POINT
+		'animate real move to new point
 		max = this.WorldPosToLocalPos(max)
 		If Abs(max.y - this.position.y) > thresholdMove Then
 			this.position.y += (max.y - this.position.y)/1.0
 		End If
-	End If
-end sub
- 
-sub OnParameterChanged(parameterName As String)
-	OnInit()
- 
-	mode = GetParameterInt("mode")
-	If mode == 0 Then
-		SendGuiParameterShow("zeroX",SHOW)
-		SendGuiParameterShow("zeroY",HIDE)
-		SendGuiParameterShow("defX",SHOW)
-		SendGuiParameterShow("defY",HIDE)
-		SendGuiParameterShow("shiftX",SHOW)
-		SendGuiParameterShow("shiftY",HIDE)
-	ElseIf mode == 1 Then
-		SendGuiParameterShow("zeroX",HIDE)
-		SendGuiParameterShow("zeroY",SHOW)
-		SendGuiParameterShow("defX",HIDE)
-		SendGuiParameterShow("defY",SHOW)
-		SendGuiParameterShow("shiftX",HIDE)
-		SendGuiParameterShow("shiftY",SHOW)
 	End If
 end sub
