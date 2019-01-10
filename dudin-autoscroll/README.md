@@ -1,4 +1,4 @@
-## Autoscroll (скроллинг внутри габаритов)
+## Autoscroll (scroll within gabarits)
 
 #### Version 0.6 (10 January 2019)
 * Translate to English
