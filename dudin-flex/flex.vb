@@ -1,15 +1,29 @@
-Dim info As String = "Разработчик: Дудин Дмитрий.
-Версия 0.32 (15 июня 2018)
----------------------------
+Dim info As String = "
+Flex-position. Copies logic from CSS3 / HTML5.
+Developer: Dmitry Dudin.
+Version 0.33 (15 january 2019)
 "
 
+'SETTING
+Dim treshhold As Double = 0.001
+
+'STUFF
 Dim c_gabarit As Container
+Dim children As Array[Container]
+Dim gap_min_param, gap_param, gap_shift As Double
+Dim gabarit, child_gabarit, v1, v2, child_v1, child_v2, item_gabarit As Vertex
+Dim mode_axis, mode_gabarit_source, mode_justify, mode_align As Integer
+Dim width_step, sum_children_width, sum_children_height, gap, start As Double
+Dim arr_width, arr_height, arr_shift_x, arr_shift_y As Array[Double]
+Dim count As Integer = 1
+
+'INTERFACE
 Dim arr_axis As Array[String]
 arr_axis.Push(" X ")
 arr_axis.Push(" Y ")
 Dim arr_gabarit_source As Array[String]
-arr_gabarit_source.Push("весь размер")
-arr_gabarit_source.Push("брать с первого подобъекта")
+arr_gabarit_source.Push("whole container")
+arr_gabarit_source.Push("first sub-container")
 Dim arr_justify As Array[String]
 arr_justify.Push("start")
 arr_justify.Push("end")
@@ -21,24 +35,15 @@ arr_align.Push("free")
 arr_align.Push("bottom")
 arr_align.Push("center")
 arr_align.Push("top")
-Dim gap_min_param, gap_param, gap_shift As Double
-Dim treshhold As Double = 0.001
-
-Dim children As Array[Container]
-Dim gabarit, child_gabarit, v1, v2, child_v1, child_v2, item_gabarit As Vertex
-Dim count As Integer = 1
-Dim mode_axis, mode_gabarit_source, mode_justify, mode_align As Integer
-Dim width_step, sum_children_width, sum_children_height, gap, start As Double
-Dim arr_width, arr_height, arr_shift_x, arr_shift_y As Array[Double]
 
 sub OnInitParameters()
-	RegisterParameterContainer("gabarit", "Габариты")
-	RegisterRadioButton("axis", "Ось", 0, arr_axis)
-	RegisterRadioButton("gabarit_source", "Размеры элементов", 0, arr_gabarit_source)
-	RegisterRadioButton("justify", "Распред.", 0, arr_justify)
-	RegisterRadioButton("align", "Выравнивание", 0, arr_align)
-	RegisterParameterDouble("gap", "Зазор в % остатка", 0, -1000, 1000)
-	RegisterParameterDouble("gap_min", "Мин. зазор", 0, 0, 1000)
+	RegisterParameterContainer("gabarit", "Area")
+	RegisterRadioButton("axis", "Axis", 0, arr_axis)
+	RegisterRadioButton("gabarit_source", "Size of children", 0, arr_gabarit_source)
+	RegisterRadioButton("justify", "Justify", 0, arr_justify)
+	RegisterRadioButton("align", "Align", 0, arr_align)
+	RegisterParameterDouble("gap", "Gap, % of rest", 0, -1000, 1000)
+	RegisterParameterDouble("gap_min", "Min gap", 0, 0, 1000)
 end sub
 
 sub OnInit()
@@ -54,9 +59,8 @@ sub OnParameterChanged(parameterName As String)
 	OnInit()
 end sub
 
-'#############################################################
-'#############################################################
-'#############################################################
+'''''''''''''''''''''''''''''''''''''''''''''''''''''
+
 Function GetChildGabarit(child As Container) As Vertex
 	if (mode_gabarit_source == 1) AND child.ChildContainerCount > 0 then
 		GetChildGabarit = child.FirstChildContainer.GetTransformedBoundingBoxDimensions()
@@ -65,31 +69,24 @@ Function GetChildGabarit(child As Container) As Vertex
 	end if
 End Function
 
-
-Sub calc_gap_and_start(gabarit_size As Double, sum_children_size As Double)
+Sub Calc_gap_and_start(gabarit_size As Double, sum_children_size As Double)
 	gap_shift = (gabarit_size - sum_children_size)*(gap_param/100)/(count-1)
-	if mode_justify = 0 then
-		'start
+	
+	Select Case mode_justify
+	Case 0 To 2
+		'0 - start
+		'1 - end
+		'2 - center
 		gap = 0 + gap_shift
-	elseif mode_justify = 1 then
-		'end
-		gap = 0 + gap_shift
-	elseif mode_justify = 2 then
-		'center
-		gap = 0 + gap_shift
-	elseif mode_justify = 3 then
-		'space-between
+	Case 3
+		'3 - space-between
 		gap = (gabarit_size - sum_children_size)/(count-1)
-	elseif mode_justify = 4 then
-		'space-around
-		
+	Case 4
+		'4 - space-around
 		gap = (gabarit_size - sum_children_size)/(count+1)
-		
 		gap_shift = (gabarit_size - sum_children_size - gap*(count-1))*(gap_param/100)/(count-1)
-		
 		gap += gap_shift
-		
-	end if
+	End Select
 	
 	if gap < gap_min_param then
 		if (gabarit_size - sum_children_size)/(count-1) < gap_min_param then
@@ -99,26 +96,22 @@ Sub calc_gap_and_start(gabarit_size As Double, sum_children_size As Double)
 		end if
 	end if
 	
-	if mode_justify = 0 then
+	Select Case mode_justify
+	Case 0
 		'start
 		start = 0
-	elseif mode_justify = 1 then
+	Case 1
 		'end
 		start = gabarit_size - sum_children_size - gap*(count-1)
-	elseif mode_justify = 2 then
-		'center
+	Case 2 to 4
+		'2 - center
+		'3 - space-between
+		'4 - space-around
 		start = (gabarit_size - sum_children_size)/2.0 - gap*(count-1)/2.0
-	elseif mode_justify = 3 then
-		'space-between
-		start = (gabarit_size - sum_children_size)/2.0 - gap*(count-1)/2.0
-	elseif mode_justify = 4 then
-		'space-around
-		start = (gabarit_size - sum_children_size)/2.0 - gap*(count-1)/2.0
-	end if
+	End Select
 End Sub
 
-
-Sub update()
+Sub Update()
 	gabarit = c_gabarit.GetTransformedBoundingBoxDimensions()
 	c_gabarit.GetTransformedBoundingBox(v1,v2)
 	v1 = c_gabarit.WorldPosToLocalPos(v1)
@@ -132,7 +125,6 @@ Sub update()
 			children.push(this.GetChildContainerByIndex(i))
 		end if
 	next
-	
 	
 	arr_width.clear
 	arr_height.clear
@@ -169,31 +161,42 @@ Sub update()
 	end if
 End Sub
 
+'''''''''''''''''''''''''''''''''''''''''''''''''''''
+
 sub OnExecPerField()
-	update
+	Update()
 	for i=0 to children.UBound
 		child_gabarit = GetChildGabarit(children[i])
 		
-		if mode_axis == 0 then
+		If mode_axis == 0 then
 			'X
 			children[i].Position.X = v1.x + start + i*gap + arr_shift_x[i]
-			if mode_align == 1 then
+			Select Case mode_align
+			Case 1
+				'bottom align
 				children[i].Position.Y = v1.y + child_gabarit.Y/2.0
-			elseif mode_align == 2 then
+			Case 2
+				'center align
 				children[i].Position.Y = (v1.y+v2.y)/2.0
-			elseif mode_align == 3 then
+			Case 3
+				'top align
 				children[i].Position.Y = v2.y - child_gabarit.Y/2.0
-			end if
-		elseif mode_axis == 1 then
+			End Select 
+		Elseif mode_axis == 1 then
 			'Y
 			children[i].Position.Y = v2.y - start - i*gap - arr_shift_y[i]
-			if mode_align == 1 then
+			Select Case mode_align
+			Case 1
+				'bottom align
 				children[i].Position.X = v1.x + child_gabarit.X/2.0
-			elseif mode_align == 2 then
+			Case 2
+				'center align
 				children[i].Position.X = (v1.x+v2.x)/2.0
-			elseif mode_align == 3 then
+			Case 3
+				'top align
 				children[i].Position.X = v2.x - child_gabarit.X/2.0
-			end if
+			End Select
 		end if
 	next
 end sub
+
