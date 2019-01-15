@@ -32,9 +32,9 @@ arr_justify.Push("space-between")
 arr_justify.Push("space-around")
 Dim arr_align As Array[String]
 arr_align.Push("free")
-arr_align.Push("bottom")
+arr_align.Push("min")
 arr_align.Push("center")
-arr_align.Push("top")
+arr_align.Push("max")
 
 sub OnInitParameters()
 	RegisterParameterContainer("gabarit", "Area")
@@ -133,24 +133,16 @@ Sub Update()
 	sum_children_width = 0
 	sum_children_height = 0
 	for i=0 to children.UBound
-		if (mode_gabarit_source == 1) AND children[i].ChildContainerCount > 0 then
-			children[i].FirstChildContainer.GetBoundingBox(child_v1,child_v2)
-		else
-			children[i].GetBoundingBox(child_v1,child_v2)
-		end if
+		SetChildrenVertexes(children[i]) 'set child_v1 and child_v2
 		child_gabarit = GetChildGabarit(children[i])
 		
 		arr_width.push(child_gabarit.X)
 		arr_height.push(child_gabarit.Y)
-		sum_children_width += child_gabarit.X
+		sum_children_width  += child_gabarit.X
 		sum_children_height += child_gabarit.Y
-				
-		arr_shift_x.push( -child_gabarit.X/2.0 -(child_v2.x+child_v1.x)/2.0 )
-		arr_shift_y.push( -child_gabarit.Y/2.0 -(child_v2.y+child_v1.y)/2.0 )
-		for y=0 to i
-			arr_shift_x[i] += arr_width[y]
-			arr_shift_y[i] += arr_height[y]
-		next
+		
+		arr_shift_x.push( sum_children_width  - child_v2.x*children[i].scaling.x )
+		arr_shift_y.push( sum_children_height + child_v1.y*children[i].scaling.y )
 	next
 	
 	count = children.size
@@ -161,42 +153,57 @@ Sub Update()
 	end if
 End Sub
 
+Sub SetChildrenVertexes(child As Container)
+	if mode_gabarit_source == 1 AND child.ChildContainerCount > 0 then
+		'first sub-container of child
+		child.FirstChildContainer.GetBoundingBox(child_v1, child_v2)
+		child_v1.x *= child.FirstChildContainer.scaling.x
+		child_v1.y *= child.FirstChildContainer.scaling.y
+		child_v2.x *= child.FirstChildContainer.scaling.x
+		child_v2.y *= child.FirstChildContainer.scaling.y
+		child_v1 += child.FirstChildContainer.position.xyz
+		child_v2 += child.FirstChildContainer.position.xyz
+	else
+		'whole child
+		child.GetBoundingBox(child_v1, child_v2)
+	end if
+End Sub
+
 '''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 sub OnExecPerField()
 	Update()
 	for i=0 to children.UBound
-		child_gabarit = GetChildGabarit(children[i])
+		SetChildrenVertexes(children[i]) 'set child_v1 and child_v2
 		
 		If mode_axis == 0 then
 			'X
 			children[i].Position.X = v1.x + start + i*gap + arr_shift_x[i]
 			Select Case mode_align
 			Case 1
-				'bottom align
-				children[i].Position.Y = v1.y + child_gabarit.Y/2.0
+				'min align
+				children[i].Position.Y = v1.y - child_v1.y*children[i].scaling.y
 			Case 2
 				'center align
-				children[i].Position.Y = (v1.y+v2.y)/2.0
+				children[i].Position.Y = (v1.y+v2.y)/2.0 - (child_v1.y+child_v2.y)*children[i].scaling.y/2.0
 			Case 3
-				'top align
-				children[i].Position.Y = v2.y - child_gabarit.Y/2.0
+				'max align
+				children[i].Position.Y = v2.y - child_v2.y*children[i].scaling.y
 			End Select 
 		Elseif mode_axis == 1 then
 			'Y
 			children[i].Position.Y = v2.y - start - i*gap - arr_shift_y[i]
 			Select Case mode_align
 			Case 1
-				'bottom align
-				children[i].Position.X = v1.x + child_gabarit.X/2.0
+				'min align
+				children[i].Position.X = v1.x - child_v1.x*children[i].scaling.x
 			Case 2
 				'center align
-				children[i].Position.X = (v1.x+v2.x)/2.0
+				children[i].Position.X = (v1.x+v2.x)/2.0 - (child_v1.x+child_v2.x)*children[i].scaling.x/2.0
 			Case 3
-				'top align
-				children[i].Position.X = v2.x - child_gabarit.X/2.0
+				'max align
+				children[i].Position.X = v2.x - child_v2.x*children[i].scaling.x
 			End Select
 		end if
 	next
 end sub
-
