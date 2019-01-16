@@ -1,5 +1,8 @@
 ## Flex-позиционирование. Частичная воспроизводство flex-позиционирования из html/css.
 
+#### Version 0.4 (16 january 2019)
+* add "magnetic" parameter for aestetic correction when it changing count visible childs
+
 #### Version 0.33 (15 january 2019)
 * Translated in English
 * fix aligning with first sub-container

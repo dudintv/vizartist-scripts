@@ -1,7 +1,7 @@
 Dim info As String = "
 Flex-position. Copies logic from CSS3 / HTML5.
 Developer: Dmitry Dudin.
-Version 0.33 (15 january 2019)
+Version 0.4 (16 january 2019)
 "
 
 'SETTING
@@ -10,7 +10,7 @@ Dim treshhold As Double = 0.001
 'STUFF
 Dim c_gabarit As Container
 Dim children As Array[Container]
-Dim gap_min_param, gap_param, gap_shift As Double
+Dim gap_min_param, gap_param, gap_shift, power_aesthetic_gap, gaps, freespace As Double
 Dim gabarit, child_gabarit, v1, v2, child_v1, child_v2, item_gabarit As Vertex
 Dim mode_axis, mode_gabarit_source, mode_justify, mode_align As Integer
 Dim width_step, sum_children_width, sum_children_height, gap, start As Double
@@ -42,7 +42,8 @@ sub OnInitParameters()
 	RegisterRadioButton("gabarit_source", "Size of children", 0, arr_gabarit_source)
 	RegisterRadioButton("justify", "Justify", 0, arr_justify)
 	RegisterRadioButton("align", "Align", 0, arr_align)
-	RegisterParameterDouble("gap", "Gap, % of rest", 0, -1000, 1000)
+	RegisterParameterDouble("gap", "Shift of gap, %", 0, 0, 1000)
+	RegisterParameterDouble("power_gap", "Magnetic gap", 0, -100, 10000)
 	RegisterParameterDouble("gap_min", "Min gap", 0, 0, 1000)
 end sub
 
@@ -53,6 +54,7 @@ sub OnInit()
 	mode_justify = GetParameterInt("justify")
 	mode_align = GetParameterInt("align")
 	gap_param = GetParameterDouble("gap")
+	power_aesthetic_gap = GetParameterDouble("power_gap")/100.0 + 1.0
 	gap_min_param = GetParameterDouble("gap_min")
 end sub
 sub OnParameterChanged(parameterName As String)
@@ -78,15 +80,18 @@ Sub Calc_gap_and_start(gabarit_size As Double, sum_children_size As Double)
 		'1 - end
 		'2 - center
 		gap = 0 + gap_shift
+		
 	Case 3
 		'3 - space-between
 		gap = (gabarit_size - sum_children_size)/(count-1)
 	Case 4
 		'4 - space-around
-		gap = (gabarit_size - sum_children_size)/(count+1)
-		gap_shift = (gabarit_size - sum_children_size - gap*(count-1))*(gap_param/100)/(count-1)
-		gap += gap_shift
+		gap = (gabarit_size - sum_children_size)/(count+1) + gap_shift/2.0
 	End Select
+	
+	gaps = gap*(count-1)
+	freespace = gabarit_size-sum_children_size
+	gap = (freespace/(count-1))*(gaps/freespace)^power_aesthetic_gap
 	
 	if gap < gap_min_param then
 		if (gabarit_size - sum_children_size)/(count-1) < gap_min_param then
@@ -207,3 +212,4 @@ sub OnExecPerField()
 		end if
 	next
 end sub
+
