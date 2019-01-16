@@ -10,7 +10,7 @@ Dim treshhold As Double = 0.001
 'STUFF
 Dim c_gabarit As Container
 Dim children As Array[Container]
-Dim gap_min_param, gap_param, gap_shift, power_aesthetic_gap, gaps, freespace As Double
+Dim gap_min_param, gap_param, gap_shift, power_magnetic_gap, gaps, freespace As Double
 Dim gabarit, child_gabarit, v1, v2, child_v1, child_v2, item_gabarit As Vertex
 Dim mode_axis, mode_gabarit_source, mode_justify, mode_align As Integer
 Dim width_step, sum_children_width, sum_children_height, gap, start As Double
@@ -54,7 +54,7 @@ sub OnInit()
 	mode_justify = GetParameterInt("justify")
 	mode_align = GetParameterInt("align")
 	gap_param = GetParameterDouble("gap")
-	power_aesthetic_gap = GetParameterDouble("power_gap")/100.0 + 1.0
+	power_magnetic_gap = GetParameterDouble("power_gap")/100.0 + 1.0
 	gap_min_param = GetParameterDouble("gap_min")
 end sub
 sub OnParameterChanged(parameterName As String)
@@ -72,27 +72,44 @@ Function GetChildGabarit(child As Container) As Vertex
 End Function
 
 Sub Calc_gap_and_start(gabarit_size As Double, sum_children_size As Double)
-	gap_shift = (gabarit_size - sum_children_size)*(gap_param/100)/(count-1)
+	freespace = gabarit_size-sum_children_size
+	gap_shift = freespace*(gap_param/100)/(count-1)
 	
+	'CALC BASE GAP
 	Select Case mode_justify
 	Case 0 To 2
 		'0 - start
 		'1 - end
 		'2 - center
 		gap = 0 + gap_shift
-		
 	Case 3
 		'3 - space-between
-		gap = (gabarit_size - sum_children_size)/(count-1)
+		gap = freespace/(count-1)
 	Case 4
 		'4 - space-around
-		gap = (gabarit_size - sum_children_size)/(count+1) + gap_shift/2.0
+		gap = freespace/(count+1)
+		'I want the expecting accurate of position with "Shift of gap" = 100.0
+		gap += (2*gap)/(count-1)*(gap_param/100)
 	End Select
 	
 	gaps = gap*(count-1)
-	freespace = gabarit_size-sum_children_size
-	gap = (freespace/(count-1))*(gaps/freespace)^power_aesthetic_gap
 	
+	'ADD MAGNETIC
+	Select Case mode_justify
+	Case 0 To 2
+		'0 - start
+		'1 - end
+		'2 - center
+		gap = (freespace/(count-1))*(gaps/freespace)^power_magnetic_gap
+	Case 3
+		'3 - space-between
+		'no magnetic!
+	Case 4
+		'4 - space-around
+		gap = (freespace/(count-1))*(gaps/freespace)^power_magnetic_gap
+	End Select
+	
+	'CONSIDER MIN GAP
 	if gap < gap_min_param then
 		if (gabarit_size - sum_children_size)/(count-1) < gap_min_param then
 			gap = 0
@@ -101,6 +118,7 @@ Sub Calc_gap_and_start(gabarit_size As Double, sum_children_size As Double)
 		end if
 	end if
 	
+	'CACL START SHIFT
 	Select Case mode_justify
 	Case 0
 		'start
@@ -212,4 +230,3 @@ sub OnExecPerField()
 		end if
 	next
 end sub
-
