@@ -1,4 +1,4 @@
-## Flex-позиционирование. Частичная воспроизводство flex-позиционирования из html/css.
+## Flex-positioning. Partly implemented of "flexbox" conception from html/css.
 
 #### Version 0.4 (16 january 2019)
 * add "magnetic" parameter for aestetic correction when it changing count visible childs
