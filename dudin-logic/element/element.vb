@@ -1,6 +1,6 @@
-Dim version As String = "4.3.1"
+Dim version As String = "4.3.2"
 Dim info As String = "Разработчик: Дудин Дмитрий
-Версия "&version&" (28 декабря 2018)
+Версия "&version&" (06 february 2019)
 -------------------------------------------------------
 Укажи (через запятую, на пробелы пофиг) какие блоки титров
 будет уходить с экрана или наоборот показываться в случаях:
@@ -379,9 +379,9 @@ Sub SendFillToDropzones(fill As String, side As Integer)
 						Case "geomwidth"
 							data.Substitute(",", ".", true)
 							dz.c.GetGeometryPluginInstance().SetParameterDouble("width",CDbl(data))
-						Case "geomheight"
+						Case "geomheight", "geomdiameter", "geomangle"
 							data.Substitute(",", ".", true)
-							dz.c.GetGeometryPluginInstance().SetParameterDouble("height",CDbl(data))
+							dz.c.GetGeometryPluginInstance().SetParameterDouble(type.Right(type.length - 4),CDbl(data))
 						Case "softclip"
 							s = dz.c.GetFunctionPluginInstance("SoftClip").GetParameterString("clipFile")
 							s.Trim()
@@ -1459,5 +1459,6 @@ sub OnExecPerField()
 		reset_control_delay -= 1
 	end if
 end sub
+
 
 
