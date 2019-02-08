@@ -1,6 +1,6 @@
-Dim version As String = "4.3.2"
-Dim info As String = "Разработчик: Дудин Дмитрий
-Версия "&version&" (06 february 2019)
+RegisterPluginVersion(4,3,3)
+Dim info As String = "Developer: Dmitry Dudin
+08 february 2019
 -------------------------------------------------------
 Укажи (через запятую, на пробелы пофиг) какие блоки титров
 будет уходить с экрана или наоборот показываться в случаях:
@@ -84,6 +84,9 @@ Dim cRoot As Container
 
 	'директора дополнительных анимаций. Требуется для проигрывания анимаций в объектах DZ_TYPE_OBJECT
 Dim arr_dirObjects As Array[Director]
+
+	'anim keys of clipchannels in directors
+Dim arr_clipKeys As Array[Keyframe]
  
 '-**********************************************************************************-'
 	'используется для хранения текущего индекса серии
@@ -438,19 +441,27 @@ Sub SendFillToDropzones(fill As String, side As Integer)
 	next
 End Sub
 
+Function FindClipChannelKey(i As Integer) As Keyframe
+	'Need to find way fo find keyframe independently of key... Temporarly, I leave this:
+	FindClipChannelKey = Stage.FindDirector("Clip" & i).FindKeyframe("clip" & i)
+End Function
+
 Sub SetClipChannel(num As Integer, path As String)
-	num -= 1
-	s = system.GetClipChannel(num).GetClipName()
-	if s <> path then
-		system.GetClipChannel(num).FlushActive()
-		system.GetClipChannel(num).SetClipName(path)
-		system.GetClipChannel(num).FlushPending()
-	end if
+'	num -= 1
+'	s = system.GetClipChannel(num).GetClipName()
+'	if s <> path then
+'		system.GetClipChannel(num).FlushActive()
+'		system.GetClipChannel(num).SetClipName(path)
+'		system.GetClipChannel(num).FlushPending()
+'	end if
+	System.SendCommand("#" & arr_clipKeys[num].VizId & "*CLIPNAME SET " & path)
 End Sub
 
 Sub SetClipLoop(num As Integer, is_loop As Boolean)
-	num -= 1
-	system.GetClipChannel(num).LoopMode = is_loop
+'	num -= 1
+'	system.GetClipChannel(num).LoopMode = is_loop
+	arr_clipKeys[num].channel.PostLoopActive = is_loop
+	System.SendCommand("#" & arr_clipKeys[num].channel.VizId & "*POST_LOOP_INFINITE SET " & CInt(is_loop))
 End Sub
  
 '-----------------------------------------------------------------------------------------------------------
@@ -498,37 +509,37 @@ Sub OnInitParameters()
 	'println("== ON INIT PARAMETERS " & titr_name & " ==")
 	'println("------------------------------------------")
  
-	RegisterParameterString("Name", "Имя (in latin) (ver"&version&"):", "", 30, 256, "")
-	RegisterParameterBool("Mode", "Серийный режим", false)
-	RegisterParameterString("Separator", "└ Разделитель серий:", "\\n", 10, 32, "")
-	RegisterParameterDouble("Pause", "└ Пауза меж сериями(сек):", 5, 0, 10000)
-	RegisterParameterBool("Start_by_first", "└ Всегда начинать с первой", false)
-	RegisterParameterBool("Start_by_previous", "    └ с предыдущей", false)
-	RegisterParameterBool("Takeout_by_last", "└ Убирать на последней", false)
-	RegisterParameterString("Takeout_by_last_condis", "    └ При условии что 1&2", "", 40, 256, "")
-	RegisterParameterInt("Takeout_by_last_countLoop", "    └ Кол-во циклов", 1, 1, 10000)
-	RegisterParameterBool("LogicAutoTakeout", "Логика авто-убирания", false)
-	RegisterParameterString("Take", "└ При выдаче        1,2(3&4)", "", 65, 256, "")
-	RegisterParameterString("Takeout", "└ При убирании     1,2(3&4)", "", 65, 256, "")
-	RegisterParameterString("TakeThis", "└ На что выдавать 1,2(3&4)", "", 65, 256, "")
-	RegisterParameterString("TakeoutThis", "└ На что убирать    1,2(3&4)", "", 65, 256, "")
-	RegisterParameterBool("FeelFill", "Убирать если титр пустой", false)
-	RegisterParameterBool("TakeByFill", "Выдавать по изменению fill", false)
-	RegisterParameterBool("AUTOTAKEOUT", "Таймер автоубирания", false)
-	RegisterParameterDouble("AUTOTAKEOUTPause", "└ через (сек):", 0, 0, 10000)
-	RegisterParameterContainer("root", "Корень титра:")
+	RegisterParameterString("Name", "Name:", "", 30, 256, "")
+	RegisterParameterBool("Mode", "Serial mode", false)
+	RegisterParameterString("Separator", "└ Delimeter:", "\\n", 10, 32, "")
+	RegisterParameterDouble("Pause", "└ Pause(sec):", 5, 0, 10000)
+	RegisterParameterBool("Start_by_first", "└ Always begin from first", false)
+	RegisterParameterBool("Start_by_previous", "    └ from previous", false)
+	RegisterParameterBool("Takeout_by_last", "└ Takeout on the last", false)
+	RegisterParameterString("Takeout_by_last_condis", "    └ Conditions 1&2", "", 40, 256, "")
+	RegisterParameterInt("Takeout_by_last_countLoop", "    └ Cicle Count", 1, 1, 10000)
+	RegisterParameterBool("LogicAutoTakeout", "Logic auto-takeouf", false)
+	RegisterParameterString("Take", "└ When it take        1,2(3&4)", "", 65, 256, "")
+	RegisterParameterString("Takeout", "└ When it takeout     1,2(3&4)", "", 65, 256, "")
+	RegisterParameterString("TakeThis", "└ When anothers take 1,2(3&4)", "", 65, 256, "")
+	RegisterParameterString("TakeoutThis", "└ When anothets takeout    1,2(3&4)", "", 65, 256, "")
+	RegisterParameterBool("FeelFill", "Takeout if empty", false)
+	RegisterParameterBool("TakeByFill", "Take by changing of fill", false)
+	RegisterParameterBool("AUTOTAKEOUT", "Timer of auto-takeout", false)
+	RegisterParameterDouble("AUTOTAKEOUTPause", "└ delay (sec):", 0, 0, 10000)
+	RegisterParameterContainer("root", "Root of element:")
 	RegisterPushButton("rebuild", "Initialize", 1)
 	RegisterInfoText(info)
 	RegisterParameterText("console", "После изменения параметров следует
 нажать Initialize чтобы они применились сразу.
 При загрузки сцены это происходит автоматически!", 450, 50)
-	RegisterParameterBool("TestFunctions", "Тестирование", false)
+	RegisterParameterBool("TestFunctions", "Show test features", false)
 	RegisterPushButton("TestTake","Take",11)
 	RegisterPushButton("TestTakeout","Takeout",10)
 	RegisterPushButton("TestChange","Change",12)
 	RegisterPushButton("TestOnOff","On/Off",13)
 	RegisterParameterText("TestFill", "", 450, 80)
-	RegisterPushButton("TestMakeFill","Только fill",20)
+	RegisterPushButton("TestMakeFill","Only fill",20)
 	RegisterPushButton("FastPreview","Fast Preview",21)
 End sub
 '----------------------------------------------------------
@@ -644,6 +655,13 @@ sub OnInit()
  
 	'ставим директор в нулевую позицию
 	d_OnOff.Show(0)
+	
+	'set ClipChannel keys
+	arr_clipKeys.Clear()
+	arr_clipKeys.Push(null)
+	for i=1 to 4
+		arr_clipKeys.Push(FindClipChannelKey(i))
+	next
 	
 	'устанавливаем все dropzon'ы
 	SetDropzones()
@@ -1114,9 +1132,10 @@ End Sub
 'запуск ClipChannel-видео
 Sub StartClips()
 	for y=0 to arr_dropzones.ubound
-		if arr_dropzones[y].type.left(4) == "clip" then
+		if arr_dropzones[y].type.length == 5 AND arr_dropzones[y].type.left(4) == "clip" then
 			i = CInt(arr_dropzones[y].type.right(1))
-			system.GetClipChannel(i-1).Play(0)
+			'system.GetClipChannel(i-1).Play(0)
+			arr_clipKeys[i].channel.director.StartAnimation()
 		end if
 	next
 End Sub
@@ -1459,6 +1478,3 @@ sub OnExecPerField()
 		reset_control_delay -= 1
 	end if
 end sub
-
-
-
