@@ -948,6 +948,8 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 					local_memory[titr_name & "_control"] = 1
 				Else
 					'если есть блок loop
+					println("fill = |" & fill & "|")
+					println("local_value = |" & local_memory[titr_name & "_value"] & "|")
 					if fill <> local_memory[titr_name & "_value"] then
 						d_OnOff.Show(stoper_a)
 						change()
@@ -1064,6 +1066,7 @@ Sub take()
 	Else
 		fill = memory[titr_name & "_fill"]
 	End If
+	fill.Trim()
 	local_memory[titr_name & "_value"] = fill
  
 	If cRoot <> null Then
