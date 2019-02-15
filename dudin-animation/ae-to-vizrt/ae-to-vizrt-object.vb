@@ -1,21 +1,25 @@
+RegisterPluginVersion(1,1,0)
+
 Dim buttonNames As Array[String]
 	buttonNames.Push("50 fps")
 	buttonNames.Push("25 fps")
 sub OnInitParameters()
-	RegisterPushButton("fold", "Add containers for Rotation", 1)
-	RegisterPushButton("delanim", "Delete all animation of ThisContainer", 2)
+	RegisterPushButton("fold", "Create rotation sub-containers", 1)
+	RegisterPushButton("delanim", "Delete animation", 2)
 	RegisterFileSelector("file", "Text file coordinates", "", "", "*.txt")
 	RegisterParameterString("layer","Layer name in AE", this.name, 50, 1000, "")
 	RegisterRadioButton("aefps", "fps in AE", 0, buttonNames)
 	RegisterPushButton("paste", "Paste animation from file", 3)
 end sub
-Dim cx, cy, cz As container
+Dim crot As container
 Dim input As String
 Dim arrInput As Array[String]
 Dim filePath As String
 Dim key, key2 As Keyframe
 Dim curTime As Double
-Dim chPos,chRot,chRotX,chRotY,chRotZ,chScale As Channel
+Dim chPos,chRotation,chOrientation,chScale As Channel
+Dim prev_position, prev_rotation, prev_orientation, prev_scaling As Vertex
+Dim cur_x, cur_y, cur_z As Double
 Dim line As String
 Dim arrLine As Array[String]
 Dim startLine As Integer
@@ -31,16 +35,10 @@ Dim stepCapability As Integer = 10
 
 
 function CheckRotationFolding() as boolean
-	cx = this.ChildContainer 
-	if cx <> null AND cx.name == this.name&"_RotationX" Then
-		cy = cx.ChildContainer 
-		if cy <> null AND cy.name == this.name&"_RotationY" Then
-			cz = cy.ChildContainer 
-			if cz <> null AND cz.name == this.name&"_RotationZ" Then
-				CheckRotationFolding = true
-				exit function
-			end if
-		end if
+	crot = this.ChildContainer 
+	if crot <> null AND crot.name == this.name&"_rotation" Then
+		CheckRotationFolding = true
+		exit function
 	end if
 	CheckRotationFolding = false
 end function
@@ -57,16 +55,9 @@ end function
 
 sub OnExecAction(buttonId As Integer)
 	if buttonID == 1 AND NOT CheckRotationFolding() then 
-		cx = this.AddContainer(TL_NEXT)
-		cy = this.AddContainer(TL_NEXT)
-		cz = this.AddContainer(TL_NEXT)
-		cx.name = this.name & "_RotationX"
-		cy.name = this.name & "_RotationY"
-		cz.name = this.name & "_RotationZ"
-		cx.MoveTo(this,TL_DOWN)
-		cy.MoveTo(cx,TL_DOWN)
-		cz.MoveTo(cy,TL_DOWN)
-		
+		crot = this.AddContainer(TL_NEXT)
+		crot.name = this.name & "_rotation"
+		crot.MoveTo(this,TL_DOWN)
 		Scene.UpdateSceneTree()
 	elseif buttonId == 2 Then
 		'удаляем ВСЮ анимацию
@@ -74,15 +65,7 @@ sub OnExecAction(buttonId As Integer)
 		for i=0 to arrChannels.UBound
 			arrChannels[i].Delete()
 		next
-		this.FindSubcontainer(this.name & "_RotationX").GetChannelsOfObject(arrChannels)
-		for i=0 to arrChannels.UBound
-			arrChannels[i].Delete()
-		next
-		this.FindSubcontainer(this.name & "_RotationY").GetChannelsOfObject(arrChannels)
-		for i=0 to arrChannels.UBound
-			arrChannels[i].Delete()
-		next
-		this.FindSubcontainer(this.name & "_RotationZ").GetChannelsOfObject(arrChannels)
+		this.FindSubcontainer(this.name & "_rotation").GetChannelsOfObject(arrChannels)
 		for i=0 to arrChannels.UBound
 			arrChannels[i].Delete()
 		next
@@ -122,15 +105,20 @@ sub OnExecAction(buttonId As Integer)
 		this.position.x = CDbl(arrLine[0])
 		this.position.y = CDbl(arrLine[1])
 		this.position.z = CDbl(arrLine[2])
-		cx.rotation.x   = CDbl(arrLine[3])
-		cy.rotation.y   = CDbl(arrLine[4])
-		cz.rotation.z   = CDbl(arrLine[5])
+		crot.rotation.x = CDbl(arrLine[3])
+		crot.rotation.y = CDbl(arrLine[4])
+		crot.rotation.z = CDbl(arrLine[5])
 		this.rotation.x = CDbl(arrLine[6])
 		this.rotation.y = CDbl(arrLine[7])
 		this.rotation.z = CDbl(arrLine[8])
 		this.scaling.x  = CDbl(arrLine[9])/100.0
 		this.scaling.y  = CDbl(arrLine[10])/100.0
 		this.scaling.z  = CDbl(arrLine[11])/100.0
+		
+		prev_position = this.position.xyz
+		prev_rotation = crot.rotation.xyz
+		prev_orientation = this.rotation.xyz
+		prev_scaling = this.scaling.xyz
 		
 		'удалить уже имеющуюся анимацию
 		'....TODO....
@@ -145,10 +133,9 @@ sub OnExecAction(buttonId As Integer)
 		end select
 		
 		chPos = this.FindOrCreateChannelOfObject("Position")
-		chRot = this.FindOrCreateChannelOfObject("Rotation")
-		chRotX = cx.FindOrCreateChannelOfObject("Rotation")
-		chRotY = cy.FindOrCreateChannelOfObject("Rotation")
-		chRotZ = cz.FindOrCreateChannelOfObject("Rotation")
+		chRotation = crot.FindOrCreateChannelOfObject("Rotation")
+		'System.SendCommand("#" & crot.VizId & "*ROTATION_ORDER SET ZYX")
+		chOrientation = this.FindOrCreateChannelOfObject("Rotation")
 		chScale = this.FindOrCreateChannelOfObject("Scaling")
 		
 		'подсчитаем кол-во строк и посчитаем за сколько шагов их обработаем
@@ -159,6 +146,8 @@ sub OnExecAction(buttonId As Integer)
 			if line == "" then exit for
 			countLines += 1
 		next
+		
+		'включаем покадровое создание анимации в OnExecPerField()
 		stepScript = 0
 	end if
 end sub
@@ -179,53 +168,72 @@ sub MakeStep()
 	
 	curTime = curTime/aefps
 	
+	'POSITION
 	if arrLine[0] <> "-" AND arrLine[1] <> "-" AND arrLine[2] <> "-" then
 		key = chPos.AddKeyframe(curTime)
-		key.XyzValue  = CVertex(   CDbl(arrLine[0]),CDbl(arrLine[1]),CDbl(arrLine[2])   )
+		cur_x = CDbl(arrLine[0])
+		cur_y = CDbl(arrLine[1])
+		cur_z = CDbl(arrLine[2])
+		if arrLine[0] == "-" then cur_x = prev_position.x
+		if arrLine[1] == "-" then cur_y = prev_position.y
+		if arrLine[2] == "-" then cur_z = prev_position.z
+		key.XyzValue = CVertex( cur_x, cur_y, cur_z )
 		if aefps == 25 then
 			key2 = chPos.AddKeyframe(curTime-0.02)
 			key2.XyzValue = key.XyzValue
 		end if
+		prev_position = key.XyzValue
 	end if
-	if arrLine[3] <> "-" then
-		key = chRotX.AddKeyframe(curTime)
-		key.XyzValue  = CVertex(   CDbl(arrLine[3]),0,0   )
+	
+	'ROTATIION
+	if arrLine[3] <> "-" OR arrLine[4] <> "-" OR arrLine[5] <> "-" then
+		key = chRotation.AddKeyframe(curTime)
+		cur_x = CDbl(arrLine[3])
+		cur_y = CDbl(arrLine[4])
+		cur_z = CDbl(arrLine[5])
+		if arrLine[3] == "-" then cur_x = prev_rotation.x
+		if arrLine[4] == "-" then cur_y = prev_rotation.y
+		if arrLine[5] == "-" then cur_z = prev_rotation.z
+		key.XyzValue = CVertex( cur_x, cur_y, cur_z )
 		if aefps == 25 then
-			key2 = chRotX.AddKeyframe(curTime-0.02)
+			key2 = chRotation.AddKeyframe(curTime-0.02)
 			key2.XyzValue = key.XyzValue
 		end if
+		prev_rotation = key.XyzValue
 	end if
-	if arrLine[4] <> "-" then
-		key = chRotY.AddKeyframe(curTime)
-		key.XyzValue  = CVertex(   0,CDbl(arrLine[4]),0   )
-		if aefps == 25 then
-			key2 = chRotY.AddKeyframe(curTime-0.02)
-			key2.XyzValue = key.XyzValue
-		end if
-	end if
-	if arrLine[5] <> "-" then
-		key = chRotZ.AddKeyframe(curTime)
-		key.XyzValue  = CVertex(   0,0,CDbl(arrLine[5])   )
-		if aefps == 25 then
-			key2 = chRotZ.AddKeyframe(curTime-0.02)
-			key2.XyzValue = key.XyzValue
-		end if
-	end if
+	
+	'ORIENTATION
 	if arrLine[6] <> "-" AND arrLine[7] <> "-" AND arrLine[8] <> "-" then
-		key = chRot.AddKeyframe(curTime)
-		key.XyzValue  = CVertex(   CDbl(arrLine[6]),CDbl(arrLine[7]),CDbl(arrLine[8])   )
+		key = chOrientation.AddKeyframe(curTime)
+		cur_x = CDbl(arrLine[6])
+		cur_y = CDbl(arrLine[7])
+		cur_z = CDbl(arrLine[8])
+		if arrLine[6] == "-" then cur_x = prev_orientation.x
+		if arrLine[7] == "-" then cur_y = prev_orientation.y
+		if arrLine[8] == "-" then cur_z = prev_orientation.z
+		key.XyzValue = CVertex( cur_x, cur_y, cur_z )
 		if aefps == 25 then
-			key2 = chRot.AddKeyframe(curTime-0.02)
+			key2 = chOrientation.AddKeyframe(curTime-0.02)
 			key2.XyzValue = key.XyzValue
 		end if
+		prev_orientation = key.XyzValue
 	end if
+	
+	'SCALING
 	if arrLine[9] <> "-" AND arrLine[10] <> "-" AND arrLine[11] <> "-" then
 		key = chScale.AddKeyframe(curTime)
-		key.XyzValue  = CVertex(   CDbl(arrLine[9])/100.0,CDbl(arrLine[10])/100.0,CDbl(arrLine[11])/100.0   )
+		cur_x = CDbl(arrLine[9])/100.0
+		cur_y = CDbl(arrLine[10])/100.0
+		cur_z = CDbl(arrLine[11])/100.0
+		if arrLine[9]  == "-" then cur_x = prev_scaling.x
+		if arrLine[10] == "-" then cur_y = prev_scaling.y
+		if arrLine[11] == "-" then cur_z = prev_scaling.z
+		key.XyzValue = CVertex( cur_x, cur_y, cur_z )
 		if aefps == 25 then
 			key2 = chScale.AddKeyframe(curTime-0.02)
 			key2.XyzValue = key.XyzValue
 		end if
+		prev_scaling = key.XyzValue
 	end if
 		
 	println("Step " & stepScript & "/" & (countLines-1) & " is done.")
@@ -237,3 +245,4 @@ sub OnExecPerField()
 		stepScript += 1
 	end if
 end sub
+
