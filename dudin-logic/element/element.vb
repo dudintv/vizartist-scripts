@@ -1,6 +1,6 @@
-RegisterPluginVersion(4,3,3)
+RegisterPluginVersion(4,3,4)
 Dim info As String = "Developer: Dmitry Dudin
-08 february 2019
+15 february 2019
 -------------------------------------------------------
 Укажи (через запятую, на пробелы пофиг) какие блоки титров
 будет уходить с экрана или наоборот показываться в случаях:
@@ -275,8 +275,17 @@ Sub SendFillToDropzones(fill As String, side As Integer)
 	Dim dz As Dropzone
 	Dim arr_xyz As Array[String]
 	Dim order, precision As Integer
-	fill.split("|",arr_data)
 	
+	if fill == "" then
+		for y=0 to arr_dropzones.ubound
+			dz = arr_dropzones[y]
+			if dz.type == "text" then
+				dz.c.Geometry.Text = ""
+			end if
+		next
+	end if
+	
+	fill.split("|",arr_data)
 	order = 1
 	for i=0 to arr_data.ubound
 		if arr_data[i].find("=") > 0 then
@@ -304,7 +313,7 @@ Sub SendFillToDropzones(fill As String, side As Integer)
 		
 		for y=0 to arr_dropzones.ubound
 			dz = arr_dropzones[y]
-			'если совпадает имя, тип и сторона титпа
+			'если совпадает имя, тип и сторона типа
 			if side == dz.side OR dz.side == DZ_SIDE_ONLY_ONE then
 				if name == dz.name OR (name == "" AND order == dz.order) then
 					if type == "" then type="text"
@@ -523,7 +532,7 @@ Sub OnInitParameters()
 	RegisterParameterString("Takeout", "└ When it takeout     1,2(3&4)", "", 65, 256, "")
 	RegisterParameterString("TakeThis", "└ When anothers take 1,2(3&4)", "", 65, 256, "")
 	RegisterParameterString("TakeoutThis", "└ When anothets takeout    1,2(3&4)", "", 65, 256, "")
-	RegisterParameterBool("FeelFill", "Takeout if empty", false)
+	RegisterParameterBool("FeelFill", "Takeout if fill is empty", false)
 	RegisterParameterBool("TakeByFill", "Take by changing of fill", false)
 	RegisterParameterBool("AUTOTAKEOUT", "Timer of auto-takeout", false)
 	RegisterParameterDouble("AUTOTAKEOUTPause", "└ delay (sec):", 0, 0, 10000)

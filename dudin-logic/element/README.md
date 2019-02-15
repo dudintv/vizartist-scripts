@@ -1,11 +1,14 @@
 ## Элемент-титр
 
-#### Версия 4.3.3 (08 february 2019)
+#### Version 4.3.3 (15 february 2019)
+* If fill is empty it clear all text dropzones
+
+#### Version 4.3.3 (08 february 2019)
 * Change logic of setting ClipChannels. Now it's working by directors, instead globally way. You must naming directors as "Clip1" and key of ClipChannel as "clip1", where "1" is a number of corresponding ClipChannel.
 * Translate interface to English
 * Brought out version number
 
-#### Версия 4.3.2 (06 february 2019)
+#### Version 4.3.2 (06 february 2019)
 * Add dropzone types: "geomdiameter" and "geomangle"
 
 #### Версия 4.3.1 (28 декабря 2018))
