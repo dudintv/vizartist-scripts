@@ -1,4 +1,4 @@
-Sub GetFirstChilds(root as Container, ByRef arr_childs As Array[Container])
+Sub GetFirstLevelChilds(root as Container, ByRef arr_childs As Array[Container])
 	arr_childs.Clear()
 	Dim _c As Container
 	_c = this.FirstChildContainer
