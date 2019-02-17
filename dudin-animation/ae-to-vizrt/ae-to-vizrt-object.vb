@@ -1,16 +1,19 @@
 RegisterPluginVersion(1,1,0)
+Dim info As String = "Script created by Dmitry Dudin, dudintv@gmail.com
+Version 15 February 2019
+Import animation from a text file. Where each line is one keyframe except the first line.
+The first line have to contain common information abour layer — name and beginning position.
+Text file can contain animation of several layers but it import only one selected by name.
+"
 
-Dim buttonNames As Array[String]
-	buttonNames.Push("50 fps")
-	buttonNames.Push("25 fps")
-sub OnInitParameters()
-	RegisterPushButton("fold", "Create rotation sub-containers", 1)
-	RegisterPushButton("delanim", "Delete animation", 2)
-	RegisterFileSelector("file", "Text file coordinates", "", "", "*.txt")
-	RegisterParameterString("layer","Layer name in AE", this.name, 50, 1000, "")
-	RegisterRadioButton("aefps", "fps in AE", 0, buttonNames)
-	RegisterPushButton("paste", "Paste animation from file", 3)
-end sub
+'for running the script:
+Dim stepScript As Integer = 0
+Dim countSteps As Integer = 0
+Dim countLines As Integer = 0
+Dim stepStartLine As Integer
+Dim stepCapability As Integer = 10
+
+'stuff
 Dim crot As container
 Dim input As String
 Dim arrInput As Array[String]
@@ -26,23 +29,30 @@ Dim startLine As Integer
 Dim aefps, i As Integer
 Dim arrChannels As Array[Channel]
 
-'исполнение скрипта
-Dim stepScript As Integer = 0
-Dim countSteps As Integer = 0
-Dim countLines As Integer = 0
-Dim stepStartLine As Integer
-Dim stepCapability As Integer = 10
+'interface
+Dim buttonNames As Array[String]
+	buttonNames.Push("50 fps")
+	buttonNames.Push("25 fps")
+sub OnInitParameters()
+	RegisterPushButton("fold", "Create rotation sub-containers", 1)
+	RegisterPushButton("delanim", "Delete animation", 2)
+	RegisterFileSelector("file", "Text file coordinates", "", "", "*.txt")
+	RegisterParameterString("layer","Layer name in AE", this.name, 50, 1000, "")
+	RegisterRadioButton("aefps", "fps in AE", 0, buttonNames)
+	RegisterPushButton("paste", "Paste animation from file", 3)
+end sub
 
-
+'check out existing helper sub-container
 function CheckRotationFolding() as boolean
 	crot = this.ChildContainer 
-	if crot <> null AND crot.name == this.name&"_rotation" Then
+	if crot <> null AND crot.name == this.name & "_rotation" Then
 		CheckRotationFolding = true
 		exit function
 	end if
 	CheckRotationFolding = false
 end function
 
+'finding the line where is start selected layer
 function FindStartLine(arr As Array[String],layerName as String) as Integer
 	for i=0 to arr.UBound
 		if arr[i].Find(layerName) > -1 then
@@ -53,27 +63,33 @@ function FindStartLine(arr As Array[String],layerName as String) as Integer
 	FindStartLine = -1
 end function
 
+'remove all container animations
+Sub RemoveAnimation()
+	this.GetChannelsOfObject(arrChannels)
+	for i=0 to arrChannels.UBound
+		arrChannels[i].Delete()
+	next
+	this.FindSubcontainer(this.name & "_rotation").GetChannelsOfObject(arrChannels)
+	for i=0 to arrChannels.UBound
+		arrChannels[i].Delete()
+	next
+End Sub
+
 sub OnExecAction(buttonId As Integer)
 	if buttonID == 1 AND NOT CheckRotationFolding() then 
 		crot = this.AddContainer(TL_NEXT)
 		crot.name = this.name & "_rotation"
 		crot.MoveTo(this,TL_DOWN)
 		Scene.UpdateSceneTree()
+		
 	elseif buttonId == 2 Then
-		'удаляем ВСЮ анимацию
-		this.GetChannelsOfObject(arrChannels)
-		for i=0 to arrChannels.UBound
-			arrChannels[i].Delete()
-		next
-		this.FindSubcontainer(this.name & "_rotation").GetChannelsOfObject(arrChannels)
-		for i=0 to arrChannels.UBound
-			arrChannels[i].Delete()
-		next
+		RemoveAnimation()
+		
 	elseif buttonId == 3 Then
 		'открываем файл и получаем строки текста в arrInput
 		
 		if NOT CheckRotationFolding() then
-			println("There isn't rotation container! Please push button for create them.")
+			println("There isn't rotation container! Please push button 'Add containers' for create them.")
 			exit sub
 		end if
 		filePath = GetParameterString("file")
@@ -88,20 +104,20 @@ sub OnExecAction(buttonId As Integer)
 		input.Split("\n",arrInput)
 		'-----------------------------------------
 		
-		'устанавливаем базовые парамтеры (без анимации)
+		'get started parameters without creating an animation
 		startLine = FindStartLine(arrInput,GetParameterString("layer"))
 		line = arrInput[startLine]
 		line.Split(":",arrLine)
 		line = arrLine[1]
 		line.Trim()
 		line.Split(" ",arrLine)
-		'теперь в arrBase хранятся все базовые параметры:
-		'0,1,2 - позиция xyz
-		'3,4,5 - поворот xyz
-		'6,7,8 - ориентация xyz
-		'9,10,11 - масштаб xyz
+		'now, arrBase have all parameters:
+		'0,1,2 - position xyz
+		'3,4,5 - rotation xyz
+		'6,7,8 - orientation xyz
+		'9,10,11 - scaling xyz
 		
-		'расставляем базовые параметры
+		'spread it out:
 		this.position.x = CDbl(arrLine[0])
 		this.position.y = CDbl(arrLine[1])
 		this.position.z = CDbl(arrLine[2])
@@ -120,10 +136,9 @@ sub OnExecAction(buttonId As Integer)
 		prev_orientation = this.rotation.xyz
 		prev_scaling = this.scaling.xyz
 		
-		'удалить уже имеющуюся анимацию
-		'....TODO....
+		RemoveAnimation()
 		
-		'вставляем всю анимацию
+		'lets insert the animation
 		aefps = GetParameterInt("aefps")
 		select case aefps
 		case 0
@@ -134,11 +149,12 @@ sub OnExecAction(buttonId As Integer)
 		
 		chPos = this.FindOrCreateChannelOfObject("Position")
 		chRotation = crot.FindOrCreateChannelOfObject("Rotation")
-		'System.SendCommand("#" & crot.VizId & "*ROTATION_ORDER SET ZYX")
+		System.SendCommand("#" & crot.VizId & "*ROTATION_ORDER SET XYZ")
 		chOrientation = this.FindOrCreateChannelOfObject("Rotation")
+		System.SendCommand("#" & this.VizId & "*ROTATION_ORDER SET XYZ")
 		chScale = this.FindOrCreateChannelOfObject("Scaling")
 		
-		'подсчитаем кол-во строк и посчитаем за сколько шагов их обработаем
+		'count all strings (count of all keyframes)
 		countLines = 0
 		for i=startLine to arrInput.UBound
 			line = arrInput[i]
@@ -147,13 +163,13 @@ sub OnExecAction(buttonId As Integer)
 			countLines += 1
 		next
 		
-		'включаем покадровое создание анимации в OnExecPerField()
+		'swith on the creating in OnExecPerField()
 		stepScript = 0
 	end if
 end sub
 
 sub MakeStep()
-	'для логики покадрового производства
+	'tick for creating by OnExecAction()
 	i = startLine + stepScript
 
 	
@@ -245,4 +261,3 @@ sub OnExecPerField()
 		stepScript += 1
 	end if
 end sub
-
