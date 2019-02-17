@@ -1,14 +1,19 @@
-Dim buttonNames As Array[String]
-	buttonNames.Push("50 fps")
-	buttonNames.Push("25 fps")
-sub OnInitParameters()
-	RegisterPushButton("fold", "Add containers for Camera", 1)
-	RegisterPushButton("delanim", "Delete all anim of Camera", 2)
-	RegisterFileSelector("file", "Text file coordinates", "", "", "*.txt")
-	RegisterParameterString("layer","Layer name in AE", this.name, 50, 1000, "")
-	RegisterRadioButton("aefps", "fps in AE", 0, buttonNames)
-	RegisterPushButton("paste", "Paste animation from file", 3)
-end sub
+RegisterPluginVersion(1,0,1)
+Dim info As String = "Script created by Dmitry Dudin, dudintv@gmail.com
+Version 17 February 2019
+Import animation from a text file. Where each line is one keyframe except the first line.
+The first line have to contain common information abour layer — name and beginning position.
+Text file can contain animation of several layers but it import only one selected by name.
+"
+
+'for running the script:
+Dim stepScript As Integer = 0
+Dim countSteps As Integer = 0
+Dim countLines As Integer = 0
+Dim stepStartLine As Integer
+Dim stepCapability As Integer = 10
+
+'stuff
 Dim cTarget, cCamera As container
 Dim chPosTarget, chPosCamera As Channel
 Dim input As String
@@ -23,14 +28,20 @@ Dim startLine As Integer
 Dim aefps, i As Integer
 Dim arrChannels As Array[Channel]
 
-'исполнение скрипта
-Dim stepScript As Integer = 0
-Dim countSteps As Integer = 0
-Dim countLines As Integer = 0
-Dim stepStartLine As Integer
-Dim stepCapability As Integer = 10
+'interface
+Dim buttonNames As Array[String]
+	buttonNames.Push("50 fps")
+	buttonNames.Push("25 fps")
+sub OnInitParameters()
+	RegisterPushButton("fold", "Add containers for Camera", 1)
+	RegisterPushButton("delanim", "Delete animation", 2)
+	RegisterFileSelector("file", "Text file coordinates", "", "", "*.txt")
+	RegisterParameterString("layer","Layer name in AE", this.name, 50, 1000, "")
+	RegisterRadioButton("aefps", "FPS", 0, buttonNames)
+	RegisterPushButton("paste", "Import animation", 3)
+end sub
 
-
+'checking of existing helper containers
 function CheckContainer() as boolean
 	cTarget = this.FindSubcontainer(this.name & "_camTarget")
 	cCamera = this.FindSubcontainer(this.name & "_camPosition")
@@ -41,6 +52,7 @@ function CheckContainer() as boolean
 	CheckContainer = false
 end function
 
+'finding the line where is start selected layer
 function FindStartLine(arr As Array[String],layerName as String) as Integer
 	for i=0 to arr.UBound
 		if arr[i].Find(layerName) > -1 then
@@ -51,6 +63,19 @@ function FindStartLine(arr As Array[String],layerName as String) as Integer
 	FindStartLine = -1
 end function
 
+'remove all camera animation
+Sub RemoveAnimation()
+	this.FindSubcontainer(this.name & "_camTarget").GetChannelsOfObject(arrChannels)
+	for i=0 to arrChannels.UBound
+		arrChannels[i].Delete()
+	next
+	this.FindSubcontainer(this.name & "_camPosition").GetChannelsOfObject(arrChannels)
+	for i=0 to arrChannels.UBound
+		arrChannels[i].Delete()
+	next
+End Sub
+
+'create keyframes by OnExecAction to aviod loong freezing the interface ;)
 sub OnExecAction(buttonId As Integer)
 	if buttonID == 1 AND NOT CheckContainer() then 
 		cTarget = this.AddContainer(TL_DOWN)
@@ -62,22 +87,13 @@ sub OnExecAction(buttonId As Integer)
 		
 		
 	elseif buttonId == 2 Then
-		'удаляем ВСЮ анимацию камеры
-		this.FindSubcontainer(this.name & "_camTarget").GetChannelsOfObject(arrChannels)
-		for i=0 to arrChannels.UBound
-			arrChannels[i].Delete()
-		next
-		this.FindSubcontainer(this.name & "_camPosition").GetChannelsOfObject(arrChannels)
-		for i=0 to arrChannels.UBound
-			arrChannels[i].Delete()
-		next
-		
+		RemoveAnimation()
 		
 	elseif buttonId == 3 Then
-		'открываем файл и получаем строки текста в arrInput
+		'open txt file and get strings to the arrInput
 		
 		if NOT CheckContainer() then
-			println("There isn't camera container! Please push button for create them.")
+			println("There isn't camera container! Please push button 'Add containers' for create them.")
 			exit sub
 		end if
 		filePath = GetParameterString("file")
@@ -95,21 +111,20 @@ sub OnExecAction(buttonId As Integer)
 		cTarget = this.FindSubContainer( this.name & "_camTarget" )
 		cCamera = this.FindSubContainer( this.name & "_camPosition" )
 		
-		'получаем базовые парамтеры (без анимации)
+		'get started parameters without animation
 		startLine = FindStartLine(arrInput,GetParameterString("layer"))
-		println("------------")
 		println("startLine = " & startLine)
 		line = arrInput[startLine]
 		line.Split(":",arrLine)
 		line = arrLine[1]
 		line.Trim()
 		line.Split(" ",arrLine)
-		'теперь в arrBase хранятся все базовые параметры:
-		'0,1,2 - позиция xyz
-		'3,4,5 - поворот xyz
-		'6,7,8 - ориентация xyz
-		'9,10,11 - масштаб xyz
-		'расставляем базовые параметры:
+		'now, arrBase have all parameters:
+		'0,1,2 - position xyz
+		'3,4,5 - rotation xyz
+		'6,7,8 - orientation xyz
+		'9,10,11 - scaling xyz
+		'spread it out:
 		cTarget.position.x = CDbl(arrLine[0])
 		cTarget.position.y = CDbl(arrLine[1])
 		cTarget.position.z = CDbl(arrLine[2])
@@ -117,10 +132,9 @@ sub OnExecAction(buttonId As Integer)
 		cCamera.position.y = CDbl(arrLine[4])
 		cCamera.position.z = CDbl(arrLine[5])
 		
-		'удалить уже имеющуюся анимацию
-		'....TODO....
+		RemoveAnimation()
 		
-		'вставляем всю анимацию
+		'lets insert the animation
 		aefps = GetParameterInt("aefps")
 		select case aefps
 		case 0
@@ -132,7 +146,7 @@ sub OnExecAction(buttonId As Integer)
 		chPosTarget = cTarget.FindOrCreateChannelOfObject("Position")
 		chPosCamera = cCamera.FindOrCreateChannelOfObject("Position")
 		
-		'подсчитаем кол-во строк и посчитаем за сколько шагов их обработаем
+		'count all keyframe strings (count of all keyframes)
 		countLines = 0
 		stepScript = 0
 		for i=startLine to arrInput.UBound
@@ -141,17 +155,13 @@ sub OnExecAction(buttonId As Integer)
 			if line == "" then exit for
 			countLines += 1
 		next
-		println("*------------")
 		println("countLines = " & countLines)
-		
-		
-		
-		
 	end if
 end sub
 
+'insert keyframes for one timestamp (one string in txt)
 sub MakeStep()
-	'для логики покадрового производства
+	'tick for creating by OnExecAction()
 	i = startLine + stepScript
 
 	
@@ -183,7 +193,7 @@ sub MakeStep()
 		end if
 	end if
 	
-		
+	'feedback information
 	println("Step " & stepScript & "/" & (countLines-1) & " is done.")
 end sub
 
