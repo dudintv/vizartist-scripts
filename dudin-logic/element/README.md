@@ -1,4 +1,7 @@
-## Элемент-титр
+## Element (a lower third)
+
+#### Version 4.3.5 (18 february 2019)
+* FIXED: checking of emptiness of the fill
 
 #### Version 4.3.4 (15 february 2019)
 * If fill is empty it clear all text dropzones

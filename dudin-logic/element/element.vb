@@ -1,6 +1,6 @@
-RegisterPluginVersion(4,3,4)
+RegisterPluginVersion(4,3,5)
 Dim info As String = "Developer: Dmitry Dudin
-15 february 2019
+18 february 2019
 -------------------------------------------------------
 Укажи (через запятую, на пробелы пофиг) какие блоки титров
 будет уходить с экрана или наоборот показываться в случаях:
@@ -514,10 +514,6 @@ End Sub
 '----------------------------------------------------------
  
 Sub OnInitParameters()	
-	'println("------------------------------------------")
-	'println("== ON INIT PARAMETERS " & titr_name & " ==")
-	'println("------------------------------------------")
- 
 	RegisterParameterString("Name", "Name:", "", 30, 256, "")
 	RegisterParameterBool("Mode", "Serial mode", false)
 	RegisterParameterString("Separator", "└ Delimeter:", "\\n", 10, 32, "")
@@ -917,7 +913,6 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 			isCanINtoOUT = false
 			'если реагируем на fill, то обнуляем fill
 			if take_by_fill then
-				println(1,"CLEAR FILL")
 				memory[titr_name & "_fill"] = ""
 				local_memory[titr_name & "_fill"] = ""
 			end if
@@ -948,8 +943,6 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 					local_memory[titr_name & "_control"] = 1
 				Else
 					'если есть блок loop
-					println("fill = |" & fill & "|")
-					println("local_value = |" & local_memory[titr_name & "_value"] & "|")
 					if fill <> local_memory[titr_name & "_value"] then
 						d_OnOff.Show(stoper_a)
 						change()
@@ -960,7 +953,7 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 				local_memory[titr_name & "_status"] = 1
 			ElseIf PlayheadIsNear(0) OR PlayheadIsMore(stoper_b) Then
 				'если не выдан, надо просто выдать
-				If fill <> "" OR NOT feelfill then
+				If FillIsExist() OR NOT feelfill then
 					local_memory[titr_name & "_control"] = 1
 					exit sub
 				End if
@@ -994,9 +987,9 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 		
 		if map == memory then	local_memory[titr_name & "_fill"] = memory[titr_name & "_fill"]
 		
-		If FeelFill AND fill == "" then
+		If FeelFill AND NOT FillIsExist() then
 			local_memory[titr_name & "_control"] = 0
-		elseif take_by_fill AND fill <> "" then
+		elseif take_by_fill AND FillIsExist() then
 			local_memory[titr_name & "_control"] = 2
 		End If
 		
@@ -1356,6 +1349,18 @@ Function CheckCondis(s_conditions As String) As Boolean
 	Next
  
 	CheckCondis = TRUE
+End Function
+
+Function FillIsExist() As Boolean
+	Dim arr_data As Array[String]
+	fill.split("|",arr_data)
+	for i=0 to arr_data.ubound
+		if arr_data[i].find("=") < arr_data[i].length-1 then
+			FillIsExist = true
+			Exit Function
+		end if
+	next
+	FillIsExist = false
 End Function
  
 sub start_delay_series()
