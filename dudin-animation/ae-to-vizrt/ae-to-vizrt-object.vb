@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,1,0)
+RegisterPluginVersion(1,2,0)
 Dim info As String = "Script created by Dmitry Dudin, dudintv@gmail.com
 Version 15 February 2019
 Import animation from a text file. Where each line is one keyframe except the first line.
@@ -28,6 +28,7 @@ Dim arrLine As Array[String]
 Dim startLine As Integer
 Dim aefps, i As Integer
 Dim arrChannels As Array[Channel]
+Dim layer_name As String
 
 'interface
 Dim buttonNames As Array[String]
@@ -37,15 +38,19 @@ sub OnInitParameters()
 	RegisterPushButton("fold", "Create rotation sub-containers", 1)
 	RegisterPushButton("delanim", "Delete animation", 2)
 	RegisterFileSelector("file", "Text file coordinates", "", "", "*.txt")
-	RegisterParameterString("layer","Layer name in AE", this.name, 50, 1000, "")
-	RegisterRadioButton("aefps", "fps in AE", 0, buttonNames)
+	RegisterParameterBool("isnamecontainer", "Layer name from name contaner", true)
+	RegisterParameterString("layer"," └ Layer name in AE", this.name, 50, 1000, "")
+	RegisterRadioButton("aefps", "FPS (in AE)", 0, buttonNames)
 	RegisterPushButton("paste", "Paste animation from file", 3)
+end sub
+sub OnParameterChanged(parameterName As String)
+	SendGuiParameterShow("layer", 1 - (Integer)GetParameterBool("isnamecontainer"))
 end sub
 
 'check out existing helper sub-container
 function CheckRotationFolding() as boolean
 	crot = this.ChildContainer 
-	if crot <> null AND crot.name == this.name & "_rotation" Then
+	if crot <> null AND crot.name == "rotation" Then
 		CheckRotationFolding = true
 		exit function
 	end if
@@ -55,9 +60,11 @@ end function
 'finding the line where is start selected layer
 function FindStartLine(arr As Array[String],layerName as String) as Integer
 	for i=0 to arr.UBound
-		if arr[i].Find(layerName) > -1 then
-			FindStartLine = i
-			exit function
+		if arr[i].Find(" | ") > 1 then
+			if layer_name == arr[i].Left(arr[i].Find("|") - 1) then
+				FindStartLine = i
+				exit function
+			end if
 		end if
 	next
 	FindStartLine = -1
@@ -69,7 +76,7 @@ Sub RemoveAnimation()
 	for i=0 to arrChannels.UBound
 		arrChannels[i].Delete()
 	next
-	this.FindSubcontainer(this.name & "_rotation").GetChannelsOfObject(arrChannels)
+	this.FindSubcontainer("rotation").GetChannelsOfObject(arrChannels)
 	for i=0 to arrChannels.UBound
 		arrChannels[i].Delete()
 	next
@@ -78,7 +85,7 @@ End Sub
 sub OnExecAction(buttonId As Integer)
 	if buttonID == 1 AND NOT CheckRotationFolding() then 
 		crot = this.AddContainer(TL_NEXT)
-		crot.name = this.name & "_rotation"
+		crot.name = "rotation"
 		crot.MoveTo(this,TL_DOWN)
 		Scene.UpdateSceneTree()
 		
@@ -89,7 +96,7 @@ sub OnExecAction(buttonId As Integer)
 		'открываем файл и получаем строки текста в arrInput
 		
 		if NOT CheckRotationFolding() then
-			println("There isn't rotation container! Please push button 'Add containers' for create them.")
+			println("There isn't rotation sub-container! Please push the button 'Add containers' to create.")
 			exit sub
 		end if
 		filePath = GetParameterString("file")
@@ -105,7 +112,13 @@ sub OnExecAction(buttonId As Integer)
 		'-----------------------------------------
 		
 		'get started parameters without creating an animation
-		startLine = FindStartLine(arrInput,GetParameterString("layer"))
+		if GetParameterBool("isnamecontainer") then
+			layer_name = this.name
+		else
+			layer_name = GetParameterString("layer")
+		end if
+		println("layer = " & layer_name)
+		startLine = FindStartLine(arrInput,layer_name)
 		line = arrInput[startLine]
 		line.Split(":",arrLine)
 		line = arrLine[1]
@@ -244,7 +257,10 @@ sub MakeStep()
 		if arrLine[9]  == "-" then cur_x = prev_scaling.x
 		if arrLine[10] == "-" then cur_y = prev_scaling.y
 		if arrLine[11] == "-" then cur_z = prev_scaling.z
+		System.SendCommand("#" & key.vizid & "*LOCK SET 1")
 		key.XyzValue = CVertex( cur_x, cur_y, cur_z )
+		println("key = " & (Vertex)key.XyzValue )
+		'DoubleToString(key.XyzValue.x, 2)
 		if aefps == 25 then
 			key2 = chScale.AddKeyframe(curTime-0.02)
 			key2.XyzValue = key.XyzValue
