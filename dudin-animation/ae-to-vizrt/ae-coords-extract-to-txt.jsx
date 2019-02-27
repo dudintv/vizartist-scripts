@@ -5,24 +5,24 @@
 // a selection of keyframes, or for the whole comp duration if no keyframes are selected
 
 function TimeToFrameNum(myTime){
-	return Math.floor(myTime) * app.project.activeItem.frameRate + (myTime - Math.floor(myTime)) / (1/app.project.activeItem.frameRate);
+    return Math.floor(myTime) * app.project.activeItem.frameRate + (myTime - Math.floor(myTime)) / (1/app.project.activeItem.frameRate);
 }
 function FramesToTime(myTime){
-	return myTime/app.project.activeItem.frameRate;
+    return myTime/app.project.activeItem.frameRate;
 }
 function AddZero(val){
-	if(val<10){
-		val = "0"+val;
-	}
-	return val;
+    if(val<10){
+        val = "0"+val;
+    }
+    return val;
 }
 function TimeToTimeCode(myTime){
-	var framesN = myTime * app.project.activeItem.frameRate;
-	fr = addZero(Math.round((myTime - Math.floor(myTime))/(1/app.project.activeItem.frameRate)));
-	ho = addZero(Math.floor(myTime/3600));
-	mi = addZero(Math.floor(myTime/60)-ho*60);
-	se = addZero(Math.floor(myTime)-mi*60-ho*3600);
-	return ho+":"+mi+":"+se+":"+fr;
+    var framesN = myTime * app.project.activeItem.frameRate;
+    fr = addZero(Math.round((myTime - Math.floor(myTime))/(1/app.project.activeItem.frameRate)));
+    ho = addZero(Math.floor(myTime/3600));
+    mi = addZero(Math.floor(myTime/60)-ho*60);
+    se = addZero(Math.floor(myTime)-mi*60-ho*3600);
+    return ho+":"+mi+":"+se+":"+fr;
 }
 function GetZoneKeys(curLayer, nameProperty){
     selKeys = curLayer.property(nameProperty).selectedKeys;
@@ -53,6 +53,9 @@ function GetTrasformDataFromOneLayerAtTime(format, curLayer,curTime){
     out = out.replace('*sx',curLayer.property("Scale").valueAtTime(curTime,true)[0]);
     out = out.replace('*sy',curLayer.property("Scale").valueAtTime(curTime,true)[1]);
     out = out.replace('*sz',curLayer.property("Scale").valueAtTime(curTime,true)[2]);
+    out = out.replace('*tx',curLayer.property("Point of Interest").valueAtTime(curTime,true)[0]);
+    out = out.replace('*ty',curLayer.property("Point of Interest").valueAtTime(curTime,true)[1]);
+    out = out.replace('*tz',curLayer.property("Point of Interest").valueAtTime(curTime,true)[2]);
     return out;
 }
 
@@ -62,12 +65,13 @@ function GetTransformDataFromOneLayer(format, curLayer){
     var empty = "-";
     
     //  zone of selected keys animation
-    var zonePosition      = GetZoneKeys(curLayer, "Position");
+    var zonePosition    = GetZoneKeys(curLayer, "Position");
     var zoneXRotation   = GetZoneKeys(curLayer, "X Rotation");
     var zoneYRotation   = GetZoneKeys(curLayer, "Y Rotation");
     var zoneZRotation   = GetZoneKeys(curLayer, "Z Rotation");
     var zoneOrientation = GetZoneKeys(curLayer, "Orientation");
-    var zoneScale         = GetZoneKeys(curLayer, "Scale");
+    var zoneScale       = GetZoneKeys(curLayer, "Scale");
+    var zoneTarget      = GetZoneKeys(curLayer, "Point of Interest");
     
     //start and base parameters of trasformation
     output = output + curLayer.name + " | " + GetTrasformDataFromOneLayerAtTime(format, curLayer,0) + "\n"
@@ -124,6 +128,16 @@ function GetTransformDataFromOneLayer(format, curLayer){
             out = out.replace('*sy',empty);
             out = out.replace('*sz',empty);
         }
+
+        if(i>=zoneTarget[0] && i<=zoneTarget[1] ){
+            out = out.replace('*tx',curLayer.property("Point of Interest").valueAtTime(curTime,true)[0]);
+            out = out.replace('*ty',curLayer.property("Point of Interest").valueAtTime(curTime,true)[1]);
+            out = out.replace('*tz',curLayer.property("Point of Interest").valueAtTime(curTime,true)[2]);
+        }else{
+            out = out.replace('*tx',empty);
+            out = out.replace('*ty',empty);
+            out = out.replace('*tz',empty);
+        }
         
         //out = out.replace('*f',i);timeToTimeCode
         //out = out.replace('*t',timeToTimeCode(curTime));
@@ -141,17 +155,17 @@ app.project.timecodeDisplayType = TimeDisplayType.TIMECODE;
 var pText = "Choose an output format using:\n*f (framenumber),*i (index, starts at 0) *t (SMTPE timecode), and *x,*y,*z, *rx,*ry,*rz, *ox,*oy,*oz, *sx,*sy,*sz and any other character";
 
 if(app.project.activeItem != "null" && app.project.activeItem != null && app.project.activeItem != 0){
-	if(app.project.activeItem.selectedLayers.length != 0){
-		if(app.preferences.getPrefAsLong("Main Pref Section","Pref_SCRIPTING_FILE_NETWORK_SECURITY")){
-			var myTextFile = File.saveDialog("Select a location to save your .txt file", "Text: *.txt");
-			if(myTextFile == null){
-				alert("You must choose a place to save the file");
-			}else{
+    if(app.project.activeItem.selectedLayers.length != 0){
+        if(app.preferences.getPrefAsLong("Main Pref Section","Pref_SCRIPTING_FILE_NETWORK_SECURITY")){
+            var myTextFile = File.saveDialog("Select a location to save your .txt file", "Text: *.txt");
+            if(myTextFile == null){
+                alert("You must choose a place to save the file");
+            }else{
                 //  if all is OK :) let do work...
                 
                 
                 
-                var formatString = prompt(pText,"*i: *x *y *z *rx *ry *rz *ox *oy *oz *sx *sy *sz");
+                var formatString = prompt(pText,"*i: *x *y *z *rx *ry *rz *ox *oy *oz *sx *sy *sz *tx *ty *tz");
                 myTextFile.open("w","TEXT","????");
                 //   ake all SELECTED layers
                 var countSelectLayer = app.project.activeItem.selectedLayers.length;
@@ -169,16 +183,16 @@ if(app.project.activeItem != "null" && app.project.activeItem != null && app.pro
                 
                 
                 
-			}
-		} else {
-			alert ("This script requires the scripting security preference to be set.\n" +
-			"Go to the \"General\" panel of your application preferences,\n" +
-			"and make sure that \"Allow Scripts to Write Files and Access Network\" is checked.");
-		}
-	}else{
-		alert("Select a layer with 'position' keyframes");
-	}
+            }
+        } else {
+            alert ("This script requires the scripting security preference to be set.\n" +
+            "Go to the \"General\" panel of your application preferences,\n" +
+            "and make sure that \"Allow Scripts to Write Files and Access Network\" is checked.");
+        }
+    }else{
+        alert("Select a layer with 'position' keyframes");
+    }
 }else{
-	alert("Select a composition and a layer with 'position' keyframes");
+    alert("Select a composition and a layer with 'position' keyframes");
 }
 app.project.timecodeDisplayType = myDisp;

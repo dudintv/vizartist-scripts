@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,0,1)
+RegisterPluginVersion(1,1,0)
 Dim info As String = "Script created by Dmitry Dudin, dudintv@gmail.com
 Version 17 February 2019
 Import animation from a text file. Where each line is one keyframe except the first line.
@@ -15,7 +15,7 @@ Dim stepCapability As Integer = 10
 
 'stuff
 Dim cTarget, cCamera As container
-Dim chPosTarget, chPosCamera As Channel
+Dim chThisPos, chThisRot, chPosTarget, chPosCamera As Channel
 Dim input As String
 Dim arrInput As Array[String]
 Dim filePath As String
@@ -27,27 +27,41 @@ Dim arrLine As Array[String]
 Dim startLine As Integer
 Dim aefps, i As Integer
 Dim arrChannels As Array[Channel]
+Dim layer_name As String
 
 'interface
 Dim buttonNames As Array[String]
 	buttonNames.Push("50 fps")
 	buttonNames.Push("25 fps")
+Dim arr_cam_types As Array[String]
+	arr_cam_types.Push("One-Node camera")
+	arr_cam_types.Push("Two-Node camera")
 sub OnInitParameters()
 	RegisterPushButton("fold", "Add containers for Camera", 1)
 	RegisterPushButton("delanim", "Delete animation", 2)
 	RegisterFileSelector("file", "Text file coordinates", "", "", "*.txt")
-	RegisterParameterString("layer","Layer name in AE", this.name, 50, 1000, "")
-	RegisterRadioButton("aefps", "FPS", 0, buttonNames)
+	RegisterParameterBool("isnamecontainer", "Layer name from contaner name", true)
+	RegisterParameterString("layer","Layer name (in AE)", this.name, 50, 1000, "")
+	RegisterRadioButton("type", "Type (in AE)", 0, arr_cam_types)
+	RegisterRadioButton("aefps", "FPS (in AE)", 0, buttonNames)
 	RegisterPushButton("paste", "Import animation", 3)
+end sub
+sub OnParameterChanged(parameterName As String)
+	SendGuiParameterShow("layer", 1 - (Integer)GetParameterBool("isnamecontainer"))
 end sub
 
 'checking of existing helper containers
 function CheckContainer() as boolean
-	cTarget = this.FindSubcontainer(this.name & "_camTarget")
-	cCamera = this.FindSubcontainer(this.name & "_camPosition")
-	if cTarget <> null AND cCamera <> null Then
+	if GetParameterInt("type") == 0 then
 		CheckContainer = true
 		exit function
+	elseif GetParameterInt("type") == 1 then
+		cTarget = this.FindSubcontainer(this.name & "_camTarget")
+		cCamera = this.FindSubcontainer(this.name & "_camPosition")
+		if cTarget <> null AND cCamera <> null Then
+			CheckContainer = true
+			exit function
+		end if
 	end if
 	CheckContainer = false
 end function
@@ -55,9 +69,11 @@ end function
 'finding the line where is start selected layer
 function FindStartLine(arr As Array[String],layerName as String) as Integer
 	for i=0 to arr.UBound
-		if arr[i].Find(layerName) > -1 then
-			FindStartLine = i
-			exit function
+		if arr[i].Find(" | ") > 1 then
+			if layer_name == arr[i].Left(arr[i].Find(" | ")) then
+				FindStartLine = i
+				exit function
+			end if
 		end if
 	next
 	FindStartLine = -1
@@ -65,6 +81,10 @@ end function
 
 'remove all camera animation
 Sub RemoveAnimation()
+	this.GetChannelsOfObject(arrChannels)
+	for i=0 to arrChannels.UBound
+		arrChannels[i].Delete()
+	next
 	this.FindSubcontainer(this.name & "_camTarget").GetChannelsOfObject(arrChannels)
 	for i=0 to arrChannels.UBound
 		arrChannels[i].Delete()
@@ -82,10 +102,7 @@ sub OnExecAction(buttonId As Integer)
 		cCamera = this.AddContainer(TL_DOWN)
 		cTarget.name = this.name & "_camTarget"
 		cCamera.name = this.name & "_camPosition"
-		
 		Scene.UpdateSceneTree()
-		
-		
 	elseif buttonId == 2 Then
 		RemoveAnimation()
 		
@@ -112,7 +129,12 @@ sub OnExecAction(buttonId As Integer)
 		cCamera = this.FindSubContainer( this.name & "_camPosition" )
 		
 		'get started parameters without animation
-		startLine = FindStartLine(arrInput,GetParameterString("layer"))
+		if GetParameterBool("isnamecontainer") then
+			layer_name = this.name
+		else
+			layer_name = GetParameterString("layer")
+		end if
+		startLine = FindStartLine(arrInput,layer_name)
 		println("startLine = " & startLine)
 		line = arrInput[startLine]
 		line.Split(":",arrLine)
@@ -125,12 +147,25 @@ sub OnExecAction(buttonId As Integer)
 		'6,7,8 - orientation xyz
 		'9,10,11 - scaling xyz
 		'spread it out:
-		cTarget.position.x = CDbl(arrLine[0])
-		cTarget.position.y = CDbl(arrLine[1])
-		cTarget.position.z = CDbl(arrLine[2])
-		cCamera.position.x = CDbl(arrLine[3])
-		cCamera.position.y = CDbl(arrLine[4])
-		cCamera.position.z = CDbl(arrLine[5])
+		
+		if GetParameterInt("type") == 0 then
+			this.position.x = CDbl(arrLine[0])
+			this.position.y = CDbl(arrLine[1])
+			this.position.z = CDbl(arrLine[2])
+			this.rotation.x = CDbl(arrLine[3])
+			this.rotation.y = CDbl(arrLine[4])
+			this.rotation.z = CDbl(arrLine[5])
+		elseif GetParameterInt("type") == 1 then
+			this.position.xyz = 0
+			this.rotation.xyz = 0
+			cCamera.position.x = CDbl(arrLine[0])
+			cCamera.position.y = CDbl(arrLine[1])
+			cCamera.position.z = CDbl(arrLine[2])
+			cTarget.position.x = CDbl(arrLine[3])
+			cTarget.position.y = CDbl(arrLine[4])
+			cTarget.position.z = CDbl(arrLine[5])
+			println("You have to twist camrera by 180 degree before set \"Direction tracking\"")
+		end if
 		
 		RemoveAnimation()
 		
@@ -143,8 +178,13 @@ sub OnExecAction(buttonId As Integer)
 			aefps = 25
 		end select
 		
-		chPosTarget = cTarget.FindOrCreateChannelOfObject("Position")
-		chPosCamera = cCamera.FindOrCreateChannelOfObject("Position")
+		if GetParameterInt("type") == 0 then
+			chThisPos = this.FindOrCreateChannelOfObject("Position")
+			chThisRot = this.FindOrCreateChannelOfObject("Rotation")
+		elseif GetParameterInt("type") == 1 then
+			chPosTarget = cTarget.FindOrCreateChannelOfObject("Position")
+			chPosCamera = cCamera.FindOrCreateChannelOfObject("Position")
+		end if
 		
 		'count all keyframe strings (count of all keyframes)
 		countLines = 0
@@ -163,7 +203,6 @@ end sub
 sub MakeStep()
 	'tick for creating by OnExecAction()
 	i = startLine + stepScript
-
 	
 	line = arrInput[i]
 	line.Trim()
@@ -176,20 +215,41 @@ sub MakeStep()
 	
 	curTime = curTime/aefps
 	
-	if arrLine[0] <> "-" AND arrLine[1] <> "-" AND arrLine[2] <> "-" then
-		key = chPosTarget.AddKeyframe(curTime)
-		key.XyzValue  = CVertex(   CDbl(arrLine[0]),CDbl(arrLine[1]),CDbl(arrLine[2])   )
-		if aefps == 25 then
-			key2 = chPosTarget.AddKeyframe(curTime-0.02)
-			key2.XyzValue = key.XyzValue
+	if GetParameterInt("type") == 0 then
+		'ONE-NODE CAMERA
+		if arrLine[0] <> "-" AND arrLine[1] <> "-" AND arrLine[2] <> "-" then
+			key = chThisPos.AddKeyframe(curTime)
+			key.XyzValue  = CVertex(   CDbl(arrLine[0]),CDbl(arrLine[1]),CDbl(arrLine[2])   )
+			if aefps == 25 then
+				key2 = chThisPos.AddKeyframe(curTime-0.02)
+				key2.XyzValue = key.XyzValue
+			end if
 		end if
-	end if
-	if arrLine[3] <> "-" AND arrLine[4] <> "-" AND arrLine[5] <> "-" then
-		key = chPosCamera.AddKeyframe(curTime)
-		key.XyzValue  = CVertex(   CDbl(arrLine[3]),CDbl(arrLine[4]),CDbl(arrLine[5])   )
-		if aefps == 25 then
-			key2 = chPosCamera.AddKeyframe(curTime-0.02)
-			key2.XyzValue = key.XyzValue
+		if arrLine[0] <> "-" AND arrLine[1] <> "-" AND arrLine[2] <> "-" then
+			key = chThisRot.AddKeyframe(curTime)
+			key.XyzValue  = CVertex(   CDbl(arrLine[3]),CDbl(arrLine[4])+180.0,180.0-CDbl(arrLine[5])   )
+			if aefps == 25 then
+				key2 = chThisRot.AddKeyframe(curTime-0.02)
+				key2.XyzValue = key.XyzValue
+			end if
+		end if
+	elseif GetParameterInt("type") == 1 then
+		'TWO-NODE CAMERA
+		if arrLine[0] <> "-" AND arrLine[1] <> "-" AND arrLine[2] <> "-" then
+			key = chPosCamera.AddKeyframe(curTime)
+			key.XyzValue  = CVertex(   CDbl(arrLine[0]),CDbl(arrLine[1]),CDbl(arrLine[2])   )
+			if aefps == 25 then
+				key2 = chPosCamera.AddKeyframe(curTime-0.02)
+				key2.XyzValue = key.XyzValue
+			end if
+		end if
+		if arrLine[12] <> "-" AND arrLine[13] <> "-" AND arrLine[14] <> "-" then
+			key = chPosTarget.AddKeyframe(curTime)
+			key.XyzValue  = CVertex(   CDbl(arrLine[12]),CDbl(arrLine[13]),CDbl(arrLine[14])   )
+			if aefps == 25 then
+				key2 = chPosTarget.AddKeyframe(curTime-0.02)
+				key2.XyzValue = key.XyzValue
+			end if
 		end if
 	end if
 	
