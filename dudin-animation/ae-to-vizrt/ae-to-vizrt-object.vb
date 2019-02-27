@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,2,0)
+RegisterPluginVersion(1,3,0)
 Dim info As String = "Script created by Dmitry Dudin, dudintv@gmail.com
 Version 15 February 2019
 Import animation from a text file. Where each line is one keyframe except the first line.
@@ -140,9 +140,9 @@ sub OnExecAction(buttonId As Integer)
 		this.rotation.x = CDbl(arrLine[6])
 		this.rotation.y = CDbl(arrLine[7])
 		this.rotation.z = CDbl(arrLine[8])
-		this.scaling.x  = CDbl(arrLine[9])/100.0
-		this.scaling.y  = CDbl(arrLine[10])/100.0
-		this.scaling.z  = CDbl(arrLine[11])/100.0
+		crot.scaling.x  = CDbl(arrLine[9])/100.0
+		crot.scaling.y  = CDbl(arrLine[10])/100.0
+		crot.scaling.z  = CDbl(arrLine[11])/100.0
 		
 		prev_position = this.position.xyz
 		prev_rotation = crot.rotation.xyz
@@ -165,7 +165,7 @@ sub OnExecAction(buttonId As Integer)
 		System.SendCommand("#" & crot.VizId & "*ROTATION_ORDER SET XYZ")
 		chOrientation = this.FindOrCreateChannelOfObject("Rotation")
 		System.SendCommand("#" & this.VizId & "*ROTATION_ORDER SET XYZ")
-		chScale = this.FindOrCreateChannelOfObject("Scaling")
+		chScale = crot.FindOrCreateChannelOfObject("Scaling")
 		
 		'count all strings (count of all keyframes)
 		countLines = 0
