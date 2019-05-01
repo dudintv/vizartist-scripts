@@ -43,10 +43,8 @@ sub OnParameterChanged(parameterName As String)
 end sub
 
 sub OnExecPerField()
-	'println("iiiiiiiiiiiiiiiiiii")
 	for i=0 to arr_material.Ubound
 		arr_value[i] += arr_speed[i]
-		'println("i = " & i & "     -  arr_value[i] = " & arr_value[i])
 		if arr_value[i] > 99.999 or arr_value[i] < 0.001 then
 			if arr_value[i] > 99.999 then arr_value[i] = 100
 			if arr_value[i] < 0.001 then arr_value[i] = 0
