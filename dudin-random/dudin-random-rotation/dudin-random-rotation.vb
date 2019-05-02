@@ -24,7 +24,6 @@ sub OnInit()
 	dir_x = 1
 	dir_y = 1
 	dir_z = 1
-	println("Init!")
 end sub
 sub OnParameterChanged(parameterName As String)
 	OnInit()
