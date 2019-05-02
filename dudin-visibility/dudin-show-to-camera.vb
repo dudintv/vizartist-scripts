@@ -1,6 +1,7 @@
-RegisterPluginVersion(1,1,0)
+RegisterPluginVersion(1,2,0)
 Dim this_normal, normal, to_camera As Vertex
 Dim angle, out_alpha, besier_hidden, besier_visible As Double
+Dim inverse As Boolean
 Dim PI As Double = 3.1415926535
 
 Dim axes_names As Array[String]
@@ -13,6 +14,7 @@ mode_names.Push(" Smooth ")
 sub OnInitParameters()
 	RegisterRadioButton("axis", "Normal Axis", 2, axes_names)
 	RegisterRadioButton("mode", "Mode", 0, mode_names)
+	RegisterParameterBool("inverse", "Inverse", false)
 	RegisterParameterDouble("besier_hidden", "Easy hiden", 30, 30, 100)
 	RegisterParameterDouble("besier_visible", "Easy visible", 100, 30, 100)
 end sub
@@ -21,6 +23,7 @@ sub OnInit()
 	this_normal = CVertex( CInt(GetParameterInt("axis")==0), CInt(GetParameterInt("axis")==1), CInt(GetParameterInt("axis")==2) )
 	besier_hidden = GetParameterDouble("besier_hidden")
 	besier_visible = GetParameterDouble("besier_visible")
+	inverse = GetParameterBool("inverse")
 	SendGuiParameterShow("besier_hidden", CInt(GetParameterInt("mode") == 1))
 	SendGuiParameterShow("besier_visible", CInt(GetParameterInt("mode") == 1))
 end sub
@@ -33,6 +36,7 @@ sub OnExecPerField()
 	to_camera = Scene.CurrentCamera.Position.xyz - this.LocalPosToWorldPos(this.position.xyz)
 	angle = AngleBetweenVectors(normal, to_camera)
 	out_alpha = LinearWithLimits(angle, PI/2.0, 0, 0, 100.0)   ' [0..100]
+	if inverse then out_alpha = 100 - out_alpha
 	if GetParameterInt("mode")==0 then
 		this.Alpha.Value = out_alpha
 	elseif GetParameterInt("mode")==1 then
