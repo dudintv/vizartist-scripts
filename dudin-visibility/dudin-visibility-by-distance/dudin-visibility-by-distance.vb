@@ -1,5 +1,5 @@
-RegisterPluginVersion(1,1,0)
-Dim distance, alfa As Double
+RegisterPluginVersion(1,2,0)
+Dim distance, alfa, alfa_prev As Double
 Dim dist_min, dist_max As Double
 Dim inverse As Boolean
 Dim mode As Integer
@@ -9,8 +9,8 @@ Dim mode_names As Array[String]
 mode_names.Push("Linear")
 mode_names.Push("Smooth")
 sub OnInitParameters()
-	RegisterParameterDouble("dist_min", "Distance near clamp", 0, 0, 999999999)
-	RegisterParameterDouble("dist_max", "Distance far clamp", 1000, 0, 999999999)
+	RegisterParameterDouble("dist_min", "Distance near clamp", 0, -999999, 999999999)
+	RegisterParameterDouble("dist_max", "Distance far clamp", 1000, -999999, 999999999)
 	RegisterParameterBool("inverse", "Inverse", false)
 	RegisterRadioButton("mode", "Mode", 0, mode_names)
 	RegisterParameterDouble("easy_near", "Easy near power", 50, 30, 100)
@@ -26,6 +26,7 @@ sub OnInit()
 	easy_far = GetParameterDouble("easy_far")
 	SendGuiParameterShow("easy_near", GetParameterInt("mode"))
 	SendGuiParameterShow("easy_far", GetParameterInt("mode"))
+	alfa_prev = this.Alpha.value
 end sub
 sub OnParameterChanged(parameterName As String)
 	OnInit()
@@ -38,7 +39,10 @@ sub OnExecPerField()
 	if mode == 1 then
 		alfa = Besizer(alfa, 0, 100, easy_near, easy_far)
 	end if
-	this.alpha.value = alfa
+	if alfa_prev <> alfa then
+		this.alpha.value = alfa
+		alfa_prev = alfa
+	end if
 end sub
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
