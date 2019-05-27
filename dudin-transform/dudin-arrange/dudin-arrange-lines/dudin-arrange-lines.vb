@@ -66,14 +66,6 @@ sub OnInit()
 	SendGuiParameterShow("sort_name", CInt( GetParameterInt("sort_type")==SORT_BY_TEXT ))
 end sub
 
-sub OnParameterChanged(parameterName As String)
-	OnInit()
-	if GetParameterInt("sort_type")==SORT_BY_NAME then SortByName()
-	if GetParameterInt("sort_type")==SORT_BY_TEXT then SortByText()
-	if GetParameterBool("sort_inverse") then Inverse()
-	ArrangeInLines()
-end sub
-
 sub OnExecPerField()
 	arr_childs.Clear()
 	for i=0 to this.ChildContainerCount-1
@@ -83,15 +75,26 @@ sub OnExecPerField()
 	next
 	
 	if prev_count <> arr_childs.size then
-		OnInit()
-		ArrangeInLines()
+		Update()
 		prev_count = arr_childs.size
 	end if
 end sub
 
-sub OnGeometryChanged(geom As Geometry)
-	OnParameterChanged("")
+sub OnParameterChanged(parameterName As String)
+	Update()
 end sub
+
+sub OnGeometryChanged(geom As Geometry)
+	Update()
+end sub
+
+Sub Update()
+	OnInit()
+	if GetParameterInt("sort_type")==SORT_BY_NAME then SortByName()
+	if GetParameterInt("sort_type")==SORT_BY_TEXT then SortByText()
+	if GetParameterBool("sort_inverse") then Inverse()
+	ArrangeInLines()
+End Sub
 
 Sub ArrangeInLines()
 	count_rows = CInt(Ceil(arr_childs.size/CDbl(max_in_row)))
@@ -126,7 +129,6 @@ Sub Swap(_c1 As Container, _c2 As Container)
 End Sub
 
 Sub SortByText()
-	println("sort by TEXT")
 	Dim _finish As Boolean
 	Dim _s1, _s2 As String
 	for j=0 to arr_ctexts.ubound-1
