@@ -1,6 +1,6 @@
 ## Place all direct children in lines
 
-#### Version 1.0.1 (16.05.2019)
+#### Version 1.0.1 (27.05.2019)
 * NEW: add source of order: by order in scene tree, by name of children and by digit value in text in some sub-container
 * NEW: add inverse order option
 
