@@ -1,5 +1,6 @@
-RegisterPluginVersion(1,1,0)
+RegisterPluginVersion(1,1,1)
 Dim info As String = "Moving/arrange animation channels to certain directors. to Developer: Dmitry Dudin, dudin.tv"
+
 Dim c_root As Container
 Dim arr_c_parts, arr_c As Array[Container]
 Dim arr_ch As Array[Channel]
@@ -11,6 +12,9 @@ Dim arr_type As Array[String]
 arr_type.Push("To single director")
 arr_type.Push("By child container name")
 arr_type.Push("By child container name + index")
+Dim ARRANGE_TO_SINGLE_DIR As Integer = 0
+Dim ARRANGE_TO_DIRS_BY_CONTS_NAME As Integer = 1
+Dim ARRANGE_TO_DIRS_BY_CONTS_NAME_PLUS_INDEX As Integer = 2
 
 sub OnInitParameters()
 	RegisterInfoText(info)
@@ -55,11 +59,11 @@ end sub
 Sub ArrangeAnimation()
 	for i=0 to arr_c_parts.ubound
 		'setup director
-		if GetParameterInt("type") == 0 then
+		if GetParameterInt("type") == ARRANGE_TO_DIRS_BY_CONTS_NAME then
 			dir_name = GetParameterString("single_dir_name")
-		elseif GetParameterInt("type") == 1 then
+		elseif GetParameterInt("type") == ARRANGE_TO_DIRS_BY_CONTS_NAME then
 			dir_name = arr_c_parts[i].name
-		elseif GetParameterInt("type") == 2 then
+		elseif GetParameterInt("type") == ARRANGE_TO_DIRS_BY_CONTS_NAME_PLUS_INDEX then
 			dir_name = arr_c_parts[i].name & CStr(i+1)
 		end if
 		dir = Stage.FindDirector(dir_name)
