@@ -7,7 +7,7 @@
 * get ignore empty output — it happens when excel file is blocked (usually when the file is opened)
 
 # How make DataPool "Reader" works?
-* You have to install "Microsoft Access Database Engine" on all VizEngine machines to allow to open excel-files — https://www.microsoft.com/en-us/download/details.aspx?id=54920
+* You have to install "Microsoft Access Database Engine" on all VizEngine machines in order to allow Vizrt to open excel-files — https://www.microsoft.com/en-us/download/details.aspx?id=54920
 * You have to save excel file as "Microsoft Excel 97/2000/XP" or older
 
 #### Setting up the plugin:
