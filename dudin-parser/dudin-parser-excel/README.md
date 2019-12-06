@@ -3,7 +3,7 @@
 #### Version 1.0 (06.12.2019)
 * get params from "Reader" settings — SHM type, SHM variable name, rows & columns delimiters
 * it's possible to output only a cell or whole table (with convenient alignment)
-* you can output to console, to this.geometry.text, or to some plugin value (it support bool, int, double and string value)
+* it can output to console, to this.geometry.text, or to some plugin value (it support bool, int, double and string value)
 * it can ignore the empty output — it happens when excel file is blocked (usually when the file is opened) — that way you can avoid erasing result previous successful loading
 
 ---
