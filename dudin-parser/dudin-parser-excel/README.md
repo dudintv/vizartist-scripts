@@ -1,5 +1,9 @@
 ## Parser table data from DataPool "Reader"
 
+#### Version 1.1 (06.12.2019)
+* add "Output to" childs texts — it works by name of child containers — you need to call interactive containers by template "=X,Y", where X and Y can be a number or any name of auto-counter. If it's a name then it will be auto incremented within all childs of this container. Also you can change the started index for auto-counting
+* add debug option "Print numbers of rows and columns" in order to provide convinient output table
+
 #### Version 1.0 (06.12.2019)
 * get params from "Reader" settings — SHM type, SHM variable name, rows & columns delimiters
 * it's possible to output only a cell or whole table (with convenient alignment)
