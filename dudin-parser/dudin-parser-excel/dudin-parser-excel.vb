@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,1,0)
+RegisterPluginVersion(1,2,0)
 Dim info As String = "Get value from Excel by DataPool Reader through SharedMemory. Author: Dmitry Dudin.
 If ypu chose \"childs texts\" mode you have to name interactive child containers by template \"=X,Y\",
 where X and Y - a number or name auto-counter. 
@@ -26,7 +26,7 @@ Structure AutoIndex
 End Structure
 Dim arr_auto_row, arr_auto_column As Array[AutoIndex]
 
-Dim output_buttonNames, mode_buttonNames, plugin_mode_buttonNames As Array[String]
+Dim output_buttonNames, mode_buttonNames, plugin_mode_buttonNames, mode_select_mode_buttonNames As Array[String]
 output_buttonNames.Push("println")
 output_buttonNames.Push("this text")
 output_buttonNames.Push("this plugin")
@@ -37,6 +37,8 @@ plugin_mode_buttonNames.Push("Bool")
 plugin_mode_buttonNames.Push("Int")
 plugin_mode_buttonNames.Push("Double")
 plugin_mode_buttonNames.Push("String")
+mode_select_mode_buttonNames.Push("By number")
+mode_select_mode_buttonNames.Push("Find text")
 sub OnInitParameters()
 	RegisterInfoText(info)
 	RegisterParameterContainer("reader", "Excel Reader (default is this)")
@@ -47,8 +49,14 @@ sub OnInitParameters()
 	RegisterParameterString("plugin_name", "Plugin name (case sensitive)", "", 20, 999, "")
 	RegisterParameterString("plugin_value", "Plugin value (case sensitive)", "", 20, 999, "")
 	RegisterRadioButton("mode", "Mode", 0, mode_buttonNames)
-	RegisterParameterInt("row", "Row", 2, 2, 999)
-	RegisterParameterInt("column", "Column", 1, 1, 999)
+	RegisterRadioButton("mode_row", "Select row", 0, mode_select_mode_buttonNames)
+	RegisterParameterInt("row_number", "Row", 2, 2, 999)
+	RegisterParameterString("row_find_text", "Search text", "", 20, 999, "")
+	RegisterParameterInt("row_find_num_column", "Search in which column", 1, 1, 999)
+	RegisterRadioButton("mode_column", "Select column", 0, mode_select_mode_buttonNames)
+	RegisterParameterInt("column_number", "Column", 1, 1, 999)
+	RegisterParameterString("column_find_text", "Search text", "", 20, 999, "")
+	RegisterParameterInt("column_find_num_row", "Search in which row", 2, 2, 999)
 	RegisterParameterBool("ignore_empty", "Keep data if the file is blocked", true)
 	RegisterParameterBool("print_legends", "Print numbers rows and columns", true)
 	RegisterPushButton("init", "Init", 1)
@@ -58,12 +66,45 @@ end sub
 sub OnInit()
 	if GetParameterInt("mode") == 0 AND GetParameterInt("output_type") <> 3 then
 		'one value
-		SendGuiParameterShow("row", SHOW)
-		SendGuiParameterShow("column", SHOW)
+		SendGuiParameterShow("row_number", SHOW)
+		SendGuiParameterShow("column_number", SHOW)
+		
+		SendGuiParameterShow("mode_row", SHOW)
+		SendGuiParameterShow("mode_column", SHOW)
+		
+		if GetParameterInt("mode_row") == 0 then
+			SendGuiParameterShow("row_number", SHOW)
+			SendGuiParameterShow("row_find_text", HIDE)
+			SendGuiParameterShow("row_find_num_column", HIDE)
+		else
+			SendGuiParameterShow("row_number", HIDE)
+			SendGuiParameterShow("row_find_text", SHOW)
+			SendGuiParameterShow("row_find_num_column", SHOW)
+		end if
+		
+		if GetParameterInt("mode_column") == 0 then
+			SendGuiParameterShow("column_number", SHOW)
+			SendGuiParameterShow("column_find_text", HIDE)
+			SendGuiParameterShow("column_find_num_row", HIDE)
+		else
+			SendGuiParameterShow("column_number", HIDE)
+			SendGuiParameterShow("column_find_text", SHOW)
+			SendGuiParameterShow("column_find_num_row", SHOW)
+		end if
 	elseif GetParameterInt("mode") == 1 OR GetParameterInt("output_type") == 3 then
 		'all table
-		SendGuiParameterShow("row", HIDE)
-		SendGuiParameterShow("column", HIDE)
+		SendGuiParameterShow("row_number", HIDE)
+		SendGuiParameterShow("column_number", HIDE)
+		
+		SendGuiParameterShow("mode_row", HIDE)
+		SendGuiParameterShow("row_number", HIDE)
+		SendGuiParameterShow("row_find_text", HIDE)
+		SendGuiParameterShow("row_find_num_column", HIDE)
+		
+		SendGuiParameterShow("mode_column", HIDE)
+		SendGuiParameterShow("column_number", HIDE)
+		SendGuiParameterShow("column_find_text", HIDE)
+		SendGuiParameterShow("column_find_num_row", HIDE)
 	end if
 	
 	if GetParameterInt("output_type") == 2 then
@@ -100,7 +141,7 @@ sub OnInit()
 	
 	if GetParameterInt("output_type") == 3 then
 		'output to childs
-		FindCellSubContainer()
+		FindCellSubContainers()
 	end if
 	
 	if GetParameterContainer("reader") <> null then
@@ -172,7 +213,43 @@ Function GetAutoIndex(_arr As Array[AutoIndex], _name As String, _default_start_
 	GetAutoIndex = _result
 End Function
 
-Sub FindCellSubContainer()
+Function GetRow() As Integer
+	if GetParameterInt("mode_row") == 0 then
+		'static number
+		GetRow = GetParameterInt("row_number")
+	else
+		'find
+		Dim _index As Integer = -1
+		Dim _search As String = GetParameterString("row_find_text")
+		_search.Trim()
+		if _search <> "" then
+			for i=0 to data.ubound
+				if data[i][GetParameterInt("row_find_num_column")-1] == _search then _index = i
+			next
+		end if
+		GetRow = _index+2
+	end if
+End Function
+
+Function GetColumn() As Integer
+	if GetParameterInt("mode_column") == 0 then
+		'static number
+		GetColumn = GetParameterInt("column_number")
+	else
+		'find
+		Dim _index As Integer = -1
+		Dim _search As String = GetParameterString("column_find_text")
+		_search.Trim()
+		if _search <> "" then
+			for i=0 to data[GetParameterInt("column_find_num_row")-2].ubound
+				if data[GetParameterInt("column_find_num_row")-2][i] == _search then _index = i
+			next
+		end if
+		GetColumn = _index+1
+	end if
+End Function
+
+Sub FindCellSubContainers()
 	arr_cells.Clear()
 	Dim _cell As Cell
 	Dim _arr_childs As Array[Container]
@@ -229,10 +306,12 @@ Sub Parse(map As SharedMemory, mapKey As String)
 End Sub
 
 Sub Output(_output_to As Integer, _mode As Integer)
-	if data.size > 0 AND GetParameterInt("row")-1 <= data.size AND GetParameterInt("column") <= data[GetParameterInt("row")-2].size then
+	Dim _row As Integer = GetRow()
+	Dim _column As Integer = GetColumn()
+	if _row >= 2 AND _column >= 1 AND data.size > 0 AND _row-1 <= data.size AND _column <= data[_row-2].size then
 		if _mode == 0 then
 			'one value
-			output = data[GetParameterInt("row")-2][GetParameterInt("column")-1]
+			output = data[_row-2][_column-1]
 		elseif _mode == 1 then
 			'all table
 			output = FormatAllTable()
