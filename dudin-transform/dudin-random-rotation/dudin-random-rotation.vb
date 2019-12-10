@@ -5,8 +5,8 @@ Dim dir_x, dir_y, dir_z As Integer
 
 sub OnInitParameters()
 	RegisterParameterDouble("rot_x", "Rotation X", 0, 0, 999999)
-	RegisterParameterDouble("rot_y", "Rotation X", 0, 0, 999999)
-	RegisterParameterDouble("rot_z", "Rotation X", 0, 0, 999999)
+	RegisterParameterDouble("rot_y", "Rotation Y", 0, 0, 999999)
+	RegisterParameterDouble("rot_z", "Rotation Z", 0, 0, 999999)
 	RegisterParameterDouble("rot_speed", "Rotation Speed", 0, 0, 999999)
 end sub
 
@@ -77,3 +77,4 @@ Function Besizer(ByVal procent as double, ByVal begin_value as double, ByVal end
 	t_besier_value = (sqrt((-27*a^2*d + 9*a*b*c - 2*b^3)^2 + 4*(3*a*c - b^2)^3) - 27*a^2*d + 9*a*b*c - 2*b^3)^(1.0/3)/(3*2^(1.0/3)*a) - (2^(1.0/3)*(3*a*c - b^2))/(3*a*(sqrt((-27*a^2*d + 9*a*b*c - 2*b^3)^2 + 4*(3*a*c - b^2)^3) - 27*a^2*d + 9*a*b*c - 2*b^3)^(1.0/3)) - b/(3*a)
 	Besizer = begin_value + (end_value - begin_value)*( 3*(1-t_besier_value)*t_besier_value^2 + t_besier_value^3 ) 
 End Function
+
