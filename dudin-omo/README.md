@@ -4,6 +4,7 @@
 * add Advanced functions: 
 * 1) child filter — to consider only childs which name corresponding the pattern
 * 2) take director — play forward when sone element takes, and play backward when deselected all (switched to "base"), also it works when transition plays throught base
+* it automatically plays animation directors called as child containers — forward to deselected, backward to selected — "00:00" time means base/selected state
 
 #### Version 1.1 (1 december 2019)
 * add "base", "next" and "prev" buttons
