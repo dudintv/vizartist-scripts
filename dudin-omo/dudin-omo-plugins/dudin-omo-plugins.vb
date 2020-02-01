@@ -9,7 +9,7 @@ Dim arr_plugin As Array[PluginInstance]
 
 sub OnInitParameters()
 	RegisterParameterString("plugin", "Plugin name", "", 40, 999, "")
-	RegisterParameterInt("num", "Number", 0, 0, 999)
+	RegisterParameterInt("num", "Visible number", 0, 0, 999)
 end sub
 
 sub OnInit()
