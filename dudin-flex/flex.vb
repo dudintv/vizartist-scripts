@@ -1,7 +1,8 @@
+RegisterPluginVersion(1,0,0)
 Dim info As String = "
 Flex-position. Copies logic from CSS3 / HTML5.
 Developer: Dmitry Dudin.
-Version 0.4 (16 january 2019)
+Version 1.0 (04 february 2020)
 "
 
 'SETTING
@@ -45,6 +46,7 @@ sub OnInitParameters()
 	RegisterParameterDouble("gap", "Shift of gap, %", 0, 0, 1000)
 	RegisterParameterDouble("power_gap", "Magnetic gap", 0, -100, 10000)
 	RegisterParameterDouble("gap_min", "Min gap", 0, 0, 1000)
+	RegisterParameterBool("collapse_if_overflow", "Collapse if overflow", true)
 end sub
 
 sub OnInit()
@@ -111,7 +113,7 @@ Sub Calc_gap_and_start(gabarit_size As Double, sum_children_size As Double)
 	
 	'CONSIDER MIN GAP
 	if gap < gap_min_param then
-		if (gabarit_size - sum_children_size)/(count-1) < gap_min_param then
+		if GetParameterBool("collapse_if_overflow") AND (gabarit_size - sum_children_size)/(count-1) < gap_min_param then
 			gap = 0
 		else
 			gap = gap_min_param
