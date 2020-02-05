@@ -1,8 +1,8 @@
-RegisterPluginVersion(1,0,0)
+RegisterPluginVersion(1,1,0)
 Dim info As String = "
 Flex-position. Copies logic from CSS3 / HTML5.
 Developer: Dmitry Dudin.
-Version 1.0 (04 february 2020)
+Version 1.1 (06 february 2020)
 "
 
 'SETTING
@@ -11,7 +11,7 @@ Dim treshhold As Double = 0.001
 'STUFF
 Dim c_gabarit As Container
 Dim children As Array[Container]
-Dim gap_min_param, gap_param, gap_shift, power_magnetic_gap, gaps, freespace As Double
+Dim min_gap_param, mult_gap_param, shift_gap_param, gap_shift, power_magnetic_gap, gaps, freespace As Double
 Dim gabarit, child_gabarit, v1, v2, child_v1, child_v2, item_gabarit As Vertex
 Dim mode_axis, mode_gabarit_source, mode_justify, mode_align As Integer
 Dim width_step, sum_children_width, sum_children_height, gap, start As Double
@@ -43,9 +43,10 @@ sub OnInitParameters()
 	RegisterRadioButton("gabarit_source", "Size of children", 0, arr_gabarit_source)
 	RegisterRadioButton("justify", "Justify", 0, arr_justify)
 	RegisterRadioButton("align", "Align", 0, arr_align)
-	RegisterParameterDouble("gap", "Shift of gap, %", 0, -1000, 1000)
+	RegisterParameterDouble("mult_gap", "Multiply gap, %", 0, -1000, 1000)
 	RegisterParameterDouble("power_gap", "Magnetic gap", 0, -100, 10000)
-	RegisterParameterDouble("gap_min", "Min gap", 0, 0, 1000)
+	RegisterParameterDouble("min_gap", "Min gap", 0, 0, 1000)
+	RegisterParameterDouble("shift_gap", "Shift gap", 0, -1000, 1000)
 	RegisterParameterBool("collapse_if_overflow", "Collapse if overflow", true)
 end sub
 
@@ -55,12 +56,21 @@ sub OnInit()
 	mode_gabarit_source = GetParameterInt("gabarit_source")
 	mode_justify = GetParameterInt("justify")
 	mode_align = GetParameterInt("align")
-	gap_param = GetParameterDouble("gap")
+	mult_gap_param = GetParameterDouble("mult_gap")
 	power_magnetic_gap = GetParameterDouble("power_gap")/100.0 + 1.0
-	gap_min_param = GetParameterDouble("gap_min")
+	shift_gap_param = GetParameterDouble("shift_gap")
+	min_gap_param = GetParameterDouble("min_gap")
 end sub
 sub OnParameterChanged(parameterName As String)
 	OnInit()
+	
+	if mode_justify == 4 then
+		SendGuiParameterShow("mult_gap", SHOW)
+		SendGuiParameterShow("power_gap", SHOW)
+	else
+		SendGuiParameterShow("mult_gap", HIDE)
+		SendGuiParameterShow("power_gap", HIDE)
+	end if
 end sub
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -78,9 +88,9 @@ Function GetChildGabarit(child As Container) As Vertex
 	end if
 End Function
 
-Sub Calc_gap_and_start(gabarit_size As Double, sum_children_size As Double)
+Sub CalcGapAndStart(gabarit_size As Double, sum_children_size As Double)
 	freespace = gabarit_size-sum_children_size
-	gap_shift = freespace*(gap_param/100)/(count-1)
+	gap_shift = freespace*(mult_gap_param/100)/(count-1)
 	
 	'CALC BASE GAP
 	Select Case mode_justify
@@ -96,7 +106,7 @@ Sub Calc_gap_and_start(gabarit_size As Double, sum_children_size As Double)
 		'4 - space-around
 		gap = freespace/(count+1)
 		'I want the expecting accurate of position with "Shift of gap" = 100.0
-		gap += (2*gap)/(count-1)*(gap_param/100)
+		gap += (2*gap)/(count-1)*(mult_gap_param/100)
 	End Select
 	
 	gaps = gap*(count-1)
@@ -117,13 +127,14 @@ Sub Calc_gap_and_start(gabarit_size As Double, sum_children_size As Double)
 	End Select
 	
 	'CONSIDER MIN GAP
-	if gap < gap_min_param then
-		if GetParameterBool("collapse_if_overflow") AND (gabarit_size - sum_children_size)/(count-1) < gap_min_param then
+	if gap < min_gap_param then
+		if GetParameterBool("collapse_if_overflow") AND (gabarit_size - sum_children_size)/(count-1) < min_gap_param then
 			gap = 0
 		else
-			gap = gap_min_param
+			gap = min_gap_param
 		end if
 	end if
+	gap += shift_gap_param
 	
 	'CACL START SHIFT
 	Select Case mode_justify
@@ -181,15 +192,15 @@ Sub Update()
 		sum_children_width  += child_gabarit.X
 		sum_children_height += child_gabarit.Y
 		
-		arr_shift_x.push( sum_children_width  + child_v1.x*children[i].scaling.x )
-		arr_shift_y.push( sum_children_height + child_v1.y*children[i].scaling.y )
+		arr_shift_x.push( sum_children_width  + (child_v1.x - children[i].center.x)*children[i].scaling.x )
+		arr_shift_y.push( sum_children_height + (child_v1.y - children[i].center.y)*children[i].scaling.y )
 	next
 	
 	count = children.size
 	if mode_axis == 0 then 'X
-		calc_gap_and_start(gabarit.X, sum_children_width)
+		CalcGapAndStart(gabarit.X, sum_children_width)
 	elseif mode_axis == 1 then 'Y
-		calc_gap_and_start(gabarit.Y, sum_children_height)
+		CalcGapAndStart(gabarit.Y, sum_children_height)
 	end if
 End Sub
 
