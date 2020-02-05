@@ -68,8 +68,13 @@ end sub
 Function GetChildGabarit(child As Container) As Vertex
 	if (mode_gabarit_source == 1) AND child.ChildContainerCount > 0 then
 		GetChildGabarit = child.FirstChildContainer.GetTransformedBoundingBoxDimensions()
+		GetChildGabarit.x *= child.FirstChildContainer.scaling.x
+		GetChildGabarit.y *= child.FirstChildContainer.scaling.y
 	else
-		GetChildGabarit = child.GetTransformedBoundingBoxDimensions()
+		'GetChildGabarit = child.GetTransformedBoundingBoxDimensions()
+		GetChildGabarit = child.GetBoundingBoxDimensions()
+		GetChildGabarit.x *= child.scaling.x
+		GetChildGabarit.y *= child.scaling.y
 	end if
 End Function
 
@@ -136,11 +141,23 @@ Sub Calc_gap_and_start(gabarit_size As Double, sum_children_size As Double)
 	End Select
 End Sub
 
+Dim tv1, tv2 As Vertex
 Sub Update()
 	gabarit = c_gabarit.GetTransformedBoundingBoxDimensions()
+	
+	gabarit.x = gabarit.x/this.scaling.x
+	gabarit.y = gabarit.x/this.scaling.y
+	
 	c_gabarit.GetTransformedBoundingBox(v1,v2)
-	v1 = c_gabarit.WorldPosToLocalPos(v1)
-	v2 = c_gabarit.WorldPosToLocalPos(v2)
+	
+	v1 = this.WorldPosToLocalPos(v1)
+	v2 = this.WorldPosToLocalPos(v2)
+	v1.x = (v1.x - this.position.x)/this.scaling.x
+	v1.y = (v1.y - this.position.y)/this.scaling.y
+	v1.z = (v1.z - this.position.z)/this.scaling.z
+	v2.x = (v2.x - this.position.x)/this.scaling.x
+	v2.y = (v2.y - this.position.y)/this.scaling.y
+	v2.z = (v2.z - this.position.z)/this.scaling.z
 	
 	children.clear
 	for i=0 to this.ChildContainerCount-1
@@ -158,7 +175,7 @@ Sub Update()
 	sum_children_width = 0
 	sum_children_height = 0
 	for i=0 to children.UBound
-		SetChildrenVertexes(children[i]) 'set child_v1 and child_v2
+		SetChildrenVertexes(children[i])   'set child_v1 and child_v2
 		child_gabarit = GetChildGabarit(children[i])
 		
 		arr_width.push(child_gabarit.X)
@@ -166,7 +183,7 @@ Sub Update()
 		sum_children_width  += child_gabarit.X
 		sum_children_height += child_gabarit.Y
 		
-		arr_shift_x.push( sum_children_width  - child_v2.x*children[i].scaling.x )
+		arr_shift_x.push( sum_children_width  + child_v1.x*children[i].scaling.x )
 		arr_shift_y.push( sum_children_height + child_v1.y*children[i].scaling.y )
 	next
 	
@@ -199,7 +216,7 @@ End Sub
 sub OnExecPerField()
 	Update()
 	for i=0 to children.UBound
-		SetChildrenVertexes(children[i]) 'set child_v1 and child_v2
+		SetChildrenVertexes(children[i])   'set child_v1 and child_v2
 		
 		If mode_axis == 0 then
 			'X
