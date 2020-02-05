@@ -43,7 +43,7 @@ sub OnInitParameters()
 	RegisterRadioButton("gabarit_source", "Size of children", 0, arr_gabarit_source)
 	RegisterRadioButton("justify", "Justify", 0, arr_justify)
 	RegisterRadioButton("align", "Align", 0, arr_align)
-	RegisterParameterDouble("gap", "Shift of gap, %", 0, 0, 1000)
+	RegisterParameterDouble("gap", "Shift of gap, %", 0, -1000, 1000)
 	RegisterParameterDouble("power_gap", "Magnetic gap", 0, -100, 10000)
 	RegisterParameterDouble("gap_min", "Min gap", 0, 0, 1000)
 	RegisterParameterBool("collapse_if_overflow", "Collapse if overflow", true)
@@ -143,21 +143,19 @@ End Sub
 
 Dim tv1, tv2 As Vertex
 Sub Update()
-	gabarit = c_gabarit.GetTransformedBoundingBoxDimensions()
-	
-	gabarit.x = gabarit.x/this.scaling.x
-	gabarit.y = gabarit.x/this.scaling.y
-	
 	c_gabarit.GetTransformedBoundingBox(v1,v2)
-	
 	v1 = this.WorldPosToLocalPos(v1)
 	v2 = this.WorldPosToLocalPos(v2)
+	
 	v1.x = (v1.x - this.position.x)/this.scaling.x
 	v1.y = (v1.y - this.position.y)/this.scaling.y
 	v1.z = (v1.z - this.position.z)/this.scaling.z
 	v2.x = (v2.x - this.position.x)/this.scaling.x
 	v2.y = (v2.y - this.position.y)/this.scaling.y
 	v2.z = (v2.z - this.position.z)/this.scaling.z
+	
+	gabarit.x = v2.x - v1.x
+	gabarit.y = v2.y - v1.y
 	
 	children.clear
 	for i=0 to this.ChildContainerCount-1
