@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,2,0)
+RegisterPluginVersion(1,3,0)
 
 Structure Transformation
 	c As Container
@@ -31,6 +31,7 @@ sub OnInitParameters()
 	RegisterParameterString("transform_hided", "Transform hided", "", 80, 999, "")
 	RegisterParameterBool("trought_base", "Transition throught base(0)", false)
 	RegisterParameterInt("selected", "Selected", 0, 0, 999)
+	RegisterParameterBool("keep_visible", "Keep visible (like in Omo)", false)
 	RegisterPushButton("init", "Init", 1)
 	RegisterPushButton("base", "Base", 2)
 	RegisterPushButton("prev", "Prev", 3)
@@ -46,9 +47,11 @@ Dim selected, prev_selected As Integer
 Dim filter As String
 Dim takedir As Director
 sub OnInit()
-	filter = GetParameterString("filter")
-	filter.Trim()
-	takedir = Stage.FindDirector(GetParameterString("takedir"))
+	if GetParameterBool("advanced") then
+		filter = GetParameterString("filter")
+		filter.Trim()
+		takedir = Stage.FindDirector(GetParameterString("takedir"))
+	end if
 	arr_transformations.Clear()
 	for i=0 to this.ChildContainerCount-1
 		Dim new_transform As Transformation
@@ -81,7 +84,7 @@ sub OnInit()
 end sub
 
 sub OnParameterChanged(parameterName As String)
-	SendGuiParameterShow("filter", GetParameterInt("advanced"))
+	SendGuiParameterShow("filter",  GetParameterInt("advanced"))
 	SendGuiParameterShow("takedir", GetParameterInt("advanced"))
 	
 	if parameterName == "selected" then
@@ -91,7 +94,7 @@ sub OnParameterChanged(parameterName As String)
 		if selected == 0 then
 			Deselect()
 		else
-			SelectOne(selected-1)
+			DoSelect(selected-1)
 		end if
 	else
 		OnInit()
@@ -143,10 +146,18 @@ Sub FindDirector(_transform As Transformation)
 	_transform.dir_dur = _d.Time
 End Sub
 
-Sub SelectOne(index As Integer)
+Dim is_proper As Boolean
+Sub DoSelect(index As Integer)
 	for i=0 to arr_transformations.ubound
 		'set next transforms
-		if i == index then
+		is_proper = false
+		if GetParameterBool("keep_visible") then
+			is_proper = i <= index
+		else
+			is_proper = i == index
+		end if
+		
+		if is_proper then
 			'as selected
 			SetNextTransformByText(arr_transformations[i], GetParameterString("transform_selected"))
 			arr_transformations[i].selected = true

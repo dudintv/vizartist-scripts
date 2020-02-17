@@ -2,6 +2,9 @@
 
 TODO: optimize animation to don't touch not nessesary parameters, but only parameters which was considered in "selected" and "hided"
 
+#### Version 1.3 (17 february 2020)
+* add "keep visible" like in original "Omo" to keep visible all items from 1 to current
+
 #### Version 1.2 (23 december 2019)
 * add Advanced functions: 
 * 1) child filter — to consider only childs which name corresponding the pattern
