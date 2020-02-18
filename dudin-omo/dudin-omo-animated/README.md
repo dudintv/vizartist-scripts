@@ -1,9 +1,9 @@
 ## Animated OMO. Select one from children and hide other
 
-TODO: optimize animation to don't touch not nessesary parameters, but only parameters which was considered in "selected" and "hided"
-
 #### Version 1.3 (17 february 2020)
 * add "keep visible" like in original "Omo" to keep visible all items from 1 to current
+* optimize animation to don't touch not nessesary parameters, but only parameters which was considered in "selected" and "hided"
+* add possible value "-1" in order to hide all items
 
 #### Version 1.2 (23 december 2019)
 * add Advanced functions: 

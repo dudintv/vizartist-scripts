@@ -1,5 +1,8 @@
 RegisterPluginVersion(1,3,0)
 
+' pos=(0,0,0);a=100;scale=base
+' pos=(base*1.1,base*1.1,base*1.1);a=20;scale=base*0.9
+
 Structure Transformation
 	c As Container
 	pos, rot, scale As Vertex
@@ -68,10 +71,10 @@ sub OnInit()
 			new_transform.what_animated.Clear()
 			
 			'set what_animated flags:
-			new_transform.what_animated.Push(true) 'Alpha
-			new_transform.what_animated.Push(true) 'Position
-			new_transform.what_animated.Push(true) 'Rotation
-			new_transform.what_animated.Push(true) 'Scaling
+			new_transform.what_animated.Push(  GetParameterString("transform_selected").Match("a")     OR GetParameterString("transform_hided").Match("a")      ) 'Alpha
+			new_transform.what_animated.Push(  GetParameterString("transform_selected").Match("pos")   OR GetParameterString("transform_hided").Match("pos")    ) 'Position
+			new_transform.what_animated.Push(  GetParameterString("transform_selected").Match("rot")   OR GetParameterString("transform_hided").Match("rot")    ) 'Rotation
+			new_transform.what_animated.Push(  GetParameterString("transform_selected").Match("scale") OR GetParameterString("transform_hided").Match("scale")  ) 'Scaling
 			
 			StopAnimationOne(new_transform)
 			FindDirector(new_transform)
