@@ -1,5 +1,8 @@
 ## Animated OMO. Select one from children and hide other
 
+#### Version 1.3.1 (24 february 2020)
+* BUGFIX: didn't consider correctly values below zero (with "-" sign)
+
 #### Version 1.3 (17 february 2020)
 * add "keep visible" like in original "Omo" to keep visible all items from 1 to current
 * optimize animation to don't touch not nessesary parameters, but only parameters which was considered in "selected" and "hided"

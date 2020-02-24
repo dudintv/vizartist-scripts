@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,3,0)
+RegisterPluginVersion(1,3,1)
 
 ' pos=(0,0,0);a=100;scale=base
 ' pos=(base*1.1,base*1.1,base*1.1);a=20;scale=base*0.9
@@ -33,7 +33,7 @@ sub OnInitParameters()
 	RegisterParameterString("transform_selected", "Transform selected", "", 80, 999, "")
 	RegisterParameterString("transform_hided", "Transform hided", "", 80, 999, "")
 	RegisterParameterBool("trought_base", "Transition throught base(0)", false)
-	RegisterParameterInt("selected", "Selected", 0, 0, 999)
+	RegisterParameterInt("selected", "Selected", 0, -1, 999)
 	RegisterParameterBool("keep_visible", "Keep visible (like in Omo)", false)
 	RegisterPushButton("init", "Init", 1)
 	RegisterPushButton("base", "Base", 2)
@@ -94,7 +94,9 @@ sub OnParameterChanged(parameterName As String)
 		prev_selected = selected
 		selected = GetParameterInt("selected")
 		ResetPrev()
-		if selected == 0 then
+		if selected == -1 then
+			HideAll()
+		elseif selected == 0 then
 			Deselect()
 		else
 			DoSelect(selected-1)
@@ -149,6 +151,29 @@ Sub FindDirector(_transform As Transformation)
 	_transform.dir_dur = _d.Time
 End Sub
 
+Sub HideAll()
+	for i=0 to arr_transformations.ubound
+		'as hided
+		SetNextTransformByText(arr_transformations[i], GetParameterString("transform_hided"))
+		arr_transformations[i].selected = false
+		arr_transformations[i].playhead = 0 'start animation
+	next
+	takedir.ContinueAnimation()
+End Sub
+
+Sub Deselect()
+	for i=0 to arr_transformations.ubound
+		'set next transforms as based
+		if arr_transformations[i].what_animated[0] then arr_transformations[i].next_a = arr_transformations[i].base_a
+		if arr_transformations[i].what_animated[1] then arr_transformations[i].next_pos = arr_transformations[i].base_pos
+		if arr_transformations[i].what_animated[2] then arr_transformations[i].next_rot = arr_transformations[i].base_rot
+		if arr_transformations[i].what_animated[3] then arr_transformations[i].next_scale = arr_transformations[i].base_scale
+		arr_transformations[i].playhead = 0 'start animation
+		arr_transformations[i].selected = true
+	next
+	takedir.ContinueAnimationReverse()
+End Sub
+
 Dim is_proper As Boolean
 Sub DoSelect(index As Integer)
 	for i=0 to arr_transformations.ubound
@@ -172,19 +197,6 @@ Sub DoSelect(index As Integer)
 		arr_transformations[i].playhead = 0 'start animation
 	next
 	takedir.ContinueAnimation()
-End Sub
-
-Sub Deselect()
-	for i=0 to arr_transformations.ubound
-		'set next transforms as based
-		if arr_transformations[i].what_animated[0] then arr_transformations[i].next_a = arr_transformations[i].base_a
-		if arr_transformations[i].what_animated[1] then arr_transformations[i].next_pos = arr_transformations[i].base_pos
-		if arr_transformations[i].what_animated[2] then arr_transformations[i].next_rot = arr_transformations[i].base_rot
-		if arr_transformations[i].what_animated[3] then arr_transformations[i].next_scale = arr_transformations[i].base_scale
-		arr_transformations[i].playhead = 0 'start animation
-		arr_transformations[i].selected = true
-	next
-	takedir.ContinueAnimationReverse()
 End Sub
 
 Sub SetNextTransformByText(transform As Transformation, s As String)
@@ -265,7 +277,7 @@ Sub ParseVertexValue(s_value As String, v_base As Vertex, v_next As Vertex)
 End Sub
 
 Function ParseOneValue(s As String, base As Double) As Double
-	if s.Match("^\\d+$") then
+	if s.Match("^-?\\d+$") then
 		ParseOneValue = CDbl(s)
 	elseif s == "base" then
 		ParseOneValue = base
