@@ -14,6 +14,10 @@ sub OnInitParameters()
 end sub
 sub OnInit()
 	c = GetParameterContainer("c")
+	c.position.xyz = this.position.xyz
+	c.rotation.xyz = this.rotation.xyz
+	c.scaling.xyz  = this.scaling.xyz
+	c.alpha.value  = this.alpha.value
 end sub
 sub OnParameterChanged(parameterName As String)
 	OnInit()
