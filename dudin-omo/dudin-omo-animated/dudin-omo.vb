@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,3,1)
+RegisterPluginVersion(1,4,1)
 
 ' pos=(0,0,0);a=100;scale=base
 ' pos=(base*1.1,base*1.1,base*1.1);a=20;scale=base*0.9
@@ -36,6 +36,9 @@ sub OnInitParameters()
 	RegisterParameterInt("selected", "Selected", 0, -1, 999)
 	RegisterParameterBool("keep_visible", "Keep visible (like in Omo)", false)
 	RegisterPushButton("init", "Init", 1)
+	RegisterPushButton("to_base", "To Base!", 5)
+	RegisterPushButton("to_hide", "To Hide!", 6)
+	RegisterPushButton("to_show", "To Show!", 7)
 	RegisterPushButton("base", "Base", 2)
 	RegisterPushButton("prev", "Prev", 3)
 	RegisterPushButton("next", "Next", 4)
@@ -76,8 +79,8 @@ sub OnInit()
 			new_transform.what_animated.Push(  GetParameterString("transform_selected").Match("rot")   OR GetParameterString("transform_hided").Match("rot")    ) 'Rotation
 			new_transform.what_animated.Push(  GetParameterString("transform_selected").Match("scale") OR GetParameterString("transform_hided").Match("scale")  ) 'Scaling
 			
-			StopAnimationOne(new_transform)
-			FindDirector(new_transform)
+			StopAnimation(new_transform)
+			InitDirector(new_transform)
 			new_transform.dir.Show(0)
 			arr_transformations.Push(new_transform)
 		end if
@@ -106,7 +109,6 @@ sub OnParameterChanged(parameterName As String)
 	end if
 end sub
 
-
 Dim new_selected As Integer
 sub OnExecAction(buttonId As Integer)
 	if buttonId == 1 then
@@ -125,12 +127,37 @@ sub OnExecAction(buttonId As Integer)
 		new_selected = GetParameterInt("selected") + 1
 		if new_selected > arr_transformations.size then new_selected = 1
 		this.ScriptPluginInstance.SetParameterInt("selected", new_selected)
+	elseif buttonId == 5 then
+		'to Base!
+		for i=0 to arr_transformations.ubound
+			SetTransformToBase(arr_transformations[i])
+			arr_transformations[i].dir.Show(0)
+			arr_transformations[i].dir.StopAnimation()
+		next
+		takedir.Show(0)
+	elseif buttonId == 6 then
+		'to Hide!
+		for i=0 to arr_transformations.ubound
+			SetCurrentTransformByText(arr_transformations[i], GetParameterString("transform_hided"))
+			arr_transformations[i].dir.Show(0)
+			arr_transformations[i].dir.StopAnimation()
+		next
+		takedir.Show(0)
+	elseif buttonId == 7 then
+		'to Show!
+		for i=0 to arr_transformations.ubound
+			SetCurrentTransformByText(arr_transformations[i], GetParameterString("transform_selected"))
+			arr_transformations[i].dir.StartAnimationReverse()
+			arr_transformations[i].dir.StopAnimation()
+		next
+		takedir.StartAnimationReverse()
+		takedir.StopAnimation()
 	end if
 end sub
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-Sub FindDirector(_transform As Transformation)
+Sub InitDirector(_transform As Transformation)
 	Dim _arr As Array[Container]
 	_transform.c.GetContainerAndSubContainers(_arr, false)
 	if _arr.size <=1 then exit sub
@@ -234,6 +261,55 @@ Sub SetNextTransformByText(transform As Transformation, s As String)
 			End Select
 		end if
 	next
+	StopAnimation(transform)
+End Sub
+
+Sub SetTransformToBase(transform As Transformation)
+	transform.a = transform.base_a
+	transform.pos  = transform.base_pos
+	transform.rot = transform.base_rot
+	transform.scale = transform.base_scale
+	
+	ApplyTransform(transform)
+	StopAnimation(transform)
+End Sub
+
+Sub SetCurrentTransformByText(transform As Transformation, s As String)
+	'pos=(0,0,0);a=100;scale=0
+	'pos=(base,base,base);a=base;scale=base
+	Dim arr_params, arr_s As Array[String]
+	s.Trim()
+	s.Split(";", arr_params)
+	for i=0 to arr_params.ubound
+		arr_params[i].Split("=", arr_s)
+		if arr_s.size == 2 then
+			'name
+			arr_s[0].Trim()
+			arr_s[0].MakeLower()
+			'value
+			arr_s[1].Trim()
+			arr_s[1].MakeLower()
+			
+			Select Case arr_s[0]
+			Case "a", "alpha"
+				if arr_s[1] == "base" then
+					transform.next_a = transform.base_a
+				else
+					arr_s[1].Substitute(",", ".", true)
+					transform.next_a = CDbl(arr_s[1])
+				end if
+			Case "pos", "position"
+				ParseVertexValue(arr_s[1], transform.base_pos, transform.next_pos)
+			Case "rot", "rotation"
+				ParseVertexValue(arr_s[1], transform.base_rot, transform.next_rot)
+			Case "scale", "scaling"
+				ParseVertexValue(arr_s[1], transform.base_scale, transform.next_scale)
+			Case Else
+				println("Din't find param " & arr_s[0])
+			End Select
+		end if
+	next
+	transform.playhead = 99
 End Sub
 
 Sub ParseVertexValue(s_value As String, v_base As Vertex, v_next As Vertex)
@@ -296,7 +372,14 @@ Function ParseOneValue(s As String, base As Double) As Double
 	end if
 End Function
 
-Sub StopAnimationOne(transform As Transformation)
+Sub ApplyTransform(transform As Transformation)
+	transform.c.alpha.value = transform.a
+	transform.c.position.xyz = transform.pos
+	transform.c.rotation.xyz = transform.rot
+	transform.c.scaling.xyz = transform.scale
+End Sub
+
+Sub StopAnimation(transform As Transformation)
 	transform.prev_a = transform.a
 	transform.prev_pos = transform.pos
 	transform.prev_rot = transform.rot
@@ -401,7 +484,7 @@ sub OnExecPerField()
 			else
 				arr_transformations[i].playhead += 1
 			end if
-			if arr_transformations[i].playhead >= 100 then StopAnimationOne(arr_transformations[i])
+			if arr_transformations[i].playhead >= 100 then StopAnimation(arr_transformations[i])
 			
 			PlayDir(arr_transformations[i])
 			CalcTransform(arr_transformations[i])

@@ -1,5 +1,12 @@
 ## Animated OMO. Select one from children and hide other
 
+#### Version 1.4.1 (25 april 2020)
+* Rename "Hide" button to "All to Hide!"
+* Add "All to Base!" and "All to Selected!" buttons
+
+#### Version 1.4.0 (24 april 2020)
+* add "Hide" button to set all conatiners to __hide__ transformation imidiately
+
 #### Version 1.3.1 (24 february 2020)
 * BUGFIX: didn't consider correctly values below zero (with "-" sign)
 
