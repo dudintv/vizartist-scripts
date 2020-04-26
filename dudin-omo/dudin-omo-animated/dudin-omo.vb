@@ -1,18 +1,15 @@
-RegisterPluginVersion(1,4,1)
+RegisterPluginVersion(2,0,0)
 
-' pos=(0,0,0);a=100;scale=base
-' pos=(base*1.1,base*1.1,base*1.1);a=20;scale=base*0.9
+Structure Properties
+	a As Double 'it is Alpha
+	pos As Vertex
+	rot As Vertex
+	scale As Vertex
+End Structure
 
 Structure Transformation
 	c As Container
-	pos, rot, scale As Vertex
-	base_pos, base_rot, base_scale As Vertex
-	prev_pos, prev_rot, prev_scale As Vertex
-	next_pos, next_rot, next_scale As Vertex
-	
-	base_a, prev_a, next_a, a As Double
-	'a is Alpha
-	
+	cur_props, base_props, prev_props, next_props As Properties
 	playhead As Double
 	'playhead = 0..100 (prev..next)
 	
@@ -33,131 +30,170 @@ sub OnInitParameters()
 	RegisterParameterString("transform_selected", "Transform selected", "", 80, 999, "")
 	RegisterParameterString("transform_hided", "Transform hided", "", 80, 999, "")
 	RegisterParameterBool("trought_base", "Transition throught base(0)", false)
-	RegisterParameterInt("selected", "Selected", 0, -1, 999)
 	RegisterParameterBool("keep_visible", "Keep visible (like in Omo)", false)
-	RegisterPushButton("init", "Init", 1)
-	RegisterPushButton("to_base", "To Base!", 5)
-	RegisterPushButton("to_hide", "To Hide!", 6)
-	RegisterPushButton("to_show", "To Show!", 7)
-	RegisterPushButton("base", "Base", 2)
-	RegisterPushButton("prev", "Prev", 3)
-	RegisterPushButton("next", "Next", 4)
+	RegisterParameterInt("selected", "Selected", 0, -1, 999)
+	RegisterPushButton("init", "Init", 10)
+	RegisterPushButton("to_base", "All to Base!", 11)
+	RegisterPushButton("to_hide", "All to Hide!", 12)
+	RegisterPushButton("to_show", "All to Selected!", 13)
+	RegisterPushButton("base", "Base", 20)
+	RegisterPushButton("prev", "Prev", 30)
+	RegisterPushButton("next", "Next", 40)
+	RegisterParameterDouble("transition_duration", "Duration", 1, 0, 999)
 	
 	'advanced settings
 	RegisterParameterBool("advanced", "Advance functions", false)
 	RegisterParameterString("filter", "Child filter (regexp)", "", 80, 999, "")
-	RegisterParameterString("takedir", "Take director", "", 80, 999, "")
+	RegisterParameterString("common_dir", "Common director", "", 80, 999, "")
 end sub
 
-Dim selected, prev_selected As Integer
+Dim selected, prev_selected, new_selected As Integer
 Dim filter As String
-Dim takedir As Director
+Dim common_dir As Director
+Dim transition_duration As Integer
+
+sub OnParameterChanged(parameterName As String)
+	SendGuiParameterShow("filter",  GetParameterInt("advanced"))
+	SendGuiParameterShow("common_dir", GetParameterInt("advanced"))
+	
+	if parameterName == "selected" then
+		prev_selected = selected
+		selected = GetParameterInt("selected")
+		
+		for i=0 to arr_transformations.ubound
+			arr_transformations[i].prev_props = arr_transformations[i].cur_props
+		next
+
+		if selected == -1 then
+			DeselectAll()
+		elseif selected == 0 then
+			BaseAll()
+		else 'selected > 1
+			SelectOne(selected-1)
+		end if
+	end if
+end sub
+
+sub OnExecAction(buttonId As Integer)
+	if buttonId == 10 then
+		'init
+		OnInit()
+	elseif buttonId == 11 then
+		'to Base!
+		for i=0 to arr_transformations.ubound
+			arr_transformations[i].cur_props = arr_transformations[i].base_props
+			ApplyTransform(arr_transformations[i])
+			arr_transformations[i].dir.Show(arr_transformations[i].dir_dur)
+			arr_transformations[i].playhead = transition_duration 'stop animation
+		next
+		common_dir.Show(0)
+	elseif buttonId == 12 then
+		'to Hide!
+		for i=0 to arr_transformations.ubound
+			arr_transformations[i].cur_props = ParseProps(arr_transformations[i], GetParameterString("transform_hided"))
+			ApplyTransform(arr_transformations[i])
+			arr_transformations[i].dir.Show(0)
+			arr_transformations[i].playhead = transition_duration 'stop animation
+		next
+		common_dir.Show(0)
+	elseif buttonId == 13 then
+		'to Show!
+		for i=0 to arr_transformations.ubound
+			arr_transformations[i].cur_props = ParseProps(arr_transformations[i], GetParameterString("transform_selected"))
+			ApplyTransform(arr_transformations[i])
+			arr_transformations[i].dir.Show(arr_transformations[i].dir_dur)
+			arr_transformations[i].playhead = transition_duration 'stop animation
+		next
+		common_dir.StartAnimationReverse()
+		common_dir.StopAnimation()
+	elseif buttonId == 20 then
+		'Base
+		this.ScriptPluginInstance.SetParameterInt("selected", 0)
+	elseif buttonId == 30 then
+		'Prev
+		new_selected = GetParameterInt("selected") - 1
+		if new_selected <= 0 then new_selected = arr_transformations.size
+		this.ScriptPluginInstance.SetParameterInt("selected", new_selected)
+	elseif buttonId == 40 then
+		'Next
+		new_selected = GetParameterInt("selected") + 1
+		if new_selected > arr_transformations.size then new_selected = 1
+		this.ScriptPluginInstance.SetParameterInt("selected", new_selected)
+	end if
+end sub
+
+sub OnExecPerField()
+	for i=0 to arr_transformations.ubound
+		if arr_transformations[i].playhead < transition_duration then
+			if prev_selected == 0 OR selected == 0 then
+				' two time faster
+				arr_transformations[i].playhead += 2
+			else
+				arr_transformations[i].playhead += 1
+			end if
+			CalcCurTransform(arr_transformations[i])
+			ApplyTransform(arr_transformations[i])
+			PlayAnimation(arr_transformations[i])
+		else
+			arr_transformations[i].playhead = transition_duration 'stop animation
+		end if
+	next
+end sub
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+' INIT
+
 sub OnInit()
+	transition_duration = CInt(GetParameterDouble("transition_duration") / System.CurrentRefreshRate)
 	if GetParameterBool("advanced") then
+		'fill these variables only if "advanced" is ON
 		filter = GetParameterString("filter")
 		filter.Trim()
-		takedir = Stage.FindDirector(GetParameterString("takedir"))
+		common_dir = Stage.FindDirector(GetParameterString("common_dir"))
+		common_dir.Show(0)
 	end if
+	
+	Dim _transform_selected, _transform_hided As String
 	arr_transformations.Clear()
 	for i=0 to this.ChildContainerCount-1
 		Dim new_transform As Transformation
 		if filter == "" OR this.GetChildContainerByIndex(i).name.Match(filter) then
 			new_transform.c = this.GetChildContainerByIndex(i)
-			new_transform.base_a     = new_transform.c.alpha.value
-			new_transform.base_pos   = new_transform.c.position.xyz
-			new_transform.base_rot   = new_transform.c.rotation.xyz
-			new_transform.base_scale = new_transform.c.scaling.xyz
-			new_transform.a     = new_transform.c.alpha.value
-			new_transform.pos   = new_transform.c.position.xyz
-			new_transform.rot   = new_transform.c.rotation.xyz
-			new_transform.scale = new_transform.c.scaling.xyz
-			new_transform.what_animated.Clear()
+			new_transform.base_props.a     = new_transform.c.alpha.value
+			new_transform.base_props.pos   = new_transform.c.position.xyz
+			new_transform.base_props.rot   = new_transform.c.rotation.xyz
+			new_transform.base_props.scale = new_transform.c.scaling.xyz
+
+			new_transform.cur_props  = new_transform.base_props
+			new_transform.prev_props = new_transform.base_props
 			
 			'set what_animated flags:
-			new_transform.what_animated.Push(  GetParameterString("transform_selected").Match("a")     OR GetParameterString("transform_hided").Match("a")      ) 'Alpha
-			new_transform.what_animated.Push(  GetParameterString("transform_selected").Match("pos")   OR GetParameterString("transform_hided").Match("pos")    ) 'Position
-			new_transform.what_animated.Push(  GetParameterString("transform_selected").Match("rot")   OR GetParameterString("transform_hided").Match("rot")    ) 'Rotation
-			new_transform.what_animated.Push(  GetParameterString("transform_selected").Match("scale") OR GetParameterString("transform_hided").Match("scale")  ) 'Scaling
+			new_transform.what_animated.Clear()
+			_transform_selected = GetParameterString("transform_selected")
+			_transform_selected.Substitute("\\s", "", true) 'remove all spaces
+			_transform_hided = GetParameterString("transform_hided")
+			_transform_hided.Substitute("\\s", "", true) 'remove all spaces
+			new_transform.what_animated.Push(  _transform_selected.Match("a=")     OR _transform_hided.Match("a=")      ) 'Alpha
+			new_transform.what_animated.Push(  _transform_selected.Match("pos=")   OR _transform_hided.Match("pos=")    ) 'Position
+			new_transform.what_animated.Push(  _transform_selected.Match("rot=")   OR _transform_hided.Match("rot=")    ) 'Rotation
+			new_transform.what_animated.Push(  _transform_selected.Match("scale=") OR _transform_hided.Match("scale=")  ) 'Scaling
 			
-			StopAnimation(new_transform)
+			new_transform.playhead = transition_duration 'to stop scripted animation in ExecPerField
 			InitDirector(new_transform)
-			new_transform.dir.Show(0)
+			new_transform.dir.Show(new_transform.dir_dur)
+
 			arr_transformations.Push(new_transform)
 		end if
 	next
 	prev_selected = 0
 	selected = 0
+	this.ScriptPluginInstance.SetParameterInt("selected", 0)
 end sub
-
-sub OnParameterChanged(parameterName As String)
-	SendGuiParameterShow("filter",  GetParameterInt("advanced"))
-	SendGuiParameterShow("takedir", GetParameterInt("advanced"))
-	
-	if parameterName == "selected" then
-		prev_selected = selected
-		selected = GetParameterInt("selected")
-		ResetPrev()
-		if selected == -1 then
-			HideAll()
-		elseif selected == 0 then
-			Deselect()
-		else
-			DoSelect(selected-1)
-		end if
-	else
-		OnInit()
-	end if
-end sub
-
-Dim new_selected As Integer
-sub OnExecAction(buttonId As Integer)
-	if buttonId == 1 then
-		'init
-		OnInit()
-	elseif buttonId == 2 then
-		'Base
-		this.ScriptPluginInstance.SetParameterInt("selected", 0)
-	elseif buttonId == 3 then
-		'Prev
-		new_selected = GetParameterInt("selected") - 1
-		if new_selected <= 0 then new_selected = arr_transformations.size
-		this.ScriptPluginInstance.SetParameterInt("selected", new_selected)
-	elseif buttonId == 4 then
-		'Next
-		new_selected = GetParameterInt("selected") + 1
-		if new_selected > arr_transformations.size then new_selected = 1
-		this.ScriptPluginInstance.SetParameterInt("selected", new_selected)
-	elseif buttonId == 5 then
-		'to Base!
-		for i=0 to arr_transformations.ubound
-			SetTransformToBase(arr_transformations[i])
-			arr_transformations[i].dir.Show(0)
-			arr_transformations[i].dir.StopAnimation()
-		next
-		takedir.Show(0)
-	elseif buttonId == 6 then
-		'to Hide!
-		for i=0 to arr_transformations.ubound
-			SetCurrentTransformByText(arr_transformations[i], GetParameterString("transform_hided"))
-			arr_transformations[i].dir.Show(0)
-			arr_transformations[i].dir.StopAnimation()
-		next
-		takedir.Show(0)
-	elseif buttonId == 7 then
-		'to Show!
-		for i=0 to arr_transformations.ubound
-			SetCurrentTransformByText(arr_transformations[i], GetParameterString("transform_selected"))
-			arr_transformations[i].dir.StartAnimationReverse()
-			arr_transformations[i].dir.StopAnimation()
-		next
-		takedir.StartAnimationReverse()
-		takedir.StopAnimation()
-	end if
-end sub
-
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Sub InitDirector(_transform As Transformation)
+	'try to find a Director among child containers of _transformation.c
+	'the first result found will be stored
 	Dim _arr As Array[Container]
 	_transform.c.GetContainerAndSubContainers(_arr, false)
 	if _arr.size <=1 then exit sub
@@ -178,327 +214,238 @@ Sub InitDirector(_transform As Transformation)
 	_transform.dir_dur = _d.Time
 End Sub
 
-Sub HideAll()
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+' MAIN ACTIONS with animations
+
+Sub DeselectAll()
 	for i=0 to arr_transformations.ubound
-		'as hided
-		SetNextTransformByText(arr_transformations[i], GetParameterString("transform_hided"))
+		arr_transformations[i].next_props = ParseProps(arr_transformations[i], GetParameterString("transform_hided"))
 		arr_transformations[i].selected = false
 		arr_transformations[i].playhead = 0 'start animation
 	next
-	takedir.ContinueAnimation()
+	common_dir.ContinueAnimation()
 End Sub
 
-Sub Deselect()
+Sub BaseAll()
 	for i=0 to arr_transformations.ubound
 		'set next transforms as based
-		if arr_transformations[i].what_animated[0] then arr_transformations[i].next_a = arr_transformations[i].base_a
-		if arr_transformations[i].what_animated[1] then arr_transformations[i].next_pos = arr_transformations[i].base_pos
-		if arr_transformations[i].what_animated[2] then arr_transformations[i].next_rot = arr_transformations[i].base_rot
-		if arr_transformations[i].what_animated[3] then arr_transformations[i].next_scale = arr_transformations[i].base_scale
-		arr_transformations[i].playhead = 0 'start animation
+		arr_transformations[i].next_props = arr_transformations[i].base_props
 		arr_transformations[i].selected = true
+		arr_transformations[i].playhead = 0 'start animation
 	next
-	takedir.ContinueAnimationReverse()
+	common_dir.ContinueAnimationReverse()
 End Sub
 
-Dim is_proper As Boolean
-Sub DoSelect(index As Integer)
+Sub SelectOne(_index As Integer)
+	Dim _should_be_selected As Boolean
 	for i=0 to arr_transformations.ubound
-		'set next transforms
-		is_proper = false
+		_should_be_selected = false
 		if GetParameterBool("keep_visible") then
-			is_proper = i <= index
+			'select all items before and equal index
+			_should_be_selected = i <= _index
 		else
-			is_proper = i == index
+			'select only index item
+			_should_be_selected = i == _index
 		end if
 		
-		if is_proper then
-			'as selected
-			SetNextTransformByText(arr_transformations[i], GetParameterString("transform_selected"))
-			arr_transformations[i].selected = true
+		arr_transformations[i].selected = _should_be_selected
+
+		if _should_be_selected then
+			arr_transformations[i].next_props = ParseProps(arr_transformations[i], GetParameterString("transform_selected"))
 		else
-			'as hided
-			SetNextTransformByText(arr_transformations[i], GetParameterString("transform_hided"))
-			arr_transformations[i].selected = false
+			arr_transformations[i].next_props = ParseProps(arr_transformations[i], GetParameterString("transform_hided"))
 		end if
 		arr_transformations[i].playhead = 0 'start animation
 	next
-	takedir.ContinueAnimation()
+	common_dir.ContinueAnimation()
 End Sub
 
-Sub SetNextTransformByText(transform As Transformation, s As String)
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+' PARSING
+
+Function ParseProps(_transform As Transformation, _s As String) As Properties
 	'pos=(0,0,0);a=100;scale=0
 	'pos=(base,base,base);a=base;scale=base
-	Dim arr_params, arr_s As Array[String]
-	s.Trim()
-	s.Split(";", arr_params)
-	for i=0 to arr_params.ubound
-		arr_params[i].Split("=", arr_s)
-		if arr_s.size == 2 then
+
+	Dim _props As Properties = _transform.base_props
+	Dim _arr_params, _arr_s As Array[String]
+	_s.Trim()
+	_s.Split(";", _arr_params)
+	for i=0 to _arr_params.ubound
+		_arr_params[i].MakeLower()
+		_arr_params[i].Split("=", _arr_s)
+		if _arr_s.size == 2 then
 			'name
-			arr_s[0].Trim()
-			arr_s[0].MakeLower()
+			_arr_s[0].Trim()
 			'value
-			arr_s[1].Trim()
-			arr_s[1].MakeLower()
+			_arr_s[1].Trim()
 			
-			Select Case arr_s[0]
+			Select Case _arr_s[0]
 			Case "a", "alpha"
-				if arr_s[1] == "base" then
-					transform.next_a = transform.base_a
-				else
-					arr_s[1].Substitute(",", ".", true)
-					transform.next_a = CDbl(arr_s[1])
-				end if
+				_props.a = ParseOneValue(_transform.base_props.a, _arr_s[1])
 			Case "pos", "position"
-				ParseVertexValue(arr_s[1], transform.base_pos, transform.next_pos)
+				_props.pos = ParseVertexValue(_transform.base_props.pos, _arr_s[1])
 			Case "rot", "rotation"
-				ParseVertexValue(arr_s[1], transform.base_rot, transform.next_rot)
+				_props.rot = ParseVertexValue(_transform.base_props.rot, _arr_s[1])
 			Case "scale", "scaling"
-				ParseVertexValue(arr_s[1], transform.base_scale, transform.next_scale)
+				_props.scale = ParseVertexValue(_transform.base_props.scale, _arr_s[1])
 			Case Else
-				println("Din't find param " & arr_s[0])
+				println("Din't find param " & _arr_s[0])
 			End Select
 		end if
 	next
-	StopAnimation(transform)
-End Sub
+	ParseProps = _props
+End Function
 
-Sub SetTransformToBase(transform As Transformation)
-	transform.a = transform.base_a
-	transform.pos  = transform.base_pos
-	transform.rot = transform.base_rot
-	transform.scale = transform.base_scale
-	
-	ApplyTransform(transform)
-	StopAnimation(transform)
-End Sub
-
-Sub SetCurrentTransformByText(transform As Transformation, s As String)
-	'pos=(0,0,0);a=100;scale=0
-	'pos=(base,base,base);a=base;scale=base
-	Dim arr_params, arr_s As Array[String]
-	s.Trim()
-	s.Split(";", arr_params)
-	for i=0 to arr_params.ubound
-		arr_params[i].Split("=", arr_s)
-		if arr_s.size == 2 then
-			'name
-			arr_s[0].Trim()
-			arr_s[0].MakeLower()
-			'value
-			arr_s[1].Trim()
-			arr_s[1].MakeLower()
-			
-			Select Case arr_s[0]
-			Case "a", "alpha"
-				if arr_s[1] == "base" then
-					transform.next_a = transform.base_a
-				else
-					arr_s[1].Substitute(",", ".", true)
-					transform.next_a = CDbl(arr_s[1])
-				end if
-			Case "pos", "position"
-				ParseVertexValue(arr_s[1], transform.base_pos, transform.next_pos)
-			Case "rot", "rotation"
-				ParseVertexValue(arr_s[1], transform.base_rot, transform.next_rot)
-			Case "scale", "scaling"
-				ParseVertexValue(arr_s[1], transform.base_scale, transform.next_scale)
-			Case Else
-				println("Din't find param " & arr_s[0])
-			End Select
-		end if
-	next
-	transform.playhead = 99
-End Sub
-
-Sub ParseVertexValue(s_value As String, v_base As Vertex, v_next As Vertex)
-	s_value.Substitute("\\s", "", true)
-	if s_value == "base" then
-		v_next = v_base
-	elseif s_value.Match("\\([\\d\\.\\w\\-\\+\\*\\/]+\\,[\\d\\.\\w\\-\\+\\*\\/]+\\,[\\d\\.\\w\\-\\+\\*\\/]+\\)") OR s_value.Match("\\([\\d\\.\\w\\-\\+\\*\\/]+\\)") then
+Function ParseVertexValue(_base As Vertex, _s As String) As Vertex
+	Dim _v As Vertex
+	_s.Substitute("\\s", "", true) 'remove all spaces
+	if _s == "base" then
+		_v = _base
+	elseif _s.Match("\\([\\d\\.\\w\\-\\+\\*\\/]+\\,[\\d\\.\\w\\-\\+\\*\\/]+\\,[\\d\\.\\w\\-\\+\\*\\/]+\\)") OR _s.Match("\\([\\d\\.\\w\\-\\+\\*\\/]+\\)") then
 		'\([\d\w\-\+]+\,[\d\w\-\+]+\,[\d\w\-\+]+\)
 		'\([\d\w\-\+]+\)
 		'(num, num, num) or (num)
-		Dim open_par, close_par As Integer
-		Dim arr_values As Array[String]
-		open_par = s_value.Find("(")
-		close_par = s_value.FindLastOf(")")
-		s_value = s_value.GetSubstring( open_par+1 , close_par-open_par-1 )
-		s_value.Trim()
-		s_value.Split(",", arr_values)
-		for i=0 to arr_values.ubound
-			arr_values[i].Trim()
+		Dim _open_par, _close_par As Integer
+		Dim _arr_values As Array[String]
+		_open_par = _s.Find("(")
+		_close_par = _s.FindLastOf(")")
+		_s = _s.GetSubstring(_open_par + 1, _close_par - _open_par - 1)
+		_s.Trim()
+		_s.Split(",", _arr_values)
+		for i=0 to _arr_values.ubound
+			_arr_values[i].Trim()
 		next
-		if arr_values.size == 3 then
-			v_next.x = ParseOneValue(arr_values[0], v_base.x)
-			v_next.y = ParseOneValue(arr_values[1], v_base.y)
-			v_next.z = ParseOneValue(arr_values[2], v_base.z)
+		if _arr_values.size == 3 then
+			_v.x = ParseOneValue(_base.x, _arr_values[0])
+			_v.y = ParseOneValue(_base.y, _arr_values[1])
+			_v.z = ParseOneValue(_base.z, _arr_values[2])
 		else
 			'xyz
-			if s_value == "base" then
-				v_next = v_base
+			if _s == "base" then
+				_v = _base
 			else
-				v_next = CDbl(s_value)
+				_v = CDbl(_s)
 			end if
 		end if
 	else
-		'one number?
-'		s_value.Substitute(",", ".", true)
-'		v_next = CDbl(s_value)
-		v_next.x = ParseOneValue(s_value, v_base.x)
-		v_next.y = ParseOneValue(s_value, v_base.y)
-		v_next.z = ParseOneValue(s_value, v_base.z)
+		'one number
+		_v.x = ParseOneValue(_base.x, _s)
+		_v.y = ParseOneValue(_base.y, _s)
+		_v.z = ParseOneValue(_base.z, _s)
 	end if
-End Sub
+	ParseVertexValue = _v
+End Function
 
-Function ParseOneValue(s As String, base As Double) As Double
-	if s.Match("^-?\\d+$") then
-		ParseOneValue = CDbl(s)
-	elseif s == "base" then
-		ParseOneValue = base
-	elseif s.Match("base[\\+\\-\\*\\/]+[\\d]+") then
-		if s.GetChar(4) == "+" then
-			ParseOneValue = base + CDbl(s.GetSubstring(5,s.length-5))
-		elseif s.GetChar(4) == "-" then
-			ParseOneValue = base - CDbl(s.GetSubstring(5,s.length-5))
-		elseif s.GetChar(4) == "*" then
-			ParseOneValue = base * CDbl(s.GetSubstring(5,s.length-5))
-		elseif s.GetChar(4) == "/" then
-			ParseOneValue = base / CDbl(s.GetSubstring(5,s.length-5))
+Function ParseOneValue(_base As Double, _s As String) As Double
+	if _s.Match("^-?\\d+$") then
+		ParseOneValue = CDbl(_s)
+	elseif _s == "base" then
+		ParseOneValue = _base
+	elseif _s.Match("base[\\+\\-\\*\\/]+[\\d]+") then
+		if _s.GetChar(4) == "+" then
+			ParseOneValue = _base + CDbl(_s.GetSubstring(5,_s.length-5))
+		elseif _s.GetChar(4) == "-" then
+			ParseOneValue = _base - CDbl(_s.GetSubstring(5,_s.length-5))
+		elseif _s.GetChar(4) == "*" then
+			ParseOneValue = _base * CDbl(_s.GetSubstring(5,_s.length-5))
+		elseif _s.GetChar(4) == "/" then
+			ParseOneValue = _base / CDbl(_s.GetSubstring(5,_s.length-5))
 		end if
 	else '"base"
-		ParseOneValue = base
+		ParseOneValue = _base
 	end if
 End Function
 
-Sub ApplyTransform(transform As Transformation)
-	transform.c.alpha.value = transform.a
-	transform.c.position.xyz = transform.pos
-	transform.c.rotation.xyz = transform.rot
-	transform.c.scaling.xyz = transform.scale
-End Sub
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-Sub StopAnimation(transform As Transformation)
-	transform.prev_a = transform.a
-	transform.prev_pos = transform.pos
-	transform.prev_rot = transform.rot
-	transform.prev_scale = transform.scale
-	transform.playhead = 100 'stop animation
-End Sub
+' ANIMATION
 
-Sub ResetPrev()
-	for i=0 to arr_transformations.ubound
-		if arr_transformations[i].what_animated[0] then arr_transformations[i].prev_a = arr_transformations[i].a
-		if arr_transformations[i].what_animated[1] then arr_transformations[i].prev_pos = arr_transformations[i].pos
-		if arr_transformations[i].what_animated[2] then arr_transformations[i].prev_rot = arr_transformations[i].rot
-		if arr_transformations[i].what_animated[3] then arr_transformations[i].prev_scale = arr_transformations[i].scale
-	next
-End Sub
-
-Sub CalcTransform(transform As Transformation)
-	if transform.what_animated[0] then
-		transform.a = CalcCurrentValue(transform.playhead, transform.prev_a, transform.base_a, transform.next_a)
-	end if
-	if transform.what_animated[1] then
-		transform.pos.x = CalcCurrentValue(transform.playhead, transform.prev_pos.x, transform.base_pos.x, transform.next_pos.x)
-		transform.pos.y = CalcCurrentValue(transform.playhead, transform.prev_pos.y, transform.base_pos.y, transform.next_pos.y)
-		transform.pos.z = CalcCurrentValue(transform.playhead, transform.prev_pos.z, transform.base_pos.z, transform.next_pos.z)
-	end if
-	if transform.what_animated[2] then
-		transform.rot.x = CalcCurrentValue(transform.playhead, transform.prev_rot.x, transform.base_rot.x, transform.next_rot.x)
-		transform.rot.y = CalcCurrentValue(transform.playhead, transform.prev_rot.y, transform.base_rot.y, transform.next_rot.y)
-		transform.rot.z = CalcCurrentValue(transform.playhead, transform.prev_rot.z, transform.base_rot.z, transform.next_rot.z)
-	end if
-	if transform.what_animated[3] then
-		transform.scale.x = CalcCurrentValue(transform.playhead, transform.prev_scale.x, transform.base_scale.x, transform.next_scale.x)
-		transform.scale.y = CalcCurrentValue(transform.playhead, transform.prev_scale.y, transform.base_scale.y, transform.next_scale.y)
-		transform.scale.z = CalcCurrentValue(transform.playhead, transform.prev_scale.z, transform.base_scale.z, transform.next_scale.z)
-	end if
-End Sub
-Dim easy_in As Double = 30
-Dim easy_out As Double = 90
 Dim middle_transition As Double = 30
-Function CalcCurrentValue(playhead As Double, prev_value As Double, base_value As Double, next_value As Double) As Double
-	if GetParameterBool("trought_base") AND prev_value <> base_value AND next_value <> base_value then
-		if playhead < middle_transition then
-			CalcCurrentValue = Besizer(100*playhead/middle_transition, prev_value, base_value, easy_in, 30)
-			takedir.ContinueAnimationReverse()
-		else
-			CalcCurrentValue = Besizer(100*(playhead-middle_transition)/(100-middle_transition), base_value, next_value, 30, easy_out)
-			takedir.ContinueAnimation()
-		end if
-	else
-		CalcCurrentValue = Besizer(playhead, prev_value, next_value, easy_in, easy_out)
-	end if
-End Function
 
-Sub PlayDir(_transform as Transformation)
+Sub PlayAnimation(_transform as Transformation)
 	if _transform.dir == null then exit sub
 	
 	if GetParameterBool("trought_base") AND prev_selected <> 0 AND selected <> 0 then
 		if _transform.playhead < middle_transition then
 			if NOT _transform.selected then
-				_transform.dir.ContinueAnimationReverse()
-			else
 				_transform.dir.ContinueAnimation()
+			else
+				_transform.dir.ContinueAnimationReverse()
 			end if
 		else
 			if _transform.selected then
-				_transform.dir.ContinueAnimationReverse()
-			else
 				_transform.dir.ContinueAnimation()
+			else
+				_transform.dir.ContinueAnimationReverse()
 			end if
 		end if
 	else
 		if _transform.selected then
-			_transform.dir.ContinueAnimationReverse()
-		else
 			_transform.dir.ContinueAnimation()
+		else
+			_transform.dir.ContinueAnimationReverse()
 		end if
-	end if
-End Sub
-
-Sub SetTransform(transform as Transformation)
-	if transform.what_animated[0] then
-		transform.c.alpha.value = transform.a
-	end if
-	if transform.what_animated[1] then
-		transform.c.position.xyz = transform.pos
-	end if
-	if transform.what_animated[2] then
-		transform.c.rotation.xyz = transform.rot
-	end if
-	if transform.what_animated[3] then
-		transform.c.scaling.xyz = transform.scale
 	end if
 End Sub
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-sub OnExecPerField()
-	for i=0 to arr_transformations.ubound
-		if arr_transformations[i].playhead < 100 then
-			if prev_selected == 0 OR selected == 0 then
-				arr_transformations[i].playhead += 2
-			else
-				arr_transformations[i].playhead += 1
-			end if
-			if arr_transformations[i].playhead >= 100 then StopAnimation(arr_transformations[i])
-			
-			PlayDir(arr_transformations[i])
-			CalcTransform(arr_transformations[i])
-			SetTransform(arr_transformations[i])
+' TRANSFORM
+
+Sub CalcCurTransform(_transform As transformation)
+	if _transform.what_animated[0] then
+		_transform.cur_props.a = CalcCurrentValue(_transform.playhead, _transform.prev_props.a, _transform.base_props.a, _transform.next_props.a)
+	end if
+	if _transform.what_animated[1] then
+		_transform.cur_props.pos.x = CalcCurrentValue(_transform.playhead, _transform.prev_props.pos.x, _transform.base_props.pos.x, _transform.next_props.pos.x)
+		_transform.cur_props.pos.y = CalcCurrentValue(_transform.playhead, _transform.prev_props.pos.y, _transform.base_props.pos.y, _transform.next_props.pos.y)
+		_transform.cur_props.pos.z = CalcCurrentValue(_transform.playhead, _transform.prev_props.pos.z, _transform.base_props.pos.z, _transform.next_props.pos.z)
+	end if
+	if _transform.what_animated[2] then
+		_transform.cur_props.rot.x = CalcCurrentValue(_transform.playhead, _transform.prev_props.rot.x, _transform.base_props.rot.x, _transform.next_props.rot.x)
+		_transform.cur_props.rot.y = CalcCurrentValue(_transform.playhead, _transform.prev_props.rot.y, _transform.base_props.rot.y, _transform.next_props.rot.y)
+		_transform.cur_props.rot.z = CalcCurrentValue(_transform.playhead, _transform.prev_props.rot.z, _transform.base_props.rot.z, _transform.next_props.rot.z)
+	end if
+	if _transform.what_animated[3] then
+		_transform.cur_props.scale.x = CalcCurrentValue(_transform.playhead, _transform.prev_props.scale.x, _transform.base_props.scale.x, _transform.next_props.scale.x)
+		_transform.cur_props.scale.y = CalcCurrentValue(_transform.playhead, _transform.prev_props.scale.y, _transform.base_props.scale.y, _transform.next_props.scale.y)
+		_transform.cur_props.scale.z = CalcCurrentValue(_transform.playhead, _transform.prev_props.scale.z, _transform.base_props.scale.z, _transform.next_props.scale.z)
+	end if
+End Sub
+
+Sub ApplyTransform(_transform As Transformation)
+	if _transform.what_animated[0] then _transform.c.alpha.value  = _transform.cur_props.a
+	if _transform.what_animated[1] then _transform.c.position.xyz = _transform.cur_props.pos
+	if _transform.what_animated[2] then _transform.c.rotation.xyz = _transform.cur_props.rot
+	if _transform.what_animated[3] then _transform.c.scaling.xyz  = _transform.cur_props.scale
+End Sub
+
+Dim easy_in As Double = 30
+Dim easy_out As Double = 90
+
+Function CalcCurrentValue(_playhead As Double, _prev_value As Double, _base_value As Double, _next_value As Double) As Double
+	if GetParameterBool("trought_base") AND _prev_value <> _base_value AND _next_value <> _base_value then
+		if _playhead < middle_transition then
+			CalcCurrentValue = Besizer(100.0*_playhead/middle_transition, _prev_value, _base_value, easy_in, 30)
+			common_dir.ContinueAnimationReverse()
+		else
+			CalcCurrentValue = Besizer(100.0*(_playhead-middle_transition)/(transition_duration-middle_transition), _base_value, _next_value, 30, easy_out)
+			common_dir.ContinueAnimation()
 		end if
-	next
-end sub
+	else
+		CalcCurrentValue = Besizer(100.0*_playhead/transition_duration, _prev_value, _next_value, easy_in, easy_out)
+	end if
+End Function
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-Function ClampDbl(value as double, min  as double, max as double) as Double
-	if value < min then value = min
-	if value > max then value = max
-	ClampDbl = value
+Function ClampDbl(ByVal _value as double, ByVal _min as double, ByVal _max as double) as Double
+	if _value < _min then _value = _min
+	if _value > _max then _value = _max
+	ClampDbl = _value
 End Function
 
 Function Besizer(ByVal procent as double, ByVal begin_value as double, ByVal end_value as double, ByVal begin_weight as double, ByVal end_weight as double) as Double
@@ -510,7 +457,7 @@ Function Besizer(ByVal procent as double, ByVal begin_value as double, ByVal end
 	a = 3*begin_weight - 3*(1.0 - end_weight) + 1
 	b = - 6*begin_weight + 3*(1.0 - end_weight)
 	c = 3*begin_weight
-	d = -procent
+	d = - procent
 	
 	t_besier_value = (sqrt((-27*a^2*d + 9*a*b*c - 2*b^3)^2 + 4*(3*a*c - b^2)^3) - 27*a^2*d + 9*a*b*c - 2*b^3)^(1.0/3)/(3*2^(1.0/3)*a) - (2^(1.0/3)*(3*a*c - b^2))/(3*a*(sqrt((-27*a^2*d + 9*a*b*c - 2*b^3)^2 + 4*(3*a*c - b^2)^3) - 27*a^2*d + 9*a*b*c - 2*b^3)^(1.0/3)) - b/(3*a)
 	Besizer = begin_value + (end_value - begin_value)*( 3*(1-t_besier_value)*t_besier_value^2 + t_besier_value^3 ) 

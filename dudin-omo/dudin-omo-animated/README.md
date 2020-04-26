@@ -1,5 +1,8 @@
 ## Animated OMO. Select one from children and hide other
 
+#### Version 2.0.0 (26 april 2020)
+* Rewrite the script to make code more flexible and clean
+
 #### Version 1.4.1 (25 april 2020)
 * Rename "Hide" button to "All to Hide!"
 * Add "All to Base!" and "All to Selected!" buttons
