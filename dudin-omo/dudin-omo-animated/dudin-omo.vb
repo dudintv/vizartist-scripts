@@ -1,4 +1,4 @@
-RegisterPluginVersion(2,0,0)
+RegisterPluginVersion(2,1,0)
 
 Structure Properties
 	a As Double 'it is Alpha
@@ -30,6 +30,7 @@ sub OnInitParameters()
 	RegisterParameterString("transform_selected", "Transform selected", "", 80, 999, "")
 	RegisterParameterString("transform_hided", "Transform hided", "", 80, 999, "")
 	RegisterParameterBool("trought_base", "Transition throught base(0)", false)
+	RegisterParameterSliderInt("middle_transition", "Middle transition, %", 50, 0, 100, 300)
 	RegisterParameterBool("keep_visible", "Keep visible (like in Omo)", false)
 	RegisterParameterInt("selected", "Selected", 0, -1, 999)
 	RegisterPushButton("init", "Init", 10)
@@ -51,12 +52,15 @@ Dim selected, prev_selected, new_selected As Integer
 Dim filter As String
 Dim common_dir As Director
 Dim transition_duration As Integer
+Dim middle_transition As Double = 50
 
 sub OnParameterChanged(parameterName As String)
 	SendGuiParameterShow("filter",  GetParameterInt("advanced"))
 	SendGuiParameterShow("common_dir", GetParameterInt("advanced"))
+	SendGuiParameterShow("middle_transition", CInt(GetParameterBool("trought_base")))
 	
-	if parameterName == "selected" then
+	select case parameterName
+	case "selected"
 		prev_selected = selected
 		selected = GetParameterInt("selected")
 		
@@ -71,7 +75,13 @@ sub OnParameterChanged(parameterName As String)
 		else 'selected > 1
 			SelectOne(selected-1)
 		end if
-	end if
+	case "middle_transition", "transition_duration"
+		middle_transition = GetParameterInt("middle_transition")/100.0 * GetParameterDouble("transition_duration")/System.CurrentRefreshRate
+		transition_duration = CInt(GetParameterDouble("transition_duration") / System.CurrentRefreshRate)
+		for i=0 to arr_transformations.ubound
+			if transition_duration < arr_transformations[i].playhead then arr_transformations[i].playhead = transition_duration
+		next
+	end select
 end sub
 
 sub OnExecAction(buttonId As Integer)
@@ -363,8 +373,6 @@ End Function
 
 ' ANIMATION
 
-Dim middle_transition As Double = 30
-
 Sub PlayAnimation(_transform as Transformation)
 	if _transform.dir == null then exit sub
 	
@@ -462,3 +470,4 @@ Function Besizer(ByVal procent as double, ByVal begin_value as double, ByVal end
 	t_besier_value = (sqrt((-27*a^2*d + 9*a*b*c - 2*b^3)^2 + 4*(3*a*c - b^2)^3) - 27*a^2*d + 9*a*b*c - 2*b^3)^(1.0/3)/(3*2^(1.0/3)*a) - (2^(1.0/3)*(3*a*c - b^2))/(3*a*(sqrt((-27*a^2*d + 9*a*b*c - 2*b^3)^2 + 4*(3*a*c - b^2)^3) - 27*a^2*d + 9*a*b*c - 2*b^3)^(1.0/3)) - b/(3*a)
 	Besizer = begin_value + (end_value - begin_value)*( 3*(1-t_besier_value)*t_besier_value^2 + t_besier_value^3 ) 
 End Function
+

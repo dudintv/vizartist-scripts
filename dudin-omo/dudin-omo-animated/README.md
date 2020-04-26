@@ -1,5 +1,8 @@
 ## Animated OMO. Select one from children and hide other
 
+#### Version 2.1.0 (26 april 2020)
+* Add "middle transition" to manual precise control transition animation
+
 #### Version 2.0.0 (26 april 2020)
 * Rewrite the script to make code more flexible and clean
 
