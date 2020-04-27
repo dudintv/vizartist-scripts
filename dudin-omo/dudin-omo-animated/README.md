@@ -1,5 +1,8 @@
 ## Animated OMO. Select one from children and hide other
 
+#### Version 2.2.0 (27 april 2020)
+* Add "Transform base" to control base properties
+
 #### Version 2.1.0 (26 april 2020)
 * Add "middle transition" to manual precise control transition animation
 

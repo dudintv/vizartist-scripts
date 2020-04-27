@@ -1,4 +1,4 @@
-RegisterPluginVersion(2,1,0)
+RegisterPluginVersion(2,2,0)
 
 Structure Properties
 	a As Double 'it is Alpha
@@ -27,6 +27,7 @@ End Structure
 Dim arr_transformations As Array[Transformation]
 
 sub OnInitParameters()
+	RegisterParameterString("transform_base", "Transform base", "", 80, 999, "")
 	RegisterParameterString("transform_selected", "Transform selected", "", 80, 999, "")
 	RegisterParameterString("transform_hided", "Transform hided", "", 80, 999, "")
 	RegisterParameterBool("trought_base", "Transition throught base(0)", false)
@@ -52,7 +53,7 @@ Dim selected, prev_selected, new_selected As Integer
 Dim filter As String
 Dim common_dir As Director
 Dim transition_duration As Integer
-Dim middle_transition As Double = 50
+Dim middle_transition As Double
 
 sub OnParameterChanged(parameterName As String)
 	SendGuiParameterShow("filter",  GetParameterInt("advanced"))
@@ -81,61 +82,42 @@ sub OnParameterChanged(parameterName As String)
 		for i=0 to arr_transformations.ubound
 			if transition_duration < arr_transformations[i].playhead then arr_transformations[i].playhead = transition_duration
 		next
+	case "transform_base", "transform_selected", "transform_hided"
+		ToBaseAll()
+		OnInit()
 	end select
 end sub
 
 sub OnExecAction(buttonId As Integer)
-	if buttonId == 10 then
-		'init
+	select case buttonId
+	case 10
 		OnInit()
-	elseif buttonId == 11 then
-		'to Base!
-		for i=0 to arr_transformations.ubound
-			arr_transformations[i].cur_props = arr_transformations[i].base_props
-			ApplyTransform(arr_transformations[i])
-			arr_transformations[i].dir.Show(arr_transformations[i].dir_dur)
-			arr_transformations[i].playhead = transition_duration 'stop animation
-		next
-		common_dir.Show(0)
-	elseif buttonId == 12 then
-		'to Hide!
-		for i=0 to arr_transformations.ubound
-			arr_transformations[i].cur_props = ParseProps(arr_transformations[i], GetParameterString("transform_hided"))
-			ApplyTransform(arr_transformations[i])
-			arr_transformations[i].dir.Show(0)
-			arr_transformations[i].playhead = transition_duration 'stop animation
-		next
-		common_dir.Show(0)
-	elseif buttonId == 13 then
-		'to Show!
-		for i=0 to arr_transformations.ubound
-			arr_transformations[i].cur_props = ParseProps(arr_transformations[i], GetParameterString("transform_selected"))
-			ApplyTransform(arr_transformations[i])
-			arr_transformations[i].dir.Show(arr_transformations[i].dir_dur)
-			arr_transformations[i].playhead = transition_duration 'stop animation
-		next
-		common_dir.StartAnimationReverse()
-		common_dir.StopAnimation()
-	elseif buttonId == 20 then
+	case 11
+		ToBaseAll()
+	case 12
+		ToHideAll()
+	case 13
+		ToShowAll()
+	case 20
 		'Base
 		this.ScriptPluginInstance.SetParameterInt("selected", 0)
-	elseif buttonId == 30 then
+	case 30
 		'Prev
 		new_selected = GetParameterInt("selected") - 1
 		if new_selected <= 0 then new_selected = arr_transformations.size
 		this.ScriptPluginInstance.SetParameterInt("selected", new_selected)
-	elseif buttonId == 40 then
+	case 40
 		'Next
 		new_selected = GetParameterInt("selected") + 1
 		if new_selected > arr_transformations.size then new_selected = 1
 		this.ScriptPluginInstance.SetParameterInt("selected", new_selected)
-	end if
+	end select
 end sub
 
 sub OnExecPerField()
 	for i=0 to arr_transformations.ubound
 		if arr_transformations[i].playhead < transition_duration then
-			if prev_selected == 0 OR selected == 0 then
+			if GetParameterBool("trought_base") AND (prev_selected == 0 OR selected == 0) then
 				' two time faster
 				arr_transformations[i].playhead += 2
 			else
@@ -174,6 +156,7 @@ sub OnInit()
 			new_transform.base_props.pos   = new_transform.c.position.xyz
 			new_transform.base_props.rot   = new_transform.c.rotation.xyz
 			new_transform.base_props.scale = new_transform.c.scaling.xyz
+			new_transform.base_props = ParseProps(new_transform, GetParameterString("transform_base"))
 
 			new_transform.cur_props  = new_transform.base_props
 			new_transform.prev_props = new_transform.base_props
@@ -228,15 +211,6 @@ End Sub
 
 ' MAIN ACTIONS with animations
 
-Sub DeselectAll()
-	for i=0 to arr_transformations.ubound
-		arr_transformations[i].next_props = ParseProps(arr_transformations[i], GetParameterString("transform_hided"))
-		arr_transformations[i].selected = false
-		arr_transformations[i].playhead = 0 'start animation
-	next
-	common_dir.ContinueAnimation()
-End Sub
-
 Sub BaseAll()
 	for i=0 to arr_transformations.ubound
 		'set next transforms as based
@@ -269,6 +243,50 @@ Sub SelectOne(_index As Integer)
 		arr_transformations[i].playhead = 0 'start animation
 	next
 	common_dir.ContinueAnimation()
+End Sub
+
+Sub DeselectAll()
+	for i=0 to arr_transformations.ubound
+		arr_transformations[i].next_props = ParseProps(arr_transformations[i], GetParameterString("transform_hided"))
+		arr_transformations[i].selected = false
+		arr_transformations[i].playhead = 0 'start animation
+	next
+	common_dir.ContinueAnimation()
+End Sub
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+' MOMENTUM ACTIONS without any animations
+
+Sub ToBaseAll()
+	for i=0 to arr_transformations.ubound
+		arr_transformations[i].cur_props = arr_transformations[i].base_props
+		ApplyTransform(arr_transformations[i])
+		arr_transformations[i].dir.Show(arr_transformations[i].dir_dur)
+		arr_transformations[i].playhead = transition_duration 'stop animation
+	next
+	common_dir.Show(0)
+End Sub
+
+Sub ToHideAll()
+	for i=0 to arr_transformations.ubound
+		arr_transformations[i].cur_props = ParseProps(arr_transformations[i], GetParameterString("transform_hided"))
+		ApplyTransform(arr_transformations[i])
+		arr_transformations[i].dir.Show(0)
+		arr_transformations[i].playhead = transition_duration 'stop animation
+	next
+	common_dir.Show(0)
+End Sub
+
+Sub ToShowAll()
+	for i=0 to arr_transformations.ubound
+		arr_transformations[i].cur_props = ParseProps(arr_transformations[i], GetParameterString("transform_selected"))
+		ApplyTransform(arr_transformations[i])
+		arr_transformations[i].dir.Show(arr_transformations[i].dir_dur)
+		arr_transformations[i].playhead = transition_duration 'stop animation
+	next
+	common_dir.StartAnimationReverse()
+	common_dir.StopAnimation()
 End Sub
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -470,4 +488,3 @@ Function Besizer(ByVal procent as double, ByVal begin_value as double, ByVal end
 	t_besier_value = (sqrt((-27*a^2*d + 9*a*b*c - 2*b^3)^2 + 4*(3*a*c - b^2)^3) - 27*a^2*d + 9*a*b*c - 2*b^3)^(1.0/3)/(3*2^(1.0/3)*a) - (2^(1.0/3)*(3*a*c - b^2))/(3*a*(sqrt((-27*a^2*d + 9*a*b*c - 2*b^3)^2 + 4*(3*a*c - b^2)^3) - 27*a^2*d + 9*a*b*c - 2*b^3)^(1.0/3)) - b/(3*a)
 	Besizer = begin_value + (end_value - begin_value)*( 3*(1-t_besier_value)*t_besier_value^2 + t_besier_value^3 ) 
 End Function
-
