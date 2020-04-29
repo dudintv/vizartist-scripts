@@ -1,4 +1,4 @@
-RegisterPluginVersion(2,2,0)
+RegisterPluginVersion(2,2,2)
 
 Structure Properties
 	a As Double 'it is Alpha
@@ -83,7 +83,7 @@ sub OnParameterChanged(parameterName As String)
 			if transition_duration < arr_transformations[i].playhead then arr_transformations[i].playhead = transition_duration
 		next
 	case "transform_base", "transform_selected", "transform_hided"
-		ToBaseAll()
+		ToBaseAllNow()
 		OnInit()
 	end select
 end sub
@@ -93,11 +93,11 @@ sub OnExecAction(buttonId As Integer)
 	case 10
 		OnInit()
 	case 11
-		ToBaseAll()
+		ToBaseAllNow()
 	case 12
-		ToHideAll()
+		ToHideAllNow()
 	case 13
-		ToShowAll()
+		ToShowAllNow()
 	case 20
 		'Base
 		this.ScriptPluginInstance.SetParameterInt("selected", 0)
@@ -258,7 +258,7 @@ End Sub
 
 ' MOMENTUM ACTIONS without any animations
 
-Sub ToBaseAll()
+Sub ToBaseAllNow()
 	for i=0 to arr_transformations.ubound
 		arr_transformations[i].cur_props = arr_transformations[i].base_props
 		ApplyTransform(arr_transformations[i])
@@ -268,7 +268,7 @@ Sub ToBaseAll()
 	common_dir.Show(0)
 End Sub
 
-Sub ToHideAll()
+Sub ToHideAllNow()
 	for i=0 to arr_transformations.ubound
 		arr_transformations[i].cur_props = ParseProps(arr_transformations[i], GetParameterString("transform_hided"))
 		ApplyTransform(arr_transformations[i])
@@ -278,7 +278,7 @@ Sub ToHideAll()
 	common_dir.Show(0)
 End Sub
 
-Sub ToShowAll()
+Sub ToShowAllNow()
 	for i=0 to arr_transformations.ubound
 		arr_transformations[i].cur_props = ParseProps(arr_transformations[i], GetParameterString("transform_selected"))
 		ApplyTransform(arr_transformations[i])
@@ -315,10 +315,28 @@ Function ParseProps(_transform As Transformation, _s As String) As Properties
 				_props.a = ParseOneValue(_transform.base_props.a, _arr_s[1])
 			Case "pos", "position"
 				_props.pos = ParseVertexValue(_transform.base_props.pos, _arr_s[1])
+			Case "posx", "positionx"
+				_props.pos = CVertex(ParseOneValue(_transform.base_props.pos.x, _arr_s[1]), _transform.base_props.pos.y, _transform.base_props.pos.z)
+			Case "posy", "positiony"
+				_props.pos = CVertex(_transform.base_props.pos.x, ParseOneValue(_transform.base_props.pos.y, _arr_s[1]), _transform.base_props.pos.z)
+			Case "posz", "positionz"
+				_props.pos = CVertex(_transform.base_props.pos.x, _transform.base_props.pos.y, ParseOneValue(_transform.base_props.pos.z, _arr_s[1]))
 			Case "rot", "rotation"
 				_props.rot = ParseVertexValue(_transform.base_props.rot, _arr_s[1])
+			Case "rotx", "rotationx"
+				_props.rot = CVertex(ParseOneValue(_transform.base_props.rot.x, _arr_s[1]), _transform.base_props.rot.y, _transform.base_props.rot.z)
+			Case "roty", "rotationy"
+				_props.rot = CVertex(_transform.base_props.rot.x, ParseOneValue(_transform.base_props.rot.y, _arr_s[1]), _transform.base_props.rot.z)
+			Case "rotz", "rotationz"
+				_props.rot = CVertex(_transform.base_props.rot.x, _transform.base_props.rot.y, ParseOneValue(_transform.base_props.rot.z, _arr_s[1]))
 			Case "scale", "scaling"
 				_props.scale = ParseVertexValue(_transform.base_props.scale, _arr_s[1])
+			Case "scalex", "scalingx"
+				_props.scale = CVertex(ParseOneValue(_transform.base_props.scale.x, _arr_s[1]), _transform.base_props.scale.y, _transform.base_props.scale.z)
+			Case "scaley", "scalingy"
+				_props.scale = CVertex(_transform.base_props.scale.x, ParseOneValue(_transform.base_props.scale.y, _arr_s[1]), _transform.base_props.scale.z)
+			Case "scalez", "scalingz"
+				_props.scale = CVertex(_transform.base_props.scale.x, _transform.base_props.scale.y, ParseOneValue(_transform.base_props.scale.z, _arr_s[1]))
 			Case Else
 				println("Din't find param " & _arr_s[0])
 			End Select
