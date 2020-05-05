@@ -3,7 +3,7 @@ Dim count_time_periods As Integer = 3
 
 sub OnInitParameters()
 	for i=1 to count_time_periods
-		RegisterParameterString("period_begin_" & i, "Period begin #" & i, "00:00", 7, 3, "0123456789:")
+		RegisterParameterString("period_begin_" & i, "Period begin #" & i, "00:00", 7, 5, "0123456789:")
 	next
 end sub
 
