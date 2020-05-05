@@ -7,19 +7,19 @@ sub OnInitParameters()
 	next
 end sub
 
-Dim timezonebegins As Array[Integer]
+Dim timeperiodbegins As Array[Integer]
 
 sub OnInit()
 	Dim s As String
 	Dim arr_s As Array[String]
-	timezonebegins.clear()
+	timeperiodbegins.clear()
 	for i=1 to count_time_periods
 		s = GetParameterString("period_begin_" & i)
 		s.Trim()
 		s.Split(":", arr_s)
 		
 		' get total count minutes from begin of the day, to make comparison much easier
-		timezonebegins.Push(CInt(arr_s[0])*60 + CInt(arr_s[1]))
+		timeperiodbegins.Push(CInt(arr_s[0])*60 + CInt(arr_s[1]))
 	next
 end sub
 sub OnParameterChanged(parameterName As String)
@@ -35,9 +35,9 @@ sub OnExecPerField()
 	current_count_minutes_from_begin_of_today = dt.Hour*60 + dt.Minute
 	
 	' lets find currect time period
-	current_period = timezonebegins.ubound
-	for i=timezonebegins.ubound to 0 step -1
-		if current_count_minutes_from_begin_of_today >= timezonebegins[i] then
+	current_period = timeperiodbegins.ubound
+	for i=timeperiodbegins.ubound to 0 step -1
+		if current_count_minutes_from_begin_of_today >= timeperiodbegins[i] then
 			current_period = i
 			exit for
 		end if
