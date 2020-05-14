@@ -1,3 +1,4 @@
+RegisterPluginVersion(0,6,0)
 Dim info As String = "
 The script adjust width to outer width like MaxSize plugin with min and max scale.
 And gives ability to animate like scrolling within gabarit container.

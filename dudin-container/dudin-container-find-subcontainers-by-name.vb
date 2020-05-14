@@ -1,4 +1,4 @@
-Function GetSubContainerByName(_c As Container, _name As String) As Array[Container]
+Function GetSubContainersByName(_c As Container, _name As String) As Array[Container]
 	Dim _arr As Array[Container]
 	_c.GetContainerAndSubContainers(_arr, false)
 	_arr.Erase(0)
