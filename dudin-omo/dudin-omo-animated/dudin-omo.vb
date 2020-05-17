@@ -1,4 +1,4 @@
-RegisterPluginVersion(2,2,2)
+RegisterPluginVersion(2,3,0)
 
 Structure Properties
 	a As Double 'it is Alpha
@@ -27,6 +27,7 @@ End Structure
 Dim arr_transformations As Array[Transformation]
 
 sub OnInitParameters()
+	RegisterParameterContainer("root", "Root container (or this)")
 	RegisterParameterString("transform_base", "Transform base", "", 80, 999, "")
 	RegisterParameterString("transform_selected", "Transform selected", "", 80, 999, "")
 	RegisterParameterString("transform_hided", "Transform hided", "", 80, 999, "")
@@ -45,10 +46,12 @@ sub OnInitParameters()
 	
 	'advanced settings
 	RegisterParameterBool("advanced", "Advance functions", false)
+	RegisterParameterBool("anim_items", "Animate item dirs", false)
 	RegisterParameterString("filter", "Child filter (regexp)", "", 80, 999, "")
 	RegisterParameterString("common_dir", "Common director", "", 80, 999, "")
 end sub
 
+Dim c_root As Container
 Dim selected, prev_selected, new_selected As Integer
 Dim filter As String
 Dim common_dir As Director
@@ -56,6 +59,7 @@ Dim transition_duration As Integer
 Dim middle_transition As Double
 
 sub OnParameterChanged(parameterName As String)
+	SendGuiParameterShow("anim_items", GetParameterInt("advanced"))
 	SendGuiParameterShow("filter",  GetParameterInt("advanced"))
 	SendGuiParameterShow("common_dir", GetParameterInt("advanced"))
 	SendGuiParameterShow("middle_transition", CInt(GetParameterBool("trought_base")))
@@ -137,6 +141,9 @@ end sub
 ' INIT
 
 sub OnInit()
+	c_root = GetParameterContainer("root")
+	if c_root == null then c_root = this
+	
 	transition_duration = CInt(GetParameterDouble("transition_duration") / System.CurrentRefreshRate)
 	if GetParameterBool("advanced") then
 		'fill these variables only if "advanced" is ON
@@ -148,10 +155,10 @@ sub OnInit()
 	
 	Dim _transform_selected, _transform_hided As String
 	arr_transformations.Clear()
-	for i=0 to this.ChildContainerCount-1
+	for i=0 to c_root.ChildContainerCount-1
 		Dim new_transform As Transformation
-		if filter == "" OR this.GetChildContainerByIndex(i).name.Match(filter) then
-			new_transform.c = this.GetChildContainerByIndex(i)
+		if filter == "" OR c_root.GetChildContainerByIndex(i).name.Match(filter) then
+			new_transform.c = c_root.GetChildContainerByIndex(i)
 			new_transform.base_props.a     = new_transform.c.alpha.value
 			new_transform.base_props.pos   = new_transform.c.position.xyz
 			new_transform.base_props.rot   = new_transform.c.rotation.xyz
@@ -167,10 +174,10 @@ sub OnInit()
 			_transform_selected.Substitute("\\s", "", true) 'remove all spaces
 			_transform_hided = GetParameterString("transform_hided")
 			_transform_hided.Substitute("\\s", "", true) 'remove all spaces
-			new_transform.what_animated.Push(  _transform_selected.Match("a=")     OR _transform_hided.Match("a=")      ) 'Alpha
-			new_transform.what_animated.Push(  _transform_selected.Match("pos=")   OR _transform_hided.Match("pos=")    ) 'Position
-			new_transform.what_animated.Push(  _transform_selected.Match("rot=")   OR _transform_hided.Match("rot=")    ) 'Rotation
-			new_transform.what_animated.Push(  _transform_selected.Match("scale=") OR _transform_hided.Match("scale=")  ) 'Scaling
+			new_transform.what_animated.Push(  _transform_selected.Match("a=")     OR _transform_hided.Match("a=") OR _transform_selected.Match("alpha=")     OR _transform_hided.Match("alpha=")      ) 'Alpha
+			new_transform.what_animated.Push(  _transform_selected.Match("pos.*=")   OR _transform_hided.Match("pos.*=")    ) 'Position
+			new_transform.what_animated.Push(  _transform_selected.Match("rot.*=")   OR _transform_hided.Match("rot.*=")    ) 'Rotation
+			new_transform.what_animated.Push(  _transform_selected.Match("scale=") OR _transform_hided.Match("scale=") OR  _transform_selected.Match("scalng=") OR _transform_hided.Match("scaling=")  ) 'Scaling
 			
 			new_transform.playhead = transition_duration 'to stop scripted animation in ExecPerField
 			InitDirector(new_transform)
@@ -181,7 +188,7 @@ sub OnInit()
 	next
 	prev_selected = 0
 	selected = 0
-	this.ScriptPluginInstance.SetParameterInt("selected", 0)
+	c_root.ScriptPluginInstance.SetParameterInt("selected", 0)
 end sub
 
 Sub InitDirector(_transform As Transformation)
@@ -262,8 +269,10 @@ Sub ToBaseAllNow()
 	for i=0 to arr_transformations.ubound
 		arr_transformations[i].cur_props = arr_transformations[i].base_props
 		ApplyTransform(arr_transformations[i])
-		arr_transformations[i].dir.Show(arr_transformations[i].dir_dur)
-		arr_transformations[i].playhead = transition_duration 'stop animation
+		if GetParameterBool("anim_items") then
+			arr_transformations[i].dir.Show(arr_transformations[i].dir_dur)
+			arr_transformations[i].playhead = transition_duration 'stop animation
+		end if
 	next
 	common_dir.Show(0)
 End Sub
@@ -272,8 +281,10 @@ Sub ToHideAllNow()
 	for i=0 to arr_transformations.ubound
 		arr_transformations[i].cur_props = ParseProps(arr_transformations[i], GetParameterString("transform_hided"))
 		ApplyTransform(arr_transformations[i])
-		arr_transformations[i].dir.Show(0)
-		arr_transformations[i].playhead = transition_duration 'stop animation
+		if GetParameterBool("anim_items") then
+			arr_transformations[i].dir.Show(0)
+			arr_transformations[i].playhead = transition_duration 'stop animation
+		end if
 	next
 	common_dir.Show(0)
 End Sub
@@ -282,8 +293,10 @@ Sub ToShowAllNow()
 	for i=0 to arr_transformations.ubound
 		arr_transformations[i].cur_props = ParseProps(arr_transformations[i], GetParameterString("transform_selected"))
 		ApplyTransform(arr_transformations[i])
-		arr_transformations[i].dir.Show(arr_transformations[i].dir_dur)
-		arr_transformations[i].playhead = transition_duration 'stop animation
+		if GetParameterBool("anim_items") then
+			arr_transformations[i].dir.Show(arr_transformations[i].dir_dur)
+			arr_transformations[i].playhead = transition_duration 'stop animation
+		end if
 	next
 	common_dir.StartAnimationReverse()
 	common_dir.StopAnimation()
@@ -410,7 +423,7 @@ End Function
 ' ANIMATION
 
 Sub PlayAnimation(_transform as Transformation)
-	if _transform.dir == null then exit sub
+	if _transform.dir == null OR NOT GetParameterBool("advanced") OR NOT GetParameterBool("anim_items") then exit sub
 	
 	if GetParameterBool("trought_base") AND prev_selected <> 0 AND selected <> 0 then
 		if _transform.playhead < middle_transition then
