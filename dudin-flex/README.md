@@ -1,6 +1,9 @@
 ## Flex-positioning. Partly implemented of "flexbox" conception from html/css.
 
-#### Version 1.1 (28 May 2020)
+#### Version 1.2 (28 May 2020)
+* Add animate transition with duration and several ease functions 
+
+#### Version 1.1.1 (28 May 2020)
 * FIX: there was incorrect calc item witdh in "first sub-container" mode
 
 #### Version 1.1 (06 February 2020)
