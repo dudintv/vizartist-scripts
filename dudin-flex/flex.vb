@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,1,0)
+RegisterPluginVersion(1,1,1)
 Dim info As String = "
 Flex-position. Copies logic from CSS3 / HTML5.
 Developer: Dmitry Dudin.
@@ -47,7 +47,7 @@ sub OnInitParameters()
 	RegisterParameterDouble("power_gap", "Magnetic gap", 0, -100, 10000)
 	RegisterParameterDouble("min_gap", "Min gap", 0, 0, 1000)
 	RegisterParameterDouble("shift_gap", "Shift gap", 0, -1000, 1000)
-	RegisterParameterBool("collapse_if_overflow", "Collapse if overflow", true)
+	RegisterParameterBool("collapse_if_overflow", "Collapse gap if overflow", true)
 end sub
 
 sub OnInit()
@@ -76,12 +76,11 @@ end sub
 '''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Function GetChildGabarit(child As Container) As Vertex
-	if (mode_gabarit_source == 1) AND child.ChildContainerCount > 0 then
-		GetChildGabarit = child.FirstChildContainer.GetTransformedBoundingBoxDimensions()
-		GetChildGabarit.x *= child.FirstChildContainer.scaling.x
-		GetChildGabarit.y *= child.FirstChildContainer.scaling.y
+	if mode_gabarit_source == 1 AND child.ChildContainerCount > 0 then
+		GetChildGabarit = child.FirstChildContainer.GetBoundingBoxDimensions()
+		GetChildGabarit.x *= child.scaling.x * child.FirstChildContainer.scaling.x
+		GetChildGabarit.y *= child.scaling.y * child.FirstChildContainer.scaling.y
 	else
-		'GetChildGabarit = child.GetTransformedBoundingBoxDimensions()
 		GetChildGabarit = child.GetBoundingBoxDimensions()
 		GetChildGabarit.x *= child.scaling.x
 		GetChildGabarit.y *= child.scaling.y
@@ -214,6 +213,7 @@ Sub SetChildrenVertexes(child As Container)
 		child_v2.y *= child.FirstChildContainer.scaling.y
 		child_v1 += child.FirstChildContainer.position.xyz
 		child_v2 += child.FirstChildContainer.position.xyz
+		child_v1 = child_v1
 	else
 		'whole child
 		child.GetBoundingBox(child_v1, child_v2)
