@@ -1,6 +1,11 @@
 ## Russian declension of a noun according a number
 Склонение существительных согласно числительному.
 
+#### Version 1.1 (5 June 2020)
+* now it's possible to write multiply declention injections
+
+* теперь можно вставлять несколько скобок со склоняемыми формами, например "желт(ая,ые,ых) карточ(ка,ки,ек)" для "1 желтая карточка", "2 желтые карточки" и "5 желтых карточек"
+
 #### Version 1.0 (2 June 2020)
 * accepts three declension forms of a noun and a number to automatic choose correct form of the noun regards the input number
 * changeble part can be in the middle of the string — inside parentheses

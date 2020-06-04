@@ -1,11 +1,11 @@
-RegisterPluginVersion(1,0,0)
+RegisterPluginVersion(1,1,0)
 'Author: Dmitry Dudin, http://dudin.tv
-
-Dim c_number, c_forms, c_output As Container
-Dim s, forms, prev_forms, form_1, form_2, form_3, prefix, suffix As String
+Dim c_number, c_source, c_output As Container
+Dim s, source, prev_source, prefix, inside_par, suffix, output As String
 Dim arr_s As Array[String]
 Dim number, prev_number, number_100, number_10 As Integer
-Dim has_different_forms As Boolean
+Dim has_different_source As Boolean
+Dim open_par, close_par As Integer
 
 Dim buttonOutputs As Array[String]
 buttonOutputs.Push("Parent")
@@ -19,10 +19,10 @@ sub OnInitParameters()
 	RegisterParameterContainer("c_number", "Number container (or this)")
 	RegisterParameterInt("number", "Number", 0, -999999, 999999)
 	
-	RegisterParameterBool("forms_from_container", "Get Forms from container", false)
-	RegisterRadioButton("forms_select", "Forms", 0, buttonOutputs)
-	RegisterParameterContainer("c_forms", "Forms container (or this)")
-	RegisterParameterString("forms", "Forms", "", 60, 999, "")
+	RegisterParameterBool("source_from_container", "Get Source Text from container", false)
+	RegisterRadioButton("source_select", "Source", 0, buttonOutputs)
+	RegisterParameterContainer("c_source", "Source container (or this)")
+	RegisterParameterString("source", "Source", "", 60, 999, "")
 	
 	RegisterRadioButton("output_select", "Output", 0, buttonOutputs)
 	RegisterParameterContainer("c_output", "Output container (or this)")
@@ -45,20 +45,20 @@ sub OnInit()
 		c_number = GetParameterContainer("c_number")
 	End Select
 	'-----------------------------------------------
-	Select Case GetParameterInt("forms_select")
+	Select Case GetParameterInt("source_select")
 	Case 0
 		'Parent
-		c_forms = this.ParentContainer
+		c_source = this.ParentContainer
 	Case 1
 		'Prev
-		c_forms = this.PreviousContainer
+		c_source = this.PreviousContainer
 	Case 2
-		c_forms = this
+		c_source = this
 	Case 3
 		'Next
-		c_forms = this.NextContainer
+		c_source = this.NextContainer
 	Case 4
-		c_forms = GetParameterContainer("c_forms")
+		c_source = GetParameterContainer("c_source")
 	End Select
 	'-----------------------------------------------
 	Select Case GetParameterInt("output_select")
@@ -81,9 +81,9 @@ sub OnParameterChanged(parameterName As String)
 	SendGuiParameterShow("c_number", CInt( GetParameterBool("number_from_container") AND GetParameterInt("number_select") == 4 ))
 	SendGuiParameterShow("number_select", CInt( GetParameterBool("number_from_container") ))
 	SendGuiParameterShow("number", CInt( NOT GetParameterBool("number_from_container") ))
-	SendGuiParameterShow("c_forms", CInt( GetParameterBool("forms_from_container") AND GetParameterInt("forms_select") == 4 ))
-	SendGuiParameterShow("forms_select", CInt( GetParameterBool("forms_from_container") ))
-	SendGuiParameterShow("forms", CInt( NOT GetParameterBool("forms_from_container") ))
+	SendGuiParameterShow("c_source", CInt( GetParameterBool("source_from_container") AND GetParameterInt("source_select") == 4 ))
+	SendGuiParameterShow("source_select", CInt( GetParameterBool("source_from_container") ))
+	SendGuiParameterShow("source", CInt( NOT GetParameterBool("source_from_container") ))
 	SendGuiParameterShow("c_output", CInt( GetParameterInt("output_select") == 4 ))
 	OnInit()
 end sub
@@ -101,46 +101,54 @@ sub OnExecPerField()
 		number_10  = DivisionRemainderInteger(number, 10)
 	end if
 	
-	' GET FORMS
-	if GetParameterBool("forms_from_container") then
-		forms = c_forms.geometry.text
+	' GET source
+	if GetParameterBool("source_from_container") then
+		source = c_source.geometry.text
 	else
-		forms = GetParameterString("forms")
+		source = GetParameterString("source")
 	end if
-	if prev_forms <> forms then
-		has_different_forms = forms.find("(") > -1
-		if has_different_forms then
-			prefix = forms.left(forms.find("("))
-			suffix = forms.right(forms.length - forms.find(")") - 1)
-			s = forms.GetSubstring( forms.find("(") + 1, forms.find(")") - forms.find("(") - 1 )
-			s.Split(",", arr_s)
-			form_1 = arr_s[0]
-			form_2 = arr_s[1]
-			form_3 = arr_s[2]
-		end if
+	if prev_source <> source then
+		has_different_source = source.find("(") > -1
 	end if
 
 	' OUTPUT
-	if has_different_forms then
-		if prev_number <> number OR prev_forms <> forms then
-			if number_100 > 10 AND number_100 < 20 then
-				c_output.geometry.text = form_3
-			elseif number_10 > 1 AND number_10 < 5 then
-				c_output.geometry.text = prefix & form_2 & suffix
-			elseif number_10 == 1 then
-				c_output.geometry.text = prefix & form_1 & suffix
-			else
-				c_output.geometry.text = prefix & form_3 & suffix
-			end if
+	if prev_number <> number OR prev_source <> source then
+		if has_different_source then
+			output = source
+			Dim anti_infinity As Integer = 0
+			do while output.find("(") > -1 AND output.find(")") > -1 AND anti_infinity < 20
+				open_par = output.FindFirstOf("(")
+				close_par = output.FindFirstOf(")")
+				prefix = output.left(open_par)
+				suffix = output.right(output.length - close_par - 1)
+				inside_par = output.GetSubstring( open_par + 1, close_par - open_par - 1 )
+				output = prefix & GetDeclentionForm(inside_par) & suffix
+				anti_infinity += 1
+			loop
+			c_output.geometry.text = output
+		else
+			'without any parsing:
+			c_output.geometry.text = source
 		end if
-	else
-		c_output.geometry.text = prefix & forms & suffix
 	end if
 	
 	' PREPARE PREVIOUS VALUES
 	prev_number = number
-	prev_forms = forms
+	prev_source = source
 end sub
+
+Function GetDeclentionForm(forms As String) As String
+	forms.Split(",", arr_s)
+	if number_100 > 10 AND number_100 < 20 then
+		GetDeclentionForm =  arr_s[2]
+	elseif number_10 > 1 AND number_10 < 5 then
+		GetDeclentionForm = arr_s[1]
+	elseif number_10 == 1 then
+		GetDeclentionForm = arr_s[0]
+	else
+		GetDeclentionForm =  arr_s[2]
+	end if
+End Function
 
 Function DivisionRemainderInteger(ByVal _input As Integer, _limit As Integer) As Integer
 	do while _input > _limit
