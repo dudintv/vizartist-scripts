@@ -1,7 +1,10 @@
 ## Link transformation for array sub-containers
 
 #### Version 1.1 (14 June 2020)
-* Watch for all sub-sub-children of target and link to target
+* Watch for all of sources (include all sub-sub-children) and link them all to the targets
+* Add a sync parameter: rectangle size
+* Add disabling "TextLink" plugin for targets
+* Optimize linking alpha, text, rectangle size — avoid trying to link unexisting parameters
 
 #### Version 1.0 (14 June 2020)
 * Button to make a full copy of all children from Source to Target container

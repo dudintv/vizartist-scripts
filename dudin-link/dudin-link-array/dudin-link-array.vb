@@ -4,19 +4,27 @@ Dim c_source, c_target As Container
 Dim arr_source, arr_target As Array[Container]
 
 Dim new_active As Boolean
-Dim new_pos, new_rot, new_scale As Vertex
+Dim new_pos, new_rot, new_scale, new_rect_size As Vertex
 Dim new_alpha As Double
 Dim new_text As String
 
 Structure Prev
 	active As Boolean
-	pos As Vertex
-	rot As Vertex
-	scale As Vertex
-	alpha As Double
-	text As String
+	pos    As Vertex
+	rot    As Vertex
+	scale  As Vertex
+	alpha  As Double
+	text   As String
+	rect_size As Vertex
 End Structure
 Dim arr_prev As Array[Prev]
+
+Structure Plugins
+	have_alpha As Boolean
+	have_text  As Boolean
+	have_rect  As Boolean
+End Structure
+Dim arr_plugins As Array[Plugins]
 
 sub OnInitParameters()
 	RegisterParameterContainer("source", "Source")
@@ -28,6 +36,8 @@ sub OnInitParameters()
 	RegisterParameterBool("scale", "Sync scale", false)
 	RegisterParameterBool("alpha", "Sync alpha", false)
 	RegisterParameterBool("text", "Sync text", false)
+	RegisterParameterBool("rect", "Sync rectangle", false)
+	RegisterParameterBool("off_text_link", "Disable text link", false)
 end sub
 
 sub OnInit()
@@ -35,6 +45,8 @@ sub OnInit()
 	c_target = GetParameterContainer("target")
 	FillArrays()
 	FillPrevs()
+	FillPlugins()
+	DisablePlugins()
 end sub
 sub OnParameterChanged(parameterName As String)
 	OnInit()
@@ -72,7 +84,29 @@ Sub FillPrevs()
 		this_prev.scale  = arr_source[i].scaling.xyz
 		this_prev.alpha  = arr_source[i].alpha.value
 		this_prev.text   = arr_source[i].geometry.text
+		this_prev.rect_size = CVertex(arr_source[i].GetGeometryPluginInstance().GetParameterDouble("width"), arr_source[i].GetGeometryPluginInstance().GetParameterDouble("height"), 0)
 		arr_prev.Push(this_prev)
+	next
+End Sub
+
+Dim arr_p As Array[PluginInstance]
+Dim p As PluginInstance
+Sub FillPlugins()
+	arr_plugins.Clear()
+	for i=0 to arr_source.ubound
+		Dim new_plugins As Plugins
+		new_plugins.have_alpha = system.SendCommand("#" & arr_source[i].vizid & "*ALPHA GET") <> ""
+		new_plugins.have_text  = system.SendCommand("#" & arr_source[i].vizid & "*GEOM*TYPE GET") == "TEXT"
+		new_plugins.have_rect  = system.SendCommand("#" & arr_source[i].vizid & "*GEOM*TYPE GET") == "Rectangle"
+		arr_plugins.Push(new_plugins)
+	next
+End Sub
+
+Sub DisablePlugins()
+	for i=0 to arr_target.ubound
+		if GetParameterBool("off_text_link") then 
+			arr_target[i].GetFunctionPluginInstance("TextLink").Active = false
+		end if
 	next
 End Sub
 
@@ -85,6 +119,8 @@ sub OnExecAction(buttonId As Integer)
 		next
 		FillArrays()
 		FillPrevs()
+		FillPlugins()
+		DisablePlugins()
 		scene.UpdateSceneTree()
 	end if
 end sub
@@ -130,7 +166,7 @@ sub OnExecPerField()
 		end if
 		
 		'alpha
-		if GetParameterBool("alpha") then
+		if GetParameterBool("alpha") AND arr_plugins[i].have_alpha then
 			new_alpha = arr_source[i].alpha.value
 			if arr_prev[i].alpha <> new_alpha then
 				arr_target[i].alpha.value = new_alpha
@@ -139,11 +175,21 @@ sub OnExecPerField()
 		end if
 		
 		'text
-		if GetParameterBool("text") then
+		if GetParameterBool("text") AND arr_plugins[i].have_text then
 			new_text = arr_source[i].geometry.text
 			if arr_prev[i].text <> new_text then
 				arr_target[i].geometry.text = new_text
 				arr_prev[i].text = new_text
+			end if
+		end if
+		
+		'rectangle
+		if GetParameterBool("rect") AND arr_plugins[i].have_rect then
+			new_rect_size = CVertex(arr_source[i].GetGeometryPluginInstance().GetParameterDouble("width"), arr_source[i].GetGeometryPluginInstance().GetParameterDouble("height"), 0)
+			if arr_prev[i].rect_size <> new_rect_size then
+				arr_target[i].GetGeometryPluginInstance().SetParameterDouble("width",  new_rect_size.x)
+				arr_target[i].GetGeometryPluginInstance().SetParameterDouble("height", new_rect_size.y)
+				arr_prev[i].rect_size = new_rect_size
 			end if
 		end if
 	next
