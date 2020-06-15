@@ -38,11 +38,15 @@ sub OnInitParameters()
 	RegisterParameterBool("text", "Sync text", false)
 	RegisterParameterBool("rect", "Sync rectangle", false)
 	RegisterParameterBool("off_text_link", "Disable text link", false)
+	RegisterParameterBool("off_autofollow", "Disable Autofollow", false)
+	RegisterParameterBool("off_animation", "Delete animation", false)
 end sub
 
 sub OnInit()
 	c_source = GetParameterContainer("source")
+	if c_source == null then c_source = this
 	c_target = GetParameterContainer("target")
+	if c_target == null then c_target = this
 	FillArrays()
 	FillPrevs()
 	FillPlugins()
@@ -106,6 +110,14 @@ Sub DisablePlugins()
 	for i=0 to arr_target.ubound
 		if GetParameterBool("off_text_link") then 
 			arr_target[i].GetFunctionPluginInstance("TextLink").Active = false
+		end if
+		
+		if GetParameterBool("off_autofollow") then 
+			arr_target[i].GetFunctionPluginInstance("Autofollow").Active = false
+		end if
+		
+		if GetParameterBool("off_animation") then
+			system.SendCommand("#" & arr_target[i].vizid & "*ANIMATION DELETE")
 		end if
 	next
 End Sub
