@@ -1,6 +1,6 @@
-RegisterPluginVersion(4,3,5)
+RegisterPluginVersion(4,3,6)
 Dim info As String = "Developer: Dmitry Dudin
-18 february 2019
+http://dudin.tv/scripts/logic
 -------------------------------------------------------
 Укажи (через запятую, на пробелы пофиг) какие блоки титров
 будет уходить с экрана или наоборот показываться в случаях:
@@ -63,6 +63,7 @@ Dim nav_OnOff As Channel        'в основном директоре action-�
 Dim feelfill  As Boolean        'чувствительность на пустую строку fill. если  feelfill=true то нельзя будет выдать титр в котором нет текста для выдачи!
 Dim fill_arr  As Array[String]  'массив серий, туда попадают титры-серии после разбиения по разделительным символам
 Dim isCanChange, isCanINtoOUT As Boolean  'разрешения на однократное выполнение change и INtoOUT
+Dim is_needed_to_start_counter_for_taking_next_series As Boolean
 
 	'текстовые поля с соответсвующими значениями... :)
 Dim ctrl, fill, take, takeout, takethis, takeoutthis, cur As String
@@ -657,6 +658,8 @@ sub OnInit()
 	local_memory[titr_name & "_status"] = 0
 	'выключаем таймер
 	passed = -1
+	is_needed_to_start_counter_for_taking_next_series = false
+	
  
 	'ставим директор в нулевую позицию
 	d_OnOff.Show(0)
@@ -857,8 +860,9 @@ end sub
 '----------------------------------------------------------
  
 Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
-	If NOT ( Scene.IsBacklayer() OR Scene.IsFrontlayer() OR Scene.IsMainlayer() ) then
-		'если сцена не в слое — то никак не реагировать
+	Dim test_point As Vertex = Scene.ScreenPosToWorldPos(99987,99987)
+	if test_point.x == 0 AND test_point.y == 0 AND test_point.z == 0 then
+		'если сцена не в рендере — то никак не реагировать
 		Log("Scene is not in layer. Only in scene pool.")
 		exit sub
 	end if
@@ -1102,11 +1106,10 @@ End Sub
 'процедура выравнивания текста на обоих контейнерах
 'выполняется в ключе loop_d
 Sub INtoOUT()
-	'TODO: перекинуть данные из 2 в 1
 	If cRoot = null Then Exit Sub
 	isCanINtoOUT = false
 	fill = local_memory[titr_name & "_value"]
-	fill.trim
+	fill.trim()
 	SendFillToDropzones(fill,DZ_SIDE_FIRST)
 End Sub
 '----------------------------------------------------------
@@ -1226,7 +1229,8 @@ end function
 sub take_next_series()
 	'если таймер выключен - ничего не делать!
 	'if passed < 0 Then Exit Sub
-	passed = 0
+	is_needed_to_start_counter_for_taking_next_series = true
+	Log("SET is_needed_to_start_counter_for_taking_next_series = true")
 	
 	if MODE_SERIES == mode then
 		'значит если серийный режим
@@ -1365,10 +1369,12 @@ End Function
  
 sub start_delay_series()
 	pause = CInt(50.0 * GetParameterDouble("Pause"))
-	passed = 0
+	is_needed_to_start_counter_for_taking_next_series = true
+	Log("SET is_needed_to_start_counter_for_taking_next_series = true IN start_delay_series()")
 end sub
 sub stop_delay_series()
 	passed = -1
+	is_needed_to_start_counter_for_taking_next_series = false
 end sub
 
 ' ...РАБОТА С СЕРИЯМИ
@@ -1478,12 +1484,19 @@ sub OnExecPerField()
 		'определение в каком месте плейхед у d_OnOff
 		playhead = d_OnOff.Time
 		
-		if isCanChange then
-			if PlayheadIsNear(stoper_a) then	Change()
-		end if
+		'if isCanChange then
+		'	if PlayheadIsNear(stoper_a) then	Change()
+		'end if
 		
 		if isCanINtoOUT then
 			if PlayheadIsNear(stoper_b) then INtoOUT()
+		end if
+		
+		if mode == MODE_SERIES AND is_needed_to_start_counter_for_taking_next_series then
+			if PlayheadIsNear(stoper_a) OR PlayheadIsNear(stoper_b) then
+				passed = 0
+				is_needed_to_start_counter_for_taking_next_series = false
+			end if
 		end if
 	end if
 	

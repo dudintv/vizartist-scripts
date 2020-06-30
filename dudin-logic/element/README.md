@@ -1,11 +1,15 @@
 ## Element (a lower third)
 
+#### Version 4.3.6 (18 february 2019)
+* CHANGE: serial pause logic. Before: timer started at begin of transition animations. After: timer starts at end of transition animations.
+* FIX: checking not only loading in layer but checking loaded in render at all, it's useful for loading scene with dudin-logic into GFXs
+
 #### Version 4.3.5 (18 february 2019)
-* FIXED: checking of emptiness of the fill
+* FIX: checking of emptiness of the fill
 
 #### Version 4.3.4 (15 february 2019)
 * If fill is empty it clear all text dropzones
-* FIXED: ignore second attempts to take the same fill
+* FIX: ignore second attempts to take the same fill
 
 #### Version 4.3.3 (08 february 2019)
 * Change logic of setting ClipChannels. Now it's working by directors, instead globally way. You must naming directors as "Clip1" and key of ClipChannel as "clip1", where "1" is a number of corresponding ClipChannel.
