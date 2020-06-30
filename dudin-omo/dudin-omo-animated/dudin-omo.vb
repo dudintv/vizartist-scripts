@@ -1,4 +1,4 @@
-RegisterPluginVersion(2,3,0)
+RegisterPluginVersion(2,4,0)
 
 Structure Properties
 	a As Double 'it is Alpha
@@ -12,6 +12,8 @@ Structure Transformation
 	cur_props, base_props, prev_props, next_props As Properties
 	playhead As Double
 	'playhead = 0..100 (prev..next)
+	target_state As Integer
+	'target_state = -1 (hide), 0 (base), 1 (selected)
 	
 	what_animated As Array[Boolean]
 	'[0] - Alpha
@@ -31,7 +33,7 @@ sub OnInitParameters()
 	RegisterParameterString("transform_base", "Transform base", "", 80, 999, "")
 	RegisterParameterString("transform_selected", "Transform selected", "", 80, 999, "")
 	RegisterParameterString("transform_hided", "Transform hided", "", 80, 999, "")
-	RegisterParameterBool("trought_base", "Transition throught base(0)", false)
+	RegisterParameterBool("through_base", "Transition throught base(0)", false)
 	RegisterParameterSliderInt("middle_transition", "Middle transition, %", 50, 0, 100, 300)
 	RegisterParameterBool("keep_visible", "Keep visible (like in Omo)", false)
 	RegisterParameterInt("selected", "Selected", 0, -1, 999)
@@ -42,27 +44,32 @@ sub OnInitParameters()
 	RegisterPushButton("base", "Base", 20)
 	RegisterPushButton("prev", "Prev", 30)
 	RegisterPushButton("next", "Next", 40)
-	RegisterParameterDouble("transition_duration", "Duration", 1, 0, 999)
+	RegisterParameterDouble("transition_duration_show", "Duration show (sec)", 1, 0, 999)
+	RegisterParameterDouble("transition_duration_hide", "Duration hide (sec)", 1, 0, 999)
 	
 	'advanced settings
 	RegisterParameterBool("advanced", "Advance functions", false)
 	RegisterParameterBool("anim_items", "Animate item dirs", false)
 	RegisterParameterString("filter", "Child filter (regexp)", "", 80, 999, "")
 	RegisterParameterString("common_dir", "Common director", "", 80, 999, "")
+	
+	RegisterParameterBool("manual_show_anim", "Manual show-anim", false)
+	RegisterParameterDouble("show_anim_value", "Show-anim value (uniq dir)", 0, 0, 100.0)
 end sub
 
 Dim c_root As Container
 Dim selected, prev_selected, new_selected As Integer
 Dim filter As String
-Dim common_dir As Director
-Dim transition_duration As Integer
+Dim common_dir, show_anim_dir As Director
+Dim transition_duration_show, transition_duration_hide As Integer
 Dim middle_transition As Double
 
 sub OnParameterChanged(parameterName As String)
 	SendGuiParameterShow("anim_items", GetParameterInt("advanced"))
 	SendGuiParameterShow("filter",  GetParameterInt("advanced"))
 	SendGuiParameterShow("common_dir", GetParameterInt("advanced"))
-	SendGuiParameterShow("middle_transition", CInt(GetParameterBool("trought_base")))
+	SendGuiParameterShow("middle_transition", CInt(GetParameterBool("through_base")))
+	SendGuiParameterShow("show_anim_value", CInt(GetParameterBool("manual_show_anim")))
 	
 	select case parameterName
 	case "selected"
@@ -80,11 +87,12 @@ sub OnParameterChanged(parameterName As String)
 		else 'selected > 1
 			SelectOne(selected-1)
 		end if
-	case "middle_transition", "transition_duration"
-		middle_transition = GetParameterInt("middle_transition")/100.0 * GetParameterDouble("transition_duration")/System.CurrentRefreshRate
-		transition_duration = CInt(GetParameterDouble("transition_duration") / System.CurrentRefreshRate)
+	case "middle_transition", "transition_duration_show", "transition_duration_hide"
+		middle_transition = GetParameterInt("middle_transition")/100.0 * GetParameterDouble("transition_duration_show")/System.CurrentRefreshRate
+		transition_duration_show = CInt(GetParameterDouble("transition_duration_show") / System.CurrentRefreshRate)
+		transition_duration_hide = CInt(GetParameterDouble("transition_duration_hide") / System.CurrentRefreshRate)
 		for i=0 to arr_transformations.ubound
-			if transition_duration < arr_transformations[i].playhead then arr_transformations[i].playhead = transition_duration
+			arr_transformations[i].playhead = -1
 		next
 	case "transform_base", "transform_selected", "transform_hided"
 		ToBaseAllNow()
@@ -118,10 +126,17 @@ sub OnExecAction(buttonId As Integer)
 	end select
 end sub
 
+Dim max_duration As Double
 sub OnExecPerField()
 	for i=0 to arr_transformations.ubound
-		if arr_transformations[i].playhead < transition_duration then
-			if GetParameterBool("trought_base") AND (prev_selected == 0 OR selected == 0) then
+		if arr_transformations[i].target_state == 1 then
+			max_duration = transition_duration_show
+		else
+			max_duration = transition_duration_hide
+		end if
+
+		if arr_transformations[i].playhead >= 0 AND arr_transformations[i].playhead < max_duration then
+			if GetParameterBool("through_base") AND (prev_selected == 0 OR selected == 0) then
 				' two time faster
 				arr_transformations[i].playhead += 2
 			else
@@ -129,9 +144,9 @@ sub OnExecPerField()
 			end if
 			CalcCurTransform(arr_transformations[i])
 			ApplyTransform(arr_transformations[i])
-			PlayAnimation(arr_transformations[i])
+			PlayItemAnimation(arr_transformations[i])
 		else
-			arr_transformations[i].playhead = transition_duration 'stop animation
+			arr_transformations[i].playhead = -1 'stop animation
 		end if
 	next
 end sub
@@ -144,13 +159,17 @@ sub OnInit()
 	c_root = GetParameterContainer("root")
 	if c_root == null then c_root = this
 	
-	transition_duration = CInt(GetParameterDouble("transition_duration") / System.CurrentRefreshRate)
+	transition_duration_show = CInt(GetParameterDouble("transition_duration_show") / System.CurrentRefreshRate)
 	if GetParameterBool("advanced") then
 		'fill these variables only if "advanced" is ON
 		filter = GetParameterString("filter")
 		filter.Trim()
 		common_dir = Stage.FindDirector(GetParameterString("common_dir"))
 		common_dir.Show(0)
+	end if
+	
+	if GetParameterBool("manual_show_anim") then
+		show_anim_dir = this.GetDirector()
 	end if
 	
 	Dim _transform_selected, _transform_hided As String
@@ -179,9 +198,10 @@ sub OnInit()
 			new_transform.what_animated.Push(  _transform_selected.Match("rot.*=")   OR _transform_hided.Match("rot.*=")    ) 'Rotation
 			new_transform.what_animated.Push(  _transform_selected.Match("scale=") OR _transform_hided.Match("scale=") OR  _transform_selected.Match("scalng=") OR _transform_hided.Match("scaling=")  ) 'Scaling
 			
-			new_transform.playhead = transition_duration 'to stop scripted animation in ExecPerField
+			new_transform.playhead = transition_duration_show 'to stop scripted animation in ExecPerField
 			InitDirector(new_transform)
 			new_transform.dir.Show(new_transform.dir_dur)
+			new_transform.target_state = 0
 
 			arr_transformations.Push(new_transform)
 		end if
@@ -223,6 +243,7 @@ Sub BaseAll()
 		'set next transforms as based
 		arr_transformations[i].next_props = arr_transformations[i].base_props
 		arr_transformations[i].selected = true
+		arr_transformations[i].target_state = 0
 		arr_transformations[i].playhead = 0 'start animation
 	next
 	common_dir.ContinueAnimationReverse()
@@ -244,18 +265,24 @@ Sub SelectOne(_index As Integer)
 
 		if _should_be_selected then
 			arr_transformations[i].next_props = ParseProps(arr_transformations[i], GetParameterString("transform_selected"))
+			arr_transformations[i].target_state = 1
 		else
 			arr_transformations[i].next_props = ParseProps(arr_transformations[i], GetParameterString("transform_hided"))
+			arr_transformations[i].target_state = -1
 		end if
 		arr_transformations[i].playhead = 0 'start animation
 	next
 	common_dir.ContinueAnimation()
+	if GetParameterBool("manual_show_anim") then
+		show_anim_dir.StartAnimation()
+	end if
 End Sub
 
 Sub DeselectAll()
 	for i=0 to arr_transformations.ubound
 		arr_transformations[i].next_props = ParseProps(arr_transformations[i], GetParameterString("transform_hided"))
 		arr_transformations[i].selected = false
+		arr_transformations[i].target_state = -1
 		arr_transformations[i].playhead = 0 'start animation
 	next
 	common_dir.ContinueAnimation()
@@ -268,10 +295,11 @@ End Sub
 Sub ToBaseAllNow()
 	for i=0 to arr_transformations.ubound
 		arr_transformations[i].cur_props = arr_transformations[i].base_props
+		arr_transformations[i].target_state = 0
 		ApplyTransform(arr_transformations[i])
 		if GetParameterBool("anim_items") then
 			arr_transformations[i].dir.Show(arr_transformations[i].dir_dur)
-			arr_transformations[i].playhead = transition_duration 'stop animation
+			arr_transformations[i].playhead = -1 'stop animation
 		end if
 	next
 	common_dir.Show(0)
@@ -280,10 +308,11 @@ End Sub
 Sub ToHideAllNow()
 	for i=0 to arr_transformations.ubound
 		arr_transformations[i].cur_props = ParseProps(arr_transformations[i], GetParameterString("transform_hided"))
+		arr_transformations[i].target_state = -1
 		ApplyTransform(arr_transformations[i])
 		if GetParameterBool("anim_items") then
 			arr_transformations[i].dir.Show(0)
-			arr_transformations[i].playhead = transition_duration 'stop animation
+			arr_transformations[i].playhead = -1 'stop animation
 		end if
 	next
 	common_dir.Show(0)
@@ -292,10 +321,11 @@ End Sub
 Sub ToShowAllNow()
 	for i=0 to arr_transformations.ubound
 		arr_transformations[i].cur_props = ParseProps(arr_transformations[i], GetParameterString("transform_selected"))
+		arr_transformations[i].target_state = 1
 		ApplyTransform(arr_transformations[i])
 		if GetParameterBool("anim_items") then
 			arr_transformations[i].dir.Show(arr_transformations[i].dir_dur)
-			arr_transformations[i].playhead = transition_duration 'stop animation
+			arr_transformations[i].playhead = -1 'stop animation
 		end if
 	next
 	common_dir.StartAnimationReverse()
@@ -422,10 +452,10 @@ End Function
 
 ' ANIMATION
 
-Sub PlayAnimation(_transform as Transformation)
+Sub PlayItemAnimation(_transform as Transformation)
 	if _transform.dir == null OR NOT GetParameterBool("advanced") OR NOT GetParameterBool("anim_items") then exit sub
 	
-	if GetParameterBool("trought_base") AND prev_selected <> 0 AND selected <> 0 then
+	if GetParameterBool("through_base") AND prev_selected <> 0 AND selected <> 0 then
 		if _transform.playhead < middle_transition then
 			if NOT _transform.selected then
 				_transform.dir.ContinueAnimation()
@@ -454,22 +484,22 @@ End Sub
 
 Sub CalcCurTransform(_transform As transformation)
 	if _transform.what_animated[0] then
-		_transform.cur_props.a = CalcCurrentValue(_transform.playhead, _transform.prev_props.a, _transform.base_props.a, _transform.next_props.a)
+		_transform.cur_props.a = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.a, _transform.base_props.a, _transform.next_props.a)
 	end if
 	if _transform.what_animated[1] then
-		_transform.cur_props.pos.x = CalcCurrentValue(_transform.playhead, _transform.prev_props.pos.x, _transform.base_props.pos.x, _transform.next_props.pos.x)
-		_transform.cur_props.pos.y = CalcCurrentValue(_transform.playhead, _transform.prev_props.pos.y, _transform.base_props.pos.y, _transform.next_props.pos.y)
-		_transform.cur_props.pos.z = CalcCurrentValue(_transform.playhead, _transform.prev_props.pos.z, _transform.base_props.pos.z, _transform.next_props.pos.z)
+		_transform.cur_props.pos.x = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.pos.x, _transform.base_props.pos.x, _transform.next_props.pos.x)
+		_transform.cur_props.pos.y = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.pos.y, _transform.base_props.pos.y, _transform.next_props.pos.y)
+		_transform.cur_props.pos.z = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.pos.z, _transform.base_props.pos.z, _transform.next_props.pos.z)
 	end if
 	if _transform.what_animated[2] then
-		_transform.cur_props.rot.x = CalcCurrentValue(_transform.playhead, _transform.prev_props.rot.x, _transform.base_props.rot.x, _transform.next_props.rot.x)
-		_transform.cur_props.rot.y = CalcCurrentValue(_transform.playhead, _transform.prev_props.rot.y, _transform.base_props.rot.y, _transform.next_props.rot.y)
-		_transform.cur_props.rot.z = CalcCurrentValue(_transform.playhead, _transform.prev_props.rot.z, _transform.base_props.rot.z, _transform.next_props.rot.z)
+		_transform.cur_props.rot.x = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.rot.x, _transform.base_props.rot.x, _transform.next_props.rot.x)
+		_transform.cur_props.rot.y = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.rot.y, _transform.base_props.rot.y, _transform.next_props.rot.y)
+		_transform.cur_props.rot.z = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.rot.z, _transform.base_props.rot.z, _transform.next_props.rot.z)
 	end if
 	if _transform.what_animated[3] then
-		_transform.cur_props.scale.x = CalcCurrentValue(_transform.playhead, _transform.prev_props.scale.x, _transform.base_props.scale.x, _transform.next_props.scale.x)
-		_transform.cur_props.scale.y = CalcCurrentValue(_transform.playhead, _transform.prev_props.scale.y, _transform.base_props.scale.y, _transform.next_props.scale.y)
-		_transform.cur_props.scale.z = CalcCurrentValue(_transform.playhead, _transform.prev_props.scale.z, _transform.base_props.scale.z, _transform.next_props.scale.z)
+		_transform.cur_props.scale.x = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.scale.x, _transform.base_props.scale.x, _transform.next_props.scale.x)
+		_transform.cur_props.scale.y = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.scale.y, _transform.base_props.scale.y, _transform.next_props.scale.y)
+		_transform.cur_props.scale.z = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.scale.z, _transform.base_props.scale.z, _transform.next_props.scale.z)
 	end if
 End Sub
 
@@ -483,18 +513,43 @@ End Sub
 Dim easy_in As Double = 30
 Dim easy_out As Double = 90
 
-Function CalcCurrentValue(_playhead As Double, _prev_value As Double, _base_value As Double, _next_value As Double) As Double
-	if GetParameterBool("trought_base") AND _prev_value <> _base_value AND _next_value <> _base_value then
+Function CalcCurrentValue(_target_state As Integer, _playhead As Double, _prev_value As Double, _base_value As Double, _next_value As Double) As Double
+	if GetParameterBool("through_base") AND _prev_value <> _base_value AND _next_value <> _base_value then
 		if _playhead < middle_transition then
-			CalcCurrentValue = Besizer(100.0*_playhead/middle_transition, _prev_value, _base_value, easy_in, 30)
+			' CalcCurrentValue = Besizer(100.0*_playhead/middle_transition, _prev_value, _base_value, easy_in, 30)
+			CalcCurrentValue = AnimateOut(100.0*_playhead/middle_transition, _prev_value, _next_value)
 			common_dir.ContinueAnimationReverse()
 		else
-			CalcCurrentValue = Besizer(100.0*(_playhead-middle_transition)/(transition_duration-middle_transition), _base_value, _next_value, 30, easy_out)
+			' CalcCurrentValue = Besizer(100.0*(_playhead-middle_transition)/(transition_duration_show-middle_transition), _base_value, _next_value, 30, easy_out)
+			CalcCurrentValue = AnimateIn(100.0*(_playhead-middle_transition)/(transition_duration_show-middle_transition), _prev_value, _next_value)
 			common_dir.ContinueAnimation()
 		end if
 	else
-		CalcCurrentValue = Besizer(100.0*_playhead/transition_duration, _prev_value, _next_value, easy_in, easy_out)
+		'CalcCurrentValue = Besizer(100.0*_playhead/transition_duration_show, _prev_value, _next_value, easy_in, easy_out)
+		if _target_state == 1 then
+			CalcCurrentValue = AnimateIn(100.0*_playhead/transition_duration_show, _prev_value, _next_value)
+		else
+			CalcCurrentValue = AnimateOut(100.0*_playhead/transition_duration_hide, _prev_value, _next_value)
+		end if
 	end if
+End Function
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Dim finish_main_anim As Double = 15
+Dim value_at_main_finish_anim As Double
+Dim result_anim As Double
+
+Function AnimateIn(_playhead As Double, _start As Double, _end As Double) As Double
+	if GetParameterBool("manual_show_anim") then
+		AnimateIn = _start + (_end - _start)* GetParameterDouble("show_anim_value")/100.0
+	else
+		AnimateIn = Besizer(_playhead, _start, _end, 30, 80)
+	end if
+End Function
+
+Function AnimateOut(_playhead As Double, _start As Double, _end As Double) As Double
+	AnimateOut = Besizer(_playhead, _start, _end, 40, 80)
 End Function
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''

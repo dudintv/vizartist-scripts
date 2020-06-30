@@ -1,5 +1,8 @@
 ## Animated OMO. Select one from children and hide other
 
+#### Version 2.4.0 (30 June 2020)
+* Add "manual show animation" to control easeness of showing animation
+
 #### Version 2.3.0 (17 May 2020)
 * Add "Root Container" to allow control another container (avoid running several scripts on a single container)
 * FIX: animate params if noted only one axis, for example "rotX" ot "posY"
