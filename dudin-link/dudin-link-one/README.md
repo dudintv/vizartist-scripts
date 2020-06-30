@@ -1,5 +1,8 @@
 ## Link transformation
 
+#### Version 1.1.1 (18 June 2020)
+* FIX: changing all params on Init
+
 #### Version 1.1 (15 May 2020)
 * Add multiple targets (change "count_target_containers" variable)
 * Add "width" and "height" of geometry (Rectangle or Noggi)

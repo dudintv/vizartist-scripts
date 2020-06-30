@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,1,0)
+RegisterPluginVersion(1,1,1)
 Dim info As String = "Syncronize parameters from this container to another"
 
 Dim pos_prev, rot_prev, scale_prev As Vertex
@@ -7,7 +7,7 @@ Dim c As Container
 Dim arr_c As Array[Container]
 Dim p_geom As PluginInstance
 
-Dim count_target_containers As Integer = 2
+Dim count_target_containers As Integer = 1
 
 sub OnInitParameters()
 	for i=1 to count_target_containers
@@ -29,10 +29,10 @@ sub OnInit()
 		c = GetParameterContainer("c"&i)
 		arr_c.Push(c)
 	
-		c.position.xyz = this.position.xyz
-		c.rotation.xyz = this.rotation.xyz
-		c.scaling.xyz  = this.scaling.xyz
-		c.alpha.value  = this.alpha.value
+		if GetParameterBool("pos") then c.position.xyz = this.position.xyz
+		if GetParameterBool("rot") then c.rotation.xyz = this.rotation.xyz
+		if GetParameterBool("scale") then c.scaling.xyz  = this.scaling.xyz
+		if GetParameterBool("a") then c.alpha.value  = this.alpha.value
 		
 		if p_geom <> null then
 			c.GetGeometryPluginInstance().SetParameterDouble("width", p_geom.GetParameterDouble("width"))
