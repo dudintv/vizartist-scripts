@@ -1,5 +1,8 @@
 ## Parser table data from DataPool "Reader"
 
+#### Version 1.3 (05.08.2019)
+* add parsing type of target children to control Omo plugin. Example of target name: "=4,4:omo" (with "Omo" type) and "=4,4" (with default "text" type)
+
 #### Version 1.2 (07.12.2019)
 * add searching row/column by text in certain column/row — it's usefull when, for example, you need find certain row with the certain text in the first column
 

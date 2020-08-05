@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,2,0)
+RegisterPluginVersion(1,3,0)
 Dim info As String = "Get value from Excel by DataPool Reader through SharedMemory. Author: Dmitry Dudin.
 If ypu chose \"childs texts\" mode you have to name interactive child containers by template \"=X,Y\",
 where X and Y - a number or name auto-counter. 
@@ -18,6 +18,7 @@ Structure Cell
 	c As Container
 	row As Integer
 	column As Integer
+	type As String
 End Structure
 Dim arr_cells As Array[Cell]
 Structure AutoIndex
@@ -254,6 +255,7 @@ Sub FindCellSubContainers()
 	Dim _cell As Cell
 	Dim _arr_childs As Array[Container]
 	Dim _name, _row, _column As String
+	Dim _comma_pos, _colon_pos As Integer
 	this.GetContainerAndSubContainers(_arr_childs, false)
 	_arr_childs.Erase(0)
 	arr_auto_row.Clear()
@@ -261,17 +263,28 @@ Sub FindCellSubContainers()
 	for i=0 to _arr_childs.ubound
 		_name = _arr_childs[i].name
 		_name.Trim()
-		if _name.Match("^=(\\d+|\\w+)\\,(\\d+|\\w+)$") then
+		if _name.Match("^=(\\d+|\\w+)\\,(\\d+|\\w+)\\:?(\\S*)$") then
 			'e.g.:
 			'=1,23
 			'=12,2
 			'=12,24
 			'=i,1
-			'=y,1
+			'=1,y
 			'=2,i
+			'=12,24:omo
+			'=i,y:omo
 			_cell.c = _arr_childs[i]
 			_row = _name.GetSubstring(1, _name.Find(",")-1)
-			_column = _name.GetSubstring(_name.Find(",")+1, _name.Length-_name.Find(",")-1)
+			
+			_comma_pos = _name.Find(",")
+			_colon_pos = _name.Find(":")
+			if _name.Find(":") > 0 then
+				_column = _name.GetSubstring(_comma_pos+1, _colon_pos-_comma_pos-1)
+				_cell.type = _name.GetSubstring(_colon_pos+1, _name.length-_colon_pos-1)
+			else
+				_column = _name.GetSubstring(_comma_pos+1, _name.Length-_comma_pos-1)
+				_cell.type = "text"
+			end if
 			if _row.Match("\\D+") then
 				_cell.row = GetAutoIndex(arr_auto_row, _row, GetParameterInt("start_auto_row"))
 			else
@@ -308,6 +321,7 @@ End Sub
 Sub Output(_output_to As Integer, _mode As Integer)
 	Dim _row As Integer = GetRow()
 	Dim _column As Integer = GetColumn()
+	Dim _value As String
 	if _row >= 2 AND _column >= 1 AND data.size > 0 AND _row-1 <= data.size AND _column <= data[_row-2].size then
 		if _mode == 0 then
 			'one value
@@ -344,7 +358,13 @@ Sub Output(_output_to As Integer, _mode As Integer)
 		'to childs
 		for i=0 to arr_cells.ubound
 			if arr_cells[i].row-2 < data.size AND arr_cells[i].column-1 < data[arr_cells[i].row-2].size then
-				arr_cells[i].c.Geometry.Text = data[arr_cells[i].row-2][arr_cells[i].column-1]
+				_value = data[arr_cells[i].row-2][arr_cells[i].column-1]
+				select case arr_cells[i].type
+				case "text"
+					arr_cells[i].c.Geometry.Text = _value
+				case "omo"
+					arr_cells[i].c.GetFunctionPluginInstance("Omo").SetParameterInt("vis_con", CInt(_value))
+				end select
 			end if
 		next
 	end if
