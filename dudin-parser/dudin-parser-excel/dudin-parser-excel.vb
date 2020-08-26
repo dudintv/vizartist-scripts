@@ -1,9 +1,10 @@
-RegisterPluginVersion(1,3,0)
+RegisterPluginVersion(1,4,0)
 Dim info As String = "Get value from Excel by DataPool Reader through SharedMemory. Author: Dmitry Dudin.
 If ypu chose \"childs texts\" mode you have to name interactive child containers by template \"=X,Y\",
 where X and Y - a number or name auto-counter. 
-e.g.:  =1,23  =12,2  =12,24  =i,1  =y,1  =2,i  =2,y
-Any auto-counters will be auto incremented.
+e.g.:  =1,23  =12,2  =12,24
+or with auto-increments  =i,1  =y,1
+Any auto-counters will be auto incremented each time.
 Use different auto-counter in order to get data from several rows or columns.
 For example, for the first column use \"=i,1\" and for the second \"=y,2\""
 
@@ -21,57 +22,93 @@ Structure Cell
 	type As String
 End Structure
 Dim arr_cells As Array[Cell]
+
 Structure AutoIndex
 	name As String
 	index As Integer
 End Structure
 Dim arr_auto_row, arr_auto_column As Array[AutoIndex]
 
-Dim output_buttonNames, mode_buttonNames, plugin_mode_buttonNames, mode_select_mode_buttonNames As Array[String]
-output_buttonNames.Push("println")
-output_buttonNames.Push("this text")
-output_buttonNames.Push("this plugin")
-output_buttonNames.Push("childs texts")
-mode_buttonNames.Push("one value")
+Dim arr_shm_arrays_names As Array[String]
+
+Dim output_one_buttonNames, output_table_buttonNames, mode_buttonNames, plugin_mode_buttonNames, mode_select_mode_buttonNames, shm_mode As Array[String]
+mode_buttonNames.Push("one value to this")
 mode_buttonNames.Push("all table")
+mode_buttonNames.Push("SHM arrays")
+
+output_one_buttonNames.Push("console")
+output_one_buttonNames.Push("text")
+output_one_buttonNames.Push("plugin")
+
+output_table_buttonNames.Push("console")
+output_table_buttonNames.Push("texts (or :types)")
+
 plugin_mode_buttonNames.Push("Bool")
 plugin_mode_buttonNames.Push("Int")
 plugin_mode_buttonNames.Push("Double")
 plugin_mode_buttonNames.Push("String")
+
 mode_select_mode_buttonNames.Push("By number")
 mode_select_mode_buttonNames.Push("Find text")
+
+shm_mode.Push("Scene")
+shm_mode.Push("System")
+shm_mode.Push("VizComm")
+
 sub OnInitParameters()
 	RegisterInfoText(info)
-	RegisterParameterContainer("reader", "Excel Reader (default is this)")
-	RegisterRadioButton("output_type", "Output to", 0, output_buttonNames)
+	RegisterParameterContainer("reader", "Excel Reader [this]")
+	RegisterRadioButton("mode", "Mode", 0, mode_buttonNames)
+	RegisterRadioButton("output_one_type", "Output to", 0, output_one_buttonNames)
+	RegisterRadioButton("output_table_type", "Output to", 0, output_table_buttonNames)
+	
 	RegisterParameterInt("start_auto_row", "Start auto-row (e.g. =i,1)", 2, 2, 999)
 	RegisterParameterInt("start_auto_column", "Start auto-column (e.g. =2,i)", 1, 1, 999)
+	
 	RegisterRadioButton("plugin_type", "Type", 0, plugin_mode_buttonNames)
 	RegisterParameterString("plugin_name", "Plugin name (case sensitive)", "", 20, 999, "")
 	RegisterParameterString("plugin_value", "Plugin value (case sensitive)", "", 20, 999, "")
-	RegisterRadioButton("mode", "Mode", 0, mode_buttonNames)
+	
 	RegisterRadioButton("mode_row", "Select row", 0, mode_select_mode_buttonNames)
 	RegisterParameterInt("row_number", "Row", 2, 2, 999)
 	RegisterParameterString("row_find_text", "Search text", "", 20, 999, "")
 	RegisterParameterInt("row_find_num_column", "Search in which column", 1, 1, 999)
+	
 	RegisterRadioButton("mode_column", "Select column", 0, mode_select_mode_buttonNames)
 	RegisterParameterInt("column_number", "Column", 1, 1, 999)
 	RegisterParameterString("column_find_text", "Search text", "", 20, 999, "")
 	RegisterParameterInt("column_find_num_row", "Search in which row", 2, 2, 999)
+
+	RegisterRadioButton("shm_mode", "SHM mode", 0, shm_mode)
+	RegisterParameterString("shm_arrays_names", "SHM columns names [,,x,y]", "", 50, 999, "")
+	RegisterParameterString("shm_delimeter", "SHM values delimeter", ";", 10, 999, "")
+	
 	RegisterParameterBool("ignore_empty", "Keep data if the file is blocked", true)
-	RegisterParameterBool("print_legends", "Print numbers rows and columns", true)
 	RegisterPushButton("init", "Init", 1)
-	RegisterPushButton("output_now", "Output to console now", 2)
+	RegisterPushButton("output_table", "Print table to console", 2)
+	RegisterPushButton("output_shm", "Print SHM to console", 3)
 end sub
 
 sub OnInit()
-	if GetParameterInt("mode") == 0 AND GetParameterInt("output_type") <> 3 then
-		'one value
-		SendGuiParameterShow("row_number", SHOW)
-		SendGuiParameterShow("column_number", SHOW)
+	if GetParameterInt("mode") == 0 then
+		' one single cell
+		SendGuiParameterShow("output_one_type", SHOW)
+		SendGuiParameterShow("output_table_type", HIDE)
 		
 		SendGuiParameterShow("mode_row", SHOW)
 		SendGuiParameterShow("mode_column", SHOW)
+		
+		if GetParameterInt("output_one_type") == 0 OR GetParameterInt("output_one_type") == 1 then
+			'output to console OR text
+			SendGuiParameterShow("plugin_type", HIDE)
+			SendGuiParameterShow("plugin_name", HIDE)
+			SendGuiParameterShow("plugin_value", HIDE)
+		elseif GetParameterInt("output_one_type") == 2 then
+			'output to plugin
+			SendGuiParameterShow("plugin_type", SHOW)
+			SendGuiParameterShow("plugin_name", SHOW)
+			SendGuiParameterShow("plugin_value", SHOW)
+		end if
 		
 		if GetParameterInt("mode_row") == 0 then
 			SendGuiParameterShow("row_number", SHOW)
@@ -92,57 +129,79 @@ sub OnInit()
 			SendGuiParameterShow("column_find_text", SHOW)
 			SendGuiParameterShow("column_find_num_row", SHOW)
 		end if
-	elseif GetParameterInt("mode") == 1 OR GetParameterInt("output_type") == 3 then
-		'all table
-		SendGuiParameterShow("row_number", HIDE)
-		SendGuiParameterShow("column_number", HIDE)
 		
-		SendGuiParameterShow("mode_row", HIDE)
-		SendGuiParameterShow("row_number", HIDE)
-		SendGuiParameterShow("row_find_text", HIDE)
-		SendGuiParameterShow("row_find_num_column", HIDE)
-		
-		SendGuiParameterShow("mode_column", HIDE)
-		SendGuiParameterShow("column_number", HIDE)
-		SendGuiParameterShow("column_find_text", HIDE)
-		SendGuiParameterShow("column_find_num_row", HIDE)
-	end if
-	
-	if GetParameterInt("output_type") == 2 then
-		'output to plugin
+		' hide useles
 		SendGuiParameterShow("start_auto_row", HIDE)
 		SendGuiParameterShow("start_auto_column", HIDE)
 		
-		SendGuiParameterShow("plugin_type", SHOW)
-		SendGuiParameterShow("plugin_name", SHOW)
-		SendGuiParameterShow("plugin_value", SHOW)
+		SendGuiParameterShow("shm_mode", HIDE)
+		SendGuiParameterShow("shm_arrays_names", HIDE)
+		SendGuiParameterShow("shm_delimeter", HIDE)
 		
-		SendGuiParameterShow("mode", SHOW)
-	elseif GetParameterInt("output_type") == 3 then
-		'output to childs
+	elseif GetParameterInt("mode") == 1 then
+		' all table
+		SendGuiParameterShow("output_one_type", HIDE)
+		SendGuiParameterShow("output_table_type", SHOW)
+		
 		SendGuiParameterShow("start_auto_row", SHOW)
 		SendGuiParameterShow("start_auto_column", SHOW)
 		
+		if GetParameterInt("output_table_type") == 0 then
+			'console
+			SendGuiParameterShow("start_auto_row", HIDE)
+			SendGuiParameterShow("start_auto_column", HIDE)
+		elseif GetParameterInt("output_table_type") == 1 then
+			'output to children texts (or :types)
+			SendGuiParameterShow("start_auto_row", SHOW)
+			SendGuiParameterShow("start_auto_column", SHOW)
+			
+			FindCellSubContainers()
+		end if
+		
+		' hide useles
+		SendGuiParameterShow("mode_row", HIDE)
+		SendGuiParameterShow("mode_column", HIDE)
 		SendGuiParameterShow("plugin_type", HIDE)
 		SendGuiParameterShow("plugin_name", HIDE)
 		SendGuiParameterShow("plugin_value", HIDE)
+		SendGuiParameterShow("row_number", HIDE)
+		SendGuiParameterShow("row_find_text", HIDE)
+		SendGuiParameterShow("row_find_num_column", HIDE)
+		SendGuiParameterShow("column_number", HIDE)
+		SendGuiParameterShow("column_find_text", HIDE)
+		SendGuiParameterShow("column_find_num_row", HIDE)
 		
-		SendGuiParameterShow("mode", HIDE)
-	else
-		'output to console OR this.text
+		SendGuiParameterShow("shm_mode", HIDE)
+		SendGuiParameterShow("shm_arrays_names", HIDE)
+		SendGuiParameterShow("shm_delimeter", HIDE)
+
+	elseif GetParameterInt("mode") == 2 then
+		' SHM arrays
+		
+		SendGuiParameterShow("shm_mode", SHOW)
+		SendGuiParameterShow("shm_arrays_names", SHOW)
+		SendGuiParameterShow("shm_delimeter", SHOW)
+		
+
+		SendGuiParameterShow("output_one_type", HIDE)
+		SendGuiParameterShow("output_table_type", HIDE)
+		
 		SendGuiParameterShow("start_auto_row", HIDE)
 		SendGuiParameterShow("start_auto_column", HIDE)
-		
+
+		' hide useles
+		SendGuiParameterShow("mode_row", HIDE)
+		SendGuiParameterShow("mode_column", HIDE)
 		SendGuiParameterShow("plugin_type", HIDE)
 		SendGuiParameterShow("plugin_name", HIDE)
 		SendGuiParameterShow("plugin_value", HIDE)
-		
-		SendGuiParameterShow("mode", SHOW)
-	end if
-	
-	if GetParameterInt("output_type") == 3 then
-		'output to childs
-		FindCellSubContainers()
+		SendGuiParameterShow("row_number", HIDE)
+		SendGuiParameterShow("row_find_text", HIDE)
+		SendGuiParameterShow("row_find_num_column", HIDE)
+		SendGuiParameterShow("column_number", HIDE)
+		SendGuiParameterShow("column_find_text", HIDE)
+		SendGuiParameterShow("column_find_num_row", HIDE)
+			
 	end if
 	
 	if GetParameterContainer("reader") <> null then
@@ -154,47 +213,38 @@ sub OnInit()
 	input_var_type  = c_reader.GetFunctionPluginInstance("DataReader").GetParameterInt("shmtype")
 	field_delimeter = c_reader.GetFunctionPluginInstance("DataReader").GetParameterString("delimiter")
 	row_delimeter   = c_reader.GetFunctionPluginInstance("DataReader").GetParameterString("rowsDelimiter")
-	if input_var_type == 0 then
-		Scene.Map.RegisterChangedCallback(input_var_name)
-		Parse(Scene.Map, input_var_name)
-	elseif input_var_type == 1 then
-		System.Map.RegisterChangedCallback(input_var_name)
-		Parse(System.Map, input_var_name)
-	elseif input_var_type == 2 then
-		VizCommunication.Map.RegisterChangedCallback(input_var_name)
-		Parse(VizCommunication.Map, input_var_name)
-	end if
 end sub
 sub OnParameterChanged(parameterName As String)
 	OnInit()
-	Output(GetParameterInt("output_type"), GetParameterInt("mode"))
+	Parse()
+	Output()
 end sub
 
 sub OnSharedMemoryVariableChanged(map As SharedMemory, mapKey As String)
 	if mapKey == input_var_name then
-		Parse(map, mapKey)
-		Output(GetParameterInt("output_type"), GetParameterInt("mode"))
+		Parse()
+		Output()
 	end if
 end sub
 
 sub OnExecAction(buttonId As Integer)
 	if buttonId == 1 then
-		'Init
+		' Init
 		OnInit()
-		Output(GetParameterInt("output_type"), GetParameterInt("mode"))
+		Parse()
+		Output()
 	elseif buttonId == 2 then
-		'debug print in console
-		if GetParameterInt("output_type") == 3 then
-			Output(0, 1)
-			'0 - output to console, '1 - "all table" mode
-		else
-			Output(0, GetParameterInt("mode"))
-			'0 - outout to console
-		end if
+		' debug print all TABLE to console
+		Parse()
+		println(FormatAllTable())
+	elseif buttonId == 3 then
+		' debug print VALUE to console
+		Parse()
+		println(FormatAllSHM())
 	end if
 end sub
 
-'-----------------------------------------------------------------------
+'----------------------------------------------------------
 
 Function GetAutoIndex(_arr As Array[AutoIndex], _name As String, _default_start_index As Integer) As Integer
 	Dim _result As Integer = -1
@@ -300,17 +350,29 @@ Sub FindCellSubContainers()
 	next
 End Sub
 
-Sub Parse(map As SharedMemory, mapKey As String)
-	s = map[mapKey]
-	s.Trim()
-	if s == "" then
+Sub Parse()
+	Dim _s As String
+	select case input_var_type
+	case 0
+		Scene.Map.RegisterChangedCallback(input_var_name)
+		_s = Scene.Map[input_var_name]
+	case 1
+		System.Map.RegisterChangedCallback(input_var_name)
+		_s = System.Map[input_var_name]
+	case 2
+		VizCommunication.Map.RegisterChangedCallback(input_var_name)
+		_s = VizCommunication.Map[input_var_name]
+	end select
+
+	_s.Trim()
+	if _s == "" then
 		if GetParameterBool("ignore_empty") then
 			exit sub
 		else
 			arr_rows.Clear()
 		end if
 	end if
-	s.Split(row_delimeter, arr_rows)
+	_s.Split(row_delimeter, arr_rows)
 	data.Clear()
 	for i=0 to arr_rows.ubound
 		arr_rows[i].split(field_delimeter, arr_fields)
@@ -318,57 +380,89 @@ Sub Parse(map As SharedMemory, mapKey As String)
 	next
 End Sub
 
-Sub Output(_output_to As Integer, _mode As Integer)
-	Dim _row As Integer = GetRow()
-	Dim _column As Integer = GetColumn()
-	Dim _value As String
-	if _row >= 2 AND _column >= 1 AND data.size > 0 AND _row-1 <= data.size AND _column <= data[_row-2].size then
-		if _mode == 0 then
-			'one value
+Sub Output()
+	if GetParameterInt("mode") == 0 then
+		' one value
+		Dim _row As Integer = GetRow()
+		Dim _column As Integer = GetColumn()
+
+		if _row >= 2 AND _column >= 1 AND data.size > 0 AND _row-1 <= data.size AND _column <= data[_row-2].size then
 			output = data[_row-2][_column-1]
-		elseif _mode == 1 then
-			'all table
-			output = FormatAllTable()
+		else
+			output = ""
 		end if
-	else
-		output = ""
-	end if
-	
-	if _output_to == 0 then
-		println(output)
-	elseif _output_to == 1 then
-		this.Geometry.Text = output
-	elseif _output_to == 2 then
-		'to plugin
-		Dim _p As PluginInstance =  this.GetFunctionPluginInstance(GetParameterString("plugin_name"))
-		if GetParameterInt("plugin_type") == 0 then
-			'Bool
-			_p.SetParameterBool(GetParameterString("plugin_value"), CBool(output))
-		elseif GetParameterInt("plugin_type") == 1 then
-			'Int
-			_p.SetParameterInt(GetParameterString("plugin_value"), CInt(output))
-		elseif GetParameterInt("plugin_type") == 2 then
-			'Double
-			_p.SetParameterDouble(GetParameterString("plugin_value"), CDbl(output))
-		elseif GetParameterDouble("plugin_type") == 3 then
-			'String
-			_p.SetParameterString(GetParameterString("plugin_value"), CStr(output))
-		end if
-	elseif _output_to == 3 then
-		'to childs
-		for i=0 to arr_cells.ubound
-			if arr_cells[i].row-2 < data.size AND arr_cells[i].column-1 < data[arr_cells[i].row-2].size then
-				_value = data[arr_cells[i].row-2][arr_cells[i].column-1]
-				select case arr_cells[i].type
-				case "text"
-					arr_cells[i].c.Geometry.Text = _value
-				case "omo"
-					arr_cells[i].c.GetFunctionPluginInstance("Omo").SetParameterInt("vis_con", CInt(_value))
+
+		select case GetParameterInt("output_one_type")
+		case 0
+			println(output)
+		case 1
+			this.Geometry.Text = output
+		case 2
+			'to plugin
+			Dim _p As PluginInstance =  this.GetFunctionPluginInstance(GetParameterString("plugin_name"))
+			select case GetParameterInt("plugin_type")
+			case 0 ' Bool
+				_p.SetParameterBool(GetParameterString("plugin_value"), CBool(output))
+			case 1 ' Int
+				_p.SetParameterInt(GetParameterString("plugin_value"), CInt(output))
+			case 2 ' Double
+				_p.SetParameterDouble(GetParameterString("plugin_value"), CDbl(output))
+			case 3 ' String
+				_p.SetParameterString(GetParameterString("plugin_value"), CStr(output))
+			end select
+		end select
+	elseif GetParameterInt("mode") == 1 then
+		' all table
+		select case GetParameterInt("output_table_type")
+		case 0
+			println(FormatAllTable())
+		case 1
+			' to childs
+			Dim _value As String
+			for i=0 to arr_cells.ubound
+				if arr_cells[i].row-2 < data.size AND arr_cells[i].column-1 < data[arr_cells[i].row-2].size then
+					_value = data[arr_cells[i].row-2][arr_cells[i].column-1]
+					select case arr_cells[i].type
+					case "text"
+						arr_cells[i].c.Geometry.Text = _value
+					case "omo"
+						arr_cells[i].c.GetFunctionPluginInstance("Omo").SetParameterInt("vis_con", CInt(_value))
+					end select
+				end if
+			next
+		end select
+	elseif GetParameterInt("mode") == 2 then
+		' SHM arrays
+		Dim arr_column_data As Array[String]
+		Dim s_column_data As String
+		
+		GetParameterString("shm_arrays_names").Split(",", arr_shm_arrays_names)
+		for i=0 to arr_shm_arrays_names.ubound
+			arr_shm_arrays_names[i].Trim()
+		next
+		
+		for i=0 to arr_shm_arrays_names.ubound
+			arr_column_data.Clear()
+			for j=0 to data.ubound
+				arr_column_data.Push(data[j][i])
+			next
+			s_column_data.Join(arr_column_data, GetParameterString("shm_delimeter"))
+			
+			if arr_shm_arrays_names[i] <> "" then
+				select case GetParameterInt("shm_mode")
+				case 0
+					Scene.Map[arr_shm_arrays_names[i]] = s_column_data
+				case 1
+					System.Map[arr_shm_arrays_names[i]] = s_column_data
+				case 2
+					VizCommunication.Map[arr_shm_arrays_names[i]] = s_column_data
 				end select
 			end if
 		next
 	end if
 End Sub
+
+'----------------------------------------------------------
 
 Function FormatAllTable() As String
 	Dim max_lengths As Array[Integer]
@@ -383,16 +477,16 @@ Function FormatAllTable() As String
 	next
 	s = ""
 	Dim _line As String = ""
-	if GetParameterBool("print_legends") then
-		_line = _line & FillSpacesRight("", CStr(data.size).Length)
-		for i=0 to max_lengths.ubound
-			_line = _line & "|" & FillSpacesRight(CStr(i+1), max_lengths[i])
-		next
-		s = _line & "\n"
-	end if
+	
+	' add legend
+	_line = _line & FillSpacesRight("", CStr(data.size).Length)
+	for i=0 to max_lengths.ubound
+		_line = _line & "|" & FillSpacesRight(CStr(i+1), max_lengths[i])
+	next
+	s = _line & "\n"
+
 	for i=0 to data.ubound
-		_line = ""
-		if GetParameterBool("print_legends") then _line = _line & FillSpacesRight(CStr(i+2), CStr(data.size).Length)
+		_line = FillSpacesRight(CStr(i+2), CStr(data.size).Length)
 		for y=0 to data[i].ubound
 			_line = _line & "|" & FillSpacesRight(data[i][y], max_lengths[y])
 		next
@@ -406,4 +500,35 @@ Function FillSpacesRight(_s As String, _length As Integer) As String
 		_s = _s & " "
 	loop
 	FillSpacesRight = _s
+End Function
+
+
+'----------------------------------------------------------
+
+Function FormatAllSHM() As String
+	Dim _s As String
+	select case GetParameterInt("shm_mode")
+	case 0
+		_s &= "MODE: Scene.Map"
+	case 1
+		_s &= "MODE: System.Map"
+	case 2
+		_s &= "MODE: VizCommunication.Map"
+	end select
+	_s &= "\n"
+	for i=0 to arr_shm_arrays_names.ubound
+		if arr_shm_arrays_names[i] <> "" then
+			_s &= arr_shm_arrays_names[i] & " = "
+			select case GetParameterInt("shm_mode")
+			case 0
+				_s &= Scene.Map[arr_shm_arrays_names[i]]
+			case 1
+				_s &= System.Map[arr_shm_arrays_names[i]]
+			case 2
+				_s &= VizCommunication.Map[arr_shm_arrays_names[i]]
+			end select
+			_s &= "\n"
+		end if
+	next
+	FormatAllSHM = _s
 End Function
