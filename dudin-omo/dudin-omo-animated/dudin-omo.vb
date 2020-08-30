@@ -270,7 +270,6 @@ Sub SelectOne(_index As Integer)
 			arr_transformations[i].next_props = ParseProps(arr_transformations[i], GetParameterString("transform_hided"))
 			arr_transformations[i].target_state = -1
 		end if
-		println("arr_transformations[i].next_props.scale = " & arr_transformations[i].next_props.scale)
 		arr_transformations[i].playhead = 0 'start animation
 	next
 	common_dir.ContinueAnimation()
