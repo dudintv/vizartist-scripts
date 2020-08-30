@@ -320,9 +320,10 @@ Sub FindCellSubContainers()
 			'=12,24
 			'=i,1
 			'=1,y
-			'=2,i
+			'=2,an_increment
 			'=12,24:omo
 			'=i,y:omo
+			'=i,4:color
 			_cell.c = _arr_childs[i]
 			_row = _name.GetSubstring(1, _name.Find(",")-1)
 			
@@ -469,13 +470,15 @@ End Sub
 '----------------------------------------------------------
 
 Function FormatAllTable() As String
-	Dim max_lengths As Array[Integer]
+	Dim _max_length_number As Integer = CStr(data.ubound + 2).length
+	Dim _max_lengths As Array[Integer]
+	
 	for i=0 to data.ubound
 		for y=0 to data[i].ubound
-			if y > max_lengths.ubound then
-				max_lengths.Push(data[i][y].Length)
+			if y > _max_lengths.ubound then
+				_max_lengths.Push(data[i][y].length)
 			else
-				if data[i][y].Length > max_lengths[y] then max_lengths[y] = data[i][y].Length
+				if data[i][y].Length > _max_lengths[y] then _max_lengths[y] = data[i][y].Length
 			end if
 		next
 	next
@@ -483,16 +486,16 @@ Function FormatAllTable() As String
 	Dim _line As String = ""
 	
 	' add legend
-	_line = _line & FillSpacesRight("", CStr(data.size).Length)
-	for i=0 to max_lengths.ubound
-		_line = _line & "|" & FillSpacesRight(CStr(i+1), max_lengths[i])
+	_line = _line & FillSpacesRight("", _max_length_number)
+	for i=0 to _max_lengths.ubound
+		_line = _line & "|" & FillSpacesRight(CStr(i+1), _max_lengths[i])
 	next
 	s = _line & "\n"
 
 	for i=0 to data.ubound
-		_line = FillSpacesRight(CStr(i+2), CStr(data.size).Length)
+		_line = FillSpacesRight(CStr(i+2), _max_length_number)
 		for y=0 to data[i].ubound
-			_line = _line & "|" & FillSpacesRight(data[i][y], max_lengths[y])
+			_line = _line & "|" & FillSpacesRight(data[i][y], _max_lengths[y])
 		next
 		s = s & _line & "\n"
 	next

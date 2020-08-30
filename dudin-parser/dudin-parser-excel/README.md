@@ -2,6 +2,7 @@
 
 #### Version 1.4.1 (30.08.2020)
 * add output to ":color" type
+* repair table formatting to console
 
 #### Version 1.4 (26.08.2020)
 * add collecting data by column into SHM variables (useful for VisualDataTools geom plugins)
