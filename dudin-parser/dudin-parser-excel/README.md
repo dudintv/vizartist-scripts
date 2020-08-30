@@ -3,6 +3,7 @@
 #### Version 1.5 (30.08.2020)
 * new feature: you can arbitrary name your container, e.g. "Month=3,2"
 * new feature: you can index row from the end of the table, e.g. "LastValue=-1,2" — it gives you the last value in second column
+* fix: out of array indexes
 
 #### Version 1.4.1 (30.08.2020)
 * add output to ":color" type
