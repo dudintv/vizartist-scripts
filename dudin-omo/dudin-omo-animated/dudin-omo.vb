@@ -1,4 +1,4 @@
-RegisterPluginVersion(2,4,0)
+RegisterPluginVersion(2,4,1)
 
 Structure Properties
 	a As Double 'it is Alpha
@@ -44,8 +44,8 @@ sub OnInitParameters()
 	RegisterPushButton("base", "Base", 20)
 	RegisterPushButton("prev", "Prev", 30)
 	RegisterPushButton("next", "Next", 40)
-	RegisterParameterDouble("transition_duration_show", "Duration show (sec)", 1, 0, 999)
-	RegisterParameterDouble("transition_duration_hide", "Duration hide (sec)", 1, 0, 999)
+	RegisterParameterDouble("transition_duration_show", "Show duration (sec)", 1, 0, 999)
+	RegisterParameterDouble("transition_duration_hide", "Hide duration (sec)", 1, 0, 999)
 	
 	'advanced settings
 	RegisterParameterBool("advanced", "Advance functions", false)
@@ -270,6 +270,7 @@ Sub SelectOne(_index As Integer)
 			arr_transformations[i].next_props = ParseProps(arr_transformations[i], GetParameterString("transform_hided"))
 			arr_transformations[i].target_state = -1
 		end if
+		println("arr_transformations[i].next_props.scale = " & arr_transformations[i].next_props.scale)
 		arr_transformations[i].playhead = 0 'start animation
 	next
 	common_dir.ContinueAnimation()
@@ -429,11 +430,11 @@ Function ParseVertexValue(_base As Vertex, _s As String) As Vertex
 End Function
 
 Function ParseOneValue(_base As Double, _s As String) As Double
-	if _s.Match("^-?\\d+$") then
+	if _s.Match("^-?[\\d,\\.]+$") then
 		ParseOneValue = CDbl(_s)
 	elseif _s == "base" then
 		ParseOneValue = _base
-	elseif _s.Match("base[\\+\\-\\*\\/]+[\\d]+") then
+	elseif _s.Match("base[\\+\\-\\*\\/]+[\\d,\\.]+") then
 		if _s.GetChar(4) == "+" then
 			ParseOneValue = _base + CDbl(_s.GetSubstring(5,_s.length-5))
 		elseif _s.GetChar(4) == "-" then

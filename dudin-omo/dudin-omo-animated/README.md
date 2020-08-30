@@ -1,5 +1,8 @@
 ## Animated OMO. Select one from children and hide other
 
+#### Version 2.4.1 (30 August 2020)
+* FIX: working with float point numbers, e.g. "scale=0.8"
+
 #### Version 2.4.0 (30 June 2020)
 * Add "manual show animation" to control easeness of showing animation
 
