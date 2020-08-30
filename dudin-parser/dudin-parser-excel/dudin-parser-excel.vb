@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,4,1)
+RegisterPluginVersion(1,5,0)
 Dim info As String = "Get value from Excel by DataPool Reader through SharedMemory. Author: Dmitry Dudin.
 If ypu chose \"childs texts\" mode you have to name interactive child containers by template \"=X,Y\",
 where X and Y - a number or name auto-counter. 
@@ -6,7 +6,12 @@ e.g.:  =1,23  =12,2  =12,24
 or with auto-increments  =i,1  =y,1
 Any auto-counters will be auto incremented each time.
 Use different auto-counter in order to get data from several rows or columns.
-For example, for the first column use \"=i,1\" and for the second \"=y,2\""
+For example, for the first column use \"=i,1\" and for the second \"=y,2\"
+
+Supported types for all table:
+:omo
+:color
+"
 
 Dim c_reader As Container
 Dim input_var_name, row_delimeter, field_delimeter As String
@@ -305,7 +310,7 @@ Sub FindCellSubContainers()
 	Dim _cell As Cell
 	Dim _arr_childs As Array[Container]
 	Dim _name, _row, _column As String
-	Dim _comma_pos, _colon_pos As Integer
+	Dim _comma_pos, _colon_pos, _equal_pos As Integer
 	this.GetContainerAndSubContainers(_arr_childs, false)
 	_arr_childs.Erase(0)
 	arr_auto_row.Clear()
@@ -313,7 +318,7 @@ Sub FindCellSubContainers()
 	for i=0 to _arr_childs.ubound
 		_name = _arr_childs[i].name
 		_name.Trim()
-		if _name.Match("^=(\\d+|\\w+)\\,(\\d+|\\w+)\\:?(\\S*)$") then
+		if _name.Match("^.*=(-?\\d+|\\w+)\\,(-?\\d+|\\w+)\\:?(\\S*)$") then
 			'e.g.:
 			'=1,23
 			'=12,2
@@ -325,10 +330,13 @@ Sub FindCellSubContainers()
 			'=i,y:omo
 			'=i,4:color
 			_cell.c = _arr_childs[i]
-			_row = _name.GetSubstring(1, _name.Find(",")-1)
 			
+			_equal_pos = _name.Find("=")
 			_comma_pos = _name.Find(",")
 			_colon_pos = _name.Find(":")
+			
+			_row = _name.GetSubstring(_equal_pos+1, _comma_pos-_equal_pos-1)
+			
 			if _name.Find(":") > 0 then
 				_column = _name.GetSubstring(_comma_pos+1, _colon_pos-_comma_pos-1)
 				_cell.type = _name.GetSubstring(_colon_pos+1, _name.length-_colon_pos-1)
@@ -336,17 +344,19 @@ Sub FindCellSubContainers()
 				_column = _name.GetSubstring(_comma_pos+1, _name.Length-_comma_pos-1)
 				_cell.type = "text"
 			end if
-			if _row.Match("\\D+") then
-				_cell.row = GetAutoIndex(arr_auto_row, _row, GetParameterInt("start_auto_row"))
-			else
+			if _row.Match("-?\\d+") then
 				_cell.row = CInt(_row)
+			else
+				_cell.row = GetAutoIndex(arr_auto_row, _row, GetParameterInt("start_auto_row"))
 			end if
+			
+			
 			if _column.Match("\\D+") then
 				_cell.column = GetAutoIndex(arr_auto_column, _column, GetParameterInt("start_auto_column"))
 			else
 				_cell.column = CInt(_column)
 			end if
-			if _cell.row >= 2 AND _cell.column >= 1 then	arr_cells.Push(_cell)
+			if (_cell.row >= 2 OR _cell.row < 0) AND _cell.column >= 1 then	arr_cells.Push(_cell)
 		end if
 	next
 End Sub
@@ -388,7 +398,7 @@ Sub Output()
 		Dim _row As Integer = GetRow()
 		Dim _column As Integer = GetColumn()
 
-		if _row >= 2 AND _column >= 1 AND data.size > 0 AND _row-1 <= data.size AND _column <= data[_row-2].size then
+		if _row >= 2 AND _column >= 1 AND data.size > 0 AND _row <= data.ubound AND _column <= data[_row-2].size then
 			output = data[_row-2][_column-1]
 		else
 			output = ""
@@ -421,17 +431,27 @@ Sub Output()
 		case 1
 			' to childs
 			Dim _value As String
+			Dim _row As Integer
+			
 			for i=0 to arr_cells.ubound
-				if arr_cells[i].row-2 < data.size AND arr_cells[i].column-1 < data[arr_cells[i].row-2].size then
-					_value = data[arr_cells[i].row-2][arr_cells[i].column-1]
+				if arr_cells[i].row > 0 then
+					_row = arr_cells[i].row-2
+				else
+					_row = data.size + arr_cells[i].row
+				end if
+				
+				if data.size > 0 AND _row < data.size AND arr_cells[i].column-1 < data[_row].size then
+					_value = data[_row][arr_cells[i].column-1]
 					select case arr_cells[i].type
 					case "text"
 						arr_cells[i].c.Geometry.Text = _value
 					case "omo"
 						arr_cells[i].c.GetFunctionPluginInstance("Omo").SetParameterInt("vis_con", CInt(_value))
 					case "color"
-						_value.Split(";", _arr_color)
-						arr_cells[i].c.Material.Emission = CColor(  CDbl(_arr_color[0])/255.0, CDbl(_arr_color[1])/255.0, CDbl(_arr_color[2])/255.0  )  '
+						if _value.match("\\d+;\\d+;\\d+") then
+							_value.Split(";", _arr_color)
+							arr_cells[i].c.Material.Emission = CColor(  CDbl(_arr_color[0])/255.0, CDbl(_arr_color[1])/255.0, CDbl(_arr_color[2])/255.0  )  '
+						end if
 					end select
 				end if
 			next
@@ -476,10 +496,9 @@ Function FormatAllTable() As String
 	for i=0 to data.ubound
 		for y=0 to data[i].ubound
 			if y > _max_lengths.ubound then
-				_max_lengths.Push(data[i][y].length)
-			else
-				if data[i][y].Length > _max_lengths[y] then _max_lengths[y] = data[i][y].Length
+				_max_lengths.Push(CStr(y).length)
 			end if
+			if data[i][y].Length > _max_lengths[y] then _max_lengths[y] = data[i][y].Length
 		next
 	next
 	s = ""
@@ -488,6 +507,7 @@ Function FormatAllTable() As String
 	' add legend
 	_line = _line & FillSpacesRight("", _max_length_number)
 	for i=0 to _max_lengths.ubound
+		if CStr(i+1).length > _max_lengths[i] then _max_lengths[i] = CStr(i+1).length
 		_line = _line & "|" & FillSpacesRight(CStr(i+1), _max_lengths[i])
 	next
 	s = _line & "\n"
