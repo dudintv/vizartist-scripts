@@ -1,5 +1,8 @@
 ## Parser table data from DataPool "Reader"
 
+#### Version 1.5.1 (30.08.2020)
+* fix: change color parsing (from ";" to " " delimeter)
+
 #### Version 1.5 (30.08.2020)
 * new feature: you can arbitrary name your container, e.g. "Month=3,2"
 * new feature: you can index row from the end of the table, e.g. "LastValue=-1,2" — it gives you the last value in second column

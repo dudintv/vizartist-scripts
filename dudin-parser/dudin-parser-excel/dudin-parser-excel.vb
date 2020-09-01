@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,5,0)
+RegisterPluginVersion(1,5,1)
 Dim info As String = "Get value from Excel by DataPool Reader through SharedMemory. Author: Dmitry Dudin.
 If ypu chose \"childs texts\" mode you have to name interactive child containers by template \"=X,Y\",
 where X and Y - a number or name auto-counter. 
@@ -448,8 +448,8 @@ Sub Output()
 					case "omo"
 						arr_cells[i].c.GetFunctionPluginInstance("Omo").SetParameterInt("vis_con", CInt(_value))
 					case "color"
-						if _value.match("\\d+;\\d+;\\d+") then
-							_value.Split(";", _arr_color)
+						if _value.match("\\d+\\s\\d+\\s\\d+") then
+							_value.Split(" ", _arr_color)
 							arr_cells[i].c.Material.Emission = CColor(  CDbl(_arr_color[0])/255.0, CDbl(_arr_color[1])/255.0, CDbl(_arr_color[2])/255.0  )  '
 						end if
 					end select
