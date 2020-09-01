@@ -1,4 +1,4 @@
-RegisterPluginVersion(2,4,1)
+RegisterPluginVersion(2,5,0)
 
 Structure Properties
 	a As Double 'it is Alpha
@@ -7,6 +7,9 @@ Structure Properties
 	scale As Vertex
 End Structure
 
+Dim TO_HIDE As Integer = -1
+Dim TO_BASE As Integer = 0
+Dim TO_SHOW As Integer = 1
 Structure Transformation
 	c As Container
 	cur_props, base_props, prev_props, next_props As Properties
@@ -28,12 +31,20 @@ Structure Transformation
 End Structure
 Dim arr_transformations As Array[Transformation]
 
+Dim buttonNames_transition_mode As Array[String]
+buttonNames_transition_mode.Push("Direct")
+buttonNames_transition_mode.Push("Through base")
+buttonNames_transition_mode.Push("Through hidden")
+Dim TRANSITION_DIRECT As Integer = 0
+Dim TRANSITION_BASE As Integer = 1
+Dim TRANSITION_HIDE As Integer = 2
+
 sub OnInitParameters()
 	RegisterParameterContainer("root", "Root container (or this)")
 	RegisterParameterString("transform_base", "Transform base", "", 80, 999, "")
 	RegisterParameterString("transform_selected", "Transform selected", "", 80, 999, "")
 	RegisterParameterString("transform_hided", "Transform hided", "", 80, 999, "")
-	RegisterParameterBool("through_base", "Transition throught base(0)", false)
+	RegisterRadioButton("transition_mode", "Transition mode", TRANSITION_DIRECT, buttonNames_transition_mode)
 	RegisterParameterSliderInt("middle_transition", "Middle transition, %", 50, 0, 100, 300)
 	RegisterParameterBool("keep_visible", "Keep visible (like in Omo)", false)
 	RegisterParameterInt("selected", "Selected", 0, -1, 999)
@@ -68,7 +79,7 @@ sub OnParameterChanged(parameterName As String)
 	SendGuiParameterShow("anim_items", GetParameterInt("advanced"))
 	SendGuiParameterShow("filter",  GetParameterInt("advanced"))
 	SendGuiParameterShow("common_dir", GetParameterInt("advanced"))
-	SendGuiParameterShow("middle_transition", CInt(GetParameterBool("through_base")))
+	SendGuiParameterShow("middle_transition", CInt(GetParameterInt("transition_mode") <> TRANSITION_DIRECT))
 	SendGuiParameterShow("show_anim_value", CInt(GetParameterBool("manual_show_anim")))
 	
 	select case parameterName
@@ -129,14 +140,14 @@ end sub
 Dim max_duration As Double
 sub OnExecPerField()
 	for i=0 to arr_transformations.ubound
-		if arr_transformations[i].target_state == 1 then
+		if arr_transformations[i].target_state == TO_SHOW then
 			max_duration = transition_duration_show
 		else
 			max_duration = transition_duration_hide
 		end if
 
 		if arr_transformations[i].playhead >= 0 AND arr_transformations[i].playhead < max_duration then
-			if GetParameterBool("through_base") AND (prev_selected == 0 OR selected == 0) then
+			if  GetParameterInt("transition_mode") <> TRANSITION_DIRECT  AND (prev_selected == 0 OR selected == 0) then '
 				' two time faster
 				arr_transformations[i].playhead += 2
 			else
@@ -193,15 +204,15 @@ sub OnInit()
 			_transform_selected.Substitute("\\s", "", true) 'remove all spaces
 			_transform_hided = GetParameterString("transform_hided")
 			_transform_hided.Substitute("\\s", "", true) 'remove all spaces
-			new_transform.what_animated.Push(  _transform_selected.Match("a=")     OR _transform_hided.Match("a=") OR _transform_selected.Match("alpha=")     OR _transform_hided.Match("alpha=")      ) 'Alpha
-			new_transform.what_animated.Push(  _transform_selected.Match("pos.*=")   OR _transform_hided.Match("pos.*=")    ) 'Position
-			new_transform.what_animated.Push(  _transform_selected.Match("rot.*=")   OR _transform_hided.Match("rot.*=")    ) 'Rotation
-			new_transform.what_animated.Push(  _transform_selected.Match("scale=") OR _transform_hided.Match("scale=") OR  _transform_selected.Match("scalng=") OR _transform_hided.Match("scaling=")  ) 'Scaling
+			new_transform.what_animated.Push(  _transform_selected.Match("(a=|alpha=)") OR _transform_hided.Match("(a=|alpha=)")                               ) 'Alpha
+			new_transform.what_animated.Push(  _transform_selected.Match("(p|pos|position)[xyz]?=")  OR _transform_hided.Match("(p|pos|position)[xyz]?=")      ) 'Position
+			new_transform.what_animated.Push(  _transform_selected.Match("(r|rot|rotation)[xyz]?=")  OR _transform_hided.Match("(r|rot|rotation)[xyz]?=")      ) 'Rotation
+			new_transform.what_animated.Push(  _transform_selected.Match("(s|scale|scaling)[xyz]?=") OR _transform_hided.Match("(s|scale|scaling)[xyz]?=")     ) 'Scaling
 			
 			new_transform.playhead = transition_duration_show 'to stop scripted animation in ExecPerField
 			InitDirector(new_transform)
 			new_transform.dir.Show(new_transform.dir_dur)
-			new_transform.target_state = 0
+			new_transform.target_state = TO_BASE
 
 			arr_transformations.Push(new_transform)
 		end if
@@ -243,7 +254,7 @@ Sub BaseAll()
 		'set next transforms as based
 		arr_transformations[i].next_props = arr_transformations[i].base_props
 		arr_transformations[i].selected = true
-		arr_transformations[i].target_state = 0
+		arr_transformations[i].target_state = TO_BASE
 		arr_transformations[i].playhead = 0 'start animation
 	next
 	common_dir.ContinueAnimationReverse()
@@ -265,10 +276,10 @@ Sub SelectOne(_index As Integer)
 
 		if _should_be_selected then
 			arr_transformations[i].next_props = ParseProps(arr_transformations[i], GetParameterString("transform_selected"))
-			arr_transformations[i].target_state = 1
+			arr_transformations[i].target_state = TO_SHOW
 		else
 			arr_transformations[i].next_props = ParseProps(arr_transformations[i], GetParameterString("transform_hided"))
-			arr_transformations[i].target_state = -1
+			arr_transformations[i].target_state = TO_HIDE
 		end if
 		arr_transformations[i].playhead = 0 'start animation
 	next
@@ -282,7 +293,7 @@ Sub DeselectAll()
 	for i=0 to arr_transformations.ubound
 		arr_transformations[i].next_props = ParseProps(arr_transformations[i], GetParameterString("transform_hided"))
 		arr_transformations[i].selected = false
-		arr_transformations[i].target_state = -1
+		arr_transformations[i].target_state = TO_HIDE
 		arr_transformations[i].playhead = 0 'start animation
 	next
 	common_dir.ContinueAnimation()
@@ -295,7 +306,7 @@ End Sub
 Sub ToBaseAllNow()
 	for i=0 to arr_transformations.ubound
 		arr_transformations[i].cur_props = arr_transformations[i].base_props
-		arr_transformations[i].target_state = 0
+		arr_transformations[i].target_state = TO_BASE
 		ApplyTransform(arr_transformations[i])
 		if GetParameterBool("anim_items") then
 			arr_transformations[i].dir.Show(arr_transformations[i].dir_dur)
@@ -308,7 +319,7 @@ End Sub
 Sub ToHideAllNow()
 	for i=0 to arr_transformations.ubound
 		arr_transformations[i].cur_props = ParseProps(arr_transformations[i], GetParameterString("transform_hided"))
-		arr_transformations[i].target_state = -1
+		arr_transformations[i].target_state = TO_HIDE
 		ApplyTransform(arr_transformations[i])
 		if GetParameterBool("anim_items") then
 			arr_transformations[i].dir.Show(0)
@@ -321,7 +332,7 @@ End Sub
 Sub ToShowAllNow()
 	for i=0 to arr_transformations.ubound
 		arr_transformations[i].cur_props = ParseProps(arr_transformations[i], GetParameterString("transform_selected"))
-		arr_transformations[i].target_state = 1
+		arr_transformations[i].target_state = TO_SHOW
 		ApplyTransform(arr_transformations[i])
 		if GetParameterBool("anim_items") then
 			arr_transformations[i].dir.Show(arr_transformations[i].dir_dur)
@@ -356,29 +367,29 @@ Function ParseProps(_transform As Transformation, _s As String) As Properties
 			Select Case _arr_s[0]
 			Case "a", "alpha"
 				_props.a = ParseOneValue(_transform.base_props.a, _arr_s[1])
-			Case "pos", "position"
+			Case "p", "pos", "position"
 				_props.pos = ParseVertexValue(_transform.base_props.pos, _arr_s[1])
-			Case "posx", "positionx"
+			Case "px", "posx", "positionx"
 				_props.pos = CVertex(ParseOneValue(_transform.base_props.pos.x, _arr_s[1]), _transform.base_props.pos.y, _transform.base_props.pos.z)
-			Case "posy", "positiony"
+			Case "py", "posy", "positiony"
 				_props.pos = CVertex(_transform.base_props.pos.x, ParseOneValue(_transform.base_props.pos.y, _arr_s[1]), _transform.base_props.pos.z)
-			Case "posz", "positionz"
+			Case "pz", "posz", "positionz"
 				_props.pos = CVertex(_transform.base_props.pos.x, _transform.base_props.pos.y, ParseOneValue(_transform.base_props.pos.z, _arr_s[1]))
-			Case "rot", "rotation"
+			Case "r", "rot", "rotation"
 				_props.rot = ParseVertexValue(_transform.base_props.rot, _arr_s[1])
-			Case "rotx", "rotationx"
+			Case "rx", "rotx", "rotationx"
 				_props.rot = CVertex(ParseOneValue(_transform.base_props.rot.x, _arr_s[1]), _transform.base_props.rot.y, _transform.base_props.rot.z)
-			Case "roty", "rotationy"
+			Case "ry", "roty", "rotationy"
 				_props.rot = CVertex(_transform.base_props.rot.x, ParseOneValue(_transform.base_props.rot.y, _arr_s[1]), _transform.base_props.rot.z)
-			Case "rotz", "rotationz"
+			Case "rz", "rotz", "rotationz"
 				_props.rot = CVertex(_transform.base_props.rot.x, _transform.base_props.rot.y, ParseOneValue(_transform.base_props.rot.z, _arr_s[1]))
-			Case "scale", "scaling"
+			Case "s", "scale", "scaling"
 				_props.scale = ParseVertexValue(_transform.base_props.scale, _arr_s[1])
-			Case "scalex", "scalingx"
+			Case "sx", "scalex", "scalingx"
 				_props.scale = CVertex(ParseOneValue(_transform.base_props.scale.x, _arr_s[1]), _transform.base_props.scale.y, _transform.base_props.scale.z)
-			Case "scaley", "scalingy"
+			Case "sy", "scaley", "scalingy"
 				_props.scale = CVertex(_transform.base_props.scale.x, ParseOneValue(_transform.base_props.scale.y, _arr_s[1]), _transform.base_props.scale.z)
-			Case "scalez", "scalingz"
+			Case "sz", "scalez", "scalingz"
 				_props.scale = CVertex(_transform.base_props.scale.x, _transform.base_props.scale.y, ParseOneValue(_transform.base_props.scale.z, _arr_s[1]))
 			Case Else
 				println("Din't find param " & _arr_s[0])
@@ -455,7 +466,7 @@ End Function
 Sub PlayItemAnimation(_transform as Transformation)
 	if _transform.dir == null OR NOT GetParameterBool("advanced") OR NOT GetParameterBool("anim_items") then exit sub
 	
-	if GetParameterBool("through_base") AND prev_selected <> 0 AND selected <> 0 then
+	if GetParameterInt("transition_mode") <> TRANSITION_DIRECT AND prev_selected <> 0 AND selected <> 0 then
 		if _transform.playhead < middle_transition then
 			if NOT _transform.selected then
 				_transform.dir.ContinueAnimation()
@@ -484,22 +495,22 @@ End Sub
 
 Sub CalcCurTransform(_transform As transformation)
 	if _transform.what_animated[0] then
-		_transform.cur_props.a = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.a, _transform.base_props.a, _transform.next_props.a)
+		_transform.cur_props.a = CalcCurrentValue(_transform.cur_props.a, _transform.target_state, _transform.playhead, _transform.prev_props.a, _transform.base_props.a, _transform.next_props.a)
 	end if
 	if _transform.what_animated[1] then
-		_transform.cur_props.pos.x = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.pos.x, _transform.base_props.pos.x, _transform.next_props.pos.x)
-		_transform.cur_props.pos.y = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.pos.y, _transform.base_props.pos.y, _transform.next_props.pos.y)
-		_transform.cur_props.pos.z = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.pos.z, _transform.base_props.pos.z, _transform.next_props.pos.z)
+		_transform.cur_props.pos.x = CalcCurrentValue(_transform.cur_props.pos.x, _transform.target_state, _transform.playhead, _transform.prev_props.pos.x, _transform.base_props.pos.x, _transform.next_props.pos.x)
+		_transform.cur_props.pos.y = CalcCurrentValue(_transform.cur_props.pos.y, _transform.target_state, _transform.playhead, _transform.prev_props.pos.y, _transform.base_props.pos.y, _transform.next_props.pos.y)
+		_transform.cur_props.pos.z = CalcCurrentValue(_transform.cur_props.pos.z, _transform.target_state, _transform.playhead, _transform.prev_props.pos.z, _transform.base_props.pos.z, _transform.next_props.pos.z)
 	end if
 	if _transform.what_animated[2] then
-		_transform.cur_props.rot.x = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.rot.x, _transform.base_props.rot.x, _transform.next_props.rot.x)
-		_transform.cur_props.rot.y = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.rot.y, _transform.base_props.rot.y, _transform.next_props.rot.y)
-		_transform.cur_props.rot.z = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.rot.z, _transform.base_props.rot.z, _transform.next_props.rot.z)
+		_transform.cur_props.rot.x = CalcCurrentValue(_transform.cur_props.rot.x, _transform.target_state, _transform.playhead, _transform.prev_props.rot.x, _transform.base_props.rot.x, _transform.next_props.rot.x)
+		_transform.cur_props.rot.y = CalcCurrentValue(_transform.cur_props.rot.y, _transform.target_state, _transform.playhead, _transform.prev_props.rot.y, _transform.base_props.rot.y, _transform.next_props.rot.y)
+		_transform.cur_props.rot.z = CalcCurrentValue(_transform.cur_props.rot.z, _transform.target_state, _transform.playhead, _transform.prev_props.rot.z, _transform.base_props.rot.z, _transform.next_props.rot.z)
 	end if
 	if _transform.what_animated[3] then
-		_transform.cur_props.scale.x = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.scale.x, _transform.base_props.scale.x, _transform.next_props.scale.x)
-		_transform.cur_props.scale.y = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.scale.y, _transform.base_props.scale.y, _transform.next_props.scale.y)
-		_transform.cur_props.scale.z = CalcCurrentValue(_transform.target_state, _transform.playhead, _transform.prev_props.scale.z, _transform.base_props.scale.z, _transform.next_props.scale.z)
+		_transform.cur_props.scale.x = CalcCurrentValue(_transform.cur_props.scale.x, _transform.target_state, _transform.playhead, _transform.prev_props.scale.x, _transform.base_props.scale.x, _transform.next_props.scale.x)
+		_transform.cur_props.scale.y = CalcCurrentValue(_transform.cur_props.scale.y, _transform.target_state, _transform.playhead, _transform.prev_props.scale.y, _transform.base_props.scale.y, _transform.next_props.scale.y)
+		_transform.cur_props.scale.z = CalcCurrentValue(_transform.cur_props.scale.z, _transform.target_state, _transform.playhead, _transform.prev_props.scale.z, _transform.base_props.scale.z, _transform.next_props.scale.z)
 	end if
 End Sub
 
@@ -512,26 +523,49 @@ End Sub
 
 Dim easy_in As Double = 30
 Dim easy_out As Double = 90
+Dim transition_mode As Integer
 
-Function CalcCurrentValue(_target_state As Integer, _playhead As Double, _prev_value As Double, _base_value As Double, _next_value As Double) As Double
-	if GetParameterBool("through_base") AND _prev_value <> _base_value AND _next_value <> _base_value then
-		if _playhead < middle_transition then
-			' CalcCurrentValue = Besizer(100.0*_playhead/middle_transition, _prev_value, _base_value, easy_in, 30)
-			CalcCurrentValue = AnimateOut(100.0*_playhead/middle_transition, _prev_value, _next_value)
-			common_dir.ContinueAnimationReverse()
-		else
-			' CalcCurrentValue = Besizer(100.0*(_playhead-middle_transition)/(transition_duration_show-middle_transition), _base_value, _next_value, 30, easy_out)
-			CalcCurrentValue = AnimateIn(100.0*(_playhead-middle_transition)/(transition_duration_show-middle_transition), _prev_value, _next_value)
-			common_dir.ContinueAnimation()
+Function CalcCurrentValue(_current_value As Double, _target_state As Integer, _playhead As Double, _prev_value As Double, _base_value As Double, _next_value As Double) As Double
+	CalcCurrentValue = _current_value
+	
+	
+	transition_mode = GetParameterInt("transition_mode")
+	if selected == 0 OR prev_selected == 0 then transition_mode = TRANSITION_DIRECT
+	
+	select case transition_mode
+	case TRANSITION_DIRECT
+		if _prev_value == _next_value then
+			Exit Function
 		end if
-	else
-		'CalcCurrentValue = Besizer(100.0*_playhead/transition_duration_show, _prev_value, _next_value, easy_in, easy_out)
-		if _target_state == 1 then
+		if _target_state == TO_SHOW then
 			CalcCurrentValue = AnimateIn(100.0*_playhead/transition_duration_show, _prev_value, _next_value)
 		else
 			CalcCurrentValue = AnimateOut(100.0*_playhead/transition_duration_hide, _prev_value, _next_value)
 		end if
-	end if
+	case TRANSITION_BASE
+		if _playhead < middle_transition then
+			CalcCurrentValue = Besizer(100.0*_playhead/middle_transition, _prev_value, _base_value, easy_in, 30)
+			common_dir.ContinueAnimationReverse()
+		else
+			CalcCurrentValue = Besizer(100.0*(_playhead-middle_transition)/(transition_duration_show-middle_transition), _base_value, _next_value, 30, easy_out)
+			common_dir.ContinueAnimation()
+		end if
+	case TRANSITION_HIDE
+		if _prev_value == _next_value then
+			Exit Function
+		end if
+		if _playhead < middle_transition then
+			if _target_state == TO_HIDE then
+				CalcCurrentValue = AnimateOut(100.0*_playhead/middle_transition, _prev_value, _next_value)
+				common_dir.ContinueAnimationReverse()
+			end if
+		else
+			if _target_state == TO_SHOW then
+				CalcCurrentValue = AnimateIn(100.0*(_playhead-middle_transition)/(transition_duration_show-middle_transition), _prev_value, _next_value)
+				common_dir.ContinueAnimation()
+			end if
+		end if
+	end select
 End Function
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''

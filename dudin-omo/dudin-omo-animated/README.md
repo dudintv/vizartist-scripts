@@ -1,5 +1,10 @@
 ## Animated OMO. Select one from children and hide other
 
+#### Version 2.4.1 (1 September 2020)
+* FIX: repeating transition animation when "transition throught base"
+* FIX: transform strings matching to setup whet_animated settings
+* FIX: moving to base if there isn't assigned the "transform hided"
+
 #### Version 2.4.1 (30 August 2020)
 * FIX: working with float point numbers, e.g. "scale=0.8"
 
