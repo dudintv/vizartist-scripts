@@ -1,5 +1,8 @@
 ## Animated OMO. Select one from children and hide other
 
+#### Version 2.5.0 (1 September 2020)
+* ADD: selector of two types transformation moving: "through base state" and "through hidden state" 
+
 #### Version 2.4.1 (1 September 2020)
 * FIX: repeating transition animation when "transition throught base"
 * FIX: transform strings matching to setup whet_animated settings
