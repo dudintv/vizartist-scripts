@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,5,1)
+RegisterPluginVersion(1,6,0)
 Dim info As String = "Get value from Excel by DataPool Reader through SharedMemory. Author: Dmitry Dudin.
 If ypu chose \"childs texts\" mode you have to name interactive child containers by template \"=X,Y\",
 where X and Y - a number or name auto-counter. 
@@ -11,6 +11,7 @@ For example, for the first column use \"=i,1\" and for the second \"=y,2\"
 Supported types for all table:
 :omo
 :color
+:number(2)
 "
 
 Dim c_reader As Container
@@ -350,7 +351,6 @@ Sub FindCellSubContainers()
 				_cell.row = GetAutoIndex(arr_auto_row, _row, GetParameterInt("start_auto_row"))
 			end if
 			
-			
 			if _column.Match("\\D+") then
 				_cell.column = GetAutoIndex(arr_auto_column, _column, GetParameterInt("start_auto_column"))
 			else
@@ -391,8 +391,10 @@ Sub Parse()
 	next
 End Sub
 
-Dim _arr_color As Array[String]
 Sub Output()
+	Dim _arr_color As Array[String]
+	Dim _type As String
+	Dim _open_par, _close_par, _i_type_param, _last_index As Integer
 	if GetParameterInt("mode") == 0 then
 		' one value
 		Dim _row As Integer = GetRow()
@@ -437,22 +439,50 @@ Sub Output()
 				if arr_cells[i].row > 0 then
 					_row = arr_cells[i].row-2
 				else
-					_row = data.size + arr_cells[i].row
+					_last_index = FindLastValuableRowIndex(arr_cells[i].column)
+					_row = _last_index + arr_cells[i].row
+					' actually there will be substract, because arr_cells[i].row < 0
 				end if
 				
 				if data.size > 0 AND _row < data.size AND arr_cells[i].column-1 < data[_row].size then
 					_value = data[_row][arr_cells[i].column-1]
-					select case arr_cells[i].type
+					
+					
+					' PARSING TYPE'S PARAM, e.g. "number(2)"
+					_type = arr_cells[i].type
+					if _type.Match("^number") then
+						if _type.Match("^number\\(\\d*\\)") then
+							_open_par = _type.Find("(")
+							_close_par = _type.Find(")")
+							_i_type_param = CInt(_type.GetSubstring(_open_par+1, _close_par - _open_par - 1))
+							_type = _type.Left(_open_par)
+						else
+							_i_type_param = 0
+						end if
+					end if
+					
+					
+					
+					
+					' SUPPORT TYPES
+					select case _type
 					case "text"
 						arr_cells[i].c.Geometry.Text = _value
+					case "number"
+						arr_cells[i].c.Geometry.Text = CStr(DoubleToString(CDbl(_value),_i_type_param))
 					case "omo"
 						arr_cells[i].c.GetFunctionPluginInstance("Omo").SetParameterInt("vis_con", CInt(_value))
 					case "color"
-						if _value.match("\\d+\\s\\d+\\s\\d+") then
-							_value.Split(" ", _arr_color)
+						if _value.match("\\d+;\\d+;\\d+") then
+							_value.Split(";", _arr_color)
 							arr_cells[i].c.Material.Emission = CColor(  CDbl(_arr_color[0])/255.0, CDbl(_arr_color[1])/255.0, CDbl(_arr_color[2])/255.0  )  '
 						end if
 					end select
+					
+					
+					
+					
+					
 				end if
 			next
 		end select
@@ -486,6 +516,15 @@ Sub Output()
 		next
 	end if
 End Sub
+
+Function FindLastValuableRowIndex(_column As Integer) As Integer
+	Dim _row As Integer = data.ubound
+	
+	do while data[_row][_column-1] == "" AND _row > 0
+		_row -= 1
+	loop
+	FindLastValuableRowIndex = _row
+End Function
 
 '----------------------------------------------------------
 
