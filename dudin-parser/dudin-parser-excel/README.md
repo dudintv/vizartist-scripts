@@ -1,16 +1,19 @@
 ## Parser table data from DataPool "Reader"
 
+#### Version 1.7.0 (08.09.2020)
+* add: new type "percent" to provide correct appearing of percent values (just multiply by 100.0)
+
 #### Version 1.6.1 (08.09.2020)
 * fix: printing error when data is empty
 
-#### Version 1.6 (02.09.2020)
+#### Version 1.6.0 (02.09.2020)
 * add: number param for "number" type, you can type "=x,y:number(2)" in order to get float number with two numbers after point
 * add: active searching the actual last valuable cell in each column separatelly
 
 #### Version 1.5.1 (30.08.2020)
 * fix: change color parsing (from ";" to " " delimeter)
 
-#### Version 1.5 (30.08.2020)
+#### Version 1.5.0 (30.08.2020)
 * new feature: you can arbitrary name your container, e.g. "Month=3,2"
 * new feature: you can index row from the end of the table, e.g. "LastValue=-1,2" — it gives you the last value in second column
 * fix: out of array indexes

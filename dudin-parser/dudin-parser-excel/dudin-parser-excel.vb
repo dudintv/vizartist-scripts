@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,6,1)
+RegisterPluginVersion(1,7,0)
 Dim info As String = "Get value from Excel by DataPool Reader through SharedMemory. Author: Dmitry Dudin.
 If ypu chose \"childs texts\" mode you have to name interactive child containers by template \"=X,Y\",
 where X and Y - a number or name auto-counter. 
@@ -448,10 +448,10 @@ Sub Output()
 					_value = data[_row][arr_cells[i].column-1]
 					
 					
-					' PARSING TYPE'S PARAM, e.g. "number(2)"
+					' PARSING TYPE'S PARAM, e.g. "number(2)" or "percent(0)"
 					_type = arr_cells[i].type
-					if _type.Match("^number") then
-						if _type.Match("^number\\(\\d*\\)") then
+					if _type.Match("^(number|percent)") then
+						if _type.Match("^\\D*\\(\\d+\\)") then
 							_open_par = _type.Find("(")
 							_close_par = _type.Find(")")
 							_i_type_param = CInt(_type.GetSubstring(_open_par+1, _close_par - _open_par - 1))
@@ -470,6 +470,8 @@ Sub Output()
 						arr_cells[i].c.Geometry.Text = _value
 					case "number"
 						arr_cells[i].c.Geometry.Text = CStr(DoubleToString(CDbl(_value),_i_type_param))
+					case "percent"
+						arr_cells[i].c.Geometry.Text = CStr(DoubleToString(CDbl(_value)*100.0,_i_type_param))
 					case "omo"
 						arr_cells[i].c.GetFunctionPluginInstance("Omo").SetParameterInt("vis_con", CInt(_value))
 					case "color"
