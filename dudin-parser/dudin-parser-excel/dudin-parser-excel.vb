@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,7,0)
+RegisterPluginVersion(1,7,1)
 Dim info As String = "Get value from Excel by DataPool Reader through SharedMemory. Author: Dmitry Dudin.
 If ypu chose \"childs texts\" mode you have to name interactive child containers by template \"=X,Y\",
 where X and Y - a number or name auto-counter. 
@@ -440,7 +440,7 @@ Sub Output()
 					_row = arr_cells[i].row-2
 				else
 					_last_index = FindLastValuableRowIndex(arr_cells[i].column)
-					_row = _last_index + arr_cells[i].row
+					_row = _last_index + arr_cells[i].row + 1
 					' actually there will be substract, because arr_cells[i].row < 0
 				end if
 				

@@ -1,5 +1,8 @@
 ## Parser table data from DataPool "Reader"
 
+#### Version 1.7.1 (08.09.2020)
+* fix: getting the last data from list with "-1" index
+
 #### Version 1.7.0 (08.09.2020)
 * add: new type "percent" to provide correct appearing of percent values (just multiply by 100.0)
 
