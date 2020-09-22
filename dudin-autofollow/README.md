@@ -1,5 +1,8 @@
 ## Autofollow
 
+#### 1.3 (22.09.2020)
+* add Z axis
+
 #### 1.2 (09.01.2019)
 * translated to English
 
