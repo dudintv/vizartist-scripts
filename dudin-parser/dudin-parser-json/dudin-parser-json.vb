@@ -93,7 +93,7 @@ Function PrimitiveValidateJSON(ByVal json_input As String) As Boolean
 	Dim quote_count As Integer = 0
 	Dim escape As Boolean
 	Dim char As String
-	json_input.Substitute("\s", "", true)
+	json_input.Substitute("\\s", "", true)
 	'Println("START validation. json_input = "&json_input&" AND length = " & json_input.Length)
 	for i=0 to json_input.Length-1
 		char = json_input.GetChar(i)
@@ -103,7 +103,7 @@ Function PrimitiveValidateJSON(ByVal json_input As String) As Boolean
 			escape = (NOT escape AND char == "\\")
 		Else
 			' quote_count == 0
-			if char == "\\" Then quote_count += 1
+			if char == "\"" Then quote_count += 1
 			
 			if char == "{" then curly_braces_count += 1
 			if char == "}" then curly_braces_count -= 1
