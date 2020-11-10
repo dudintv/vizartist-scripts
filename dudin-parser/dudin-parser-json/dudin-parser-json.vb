@@ -1,3 +1,5 @@
+RegisterPluginVersion(0,1,0)
+
 Structure JSONObject
 	type As String
 	name As String
@@ -45,43 +47,51 @@ end sub
 
 sub OnExecAction(buttonId As Integer)
 	if buttonId == 1 then
-		' PARSE
-		println("")
-		println("------------------" &  GetCurrentTime().ToString())
-		if GetParameterBool("test_input_mode") Then
-			s_json_source = GetParameterString("test_json")
-		Else
-			s_json_source = System.Map[GetParameterString("shm_input_name")]
-		end if
-		s_json_source.Trim()
-		s_json_path = GetParameterString("json_path")
-		s_json_path.Trim()
-		
-		
-		
-		println("PrimitiveValidateJSON = " & PrimitiveValidateJSON(s_json_source))
-		'Println("s_json_source = " & s_json_source)
-		s_json_source = MinifyJSON(s_json_source)
-		Println("minified s_json_source = " & s_json_source)
-		
-		
-		json_object = ParseJSON(s_json_source)
-		PrintObject(json_object, 0)
-		
-		s_output.join( GetValueByPath(json_object, s_json_path), " | ")
-		println(1, "s_output = " & s_output)
-		
-		
-		if GetParameterBool("test_output_mode") Then
-			this.Geometry.Text = s_output
-		Else
-			System.Map[GetParameterString("shm_output_name")] = s_output
-		end If
+		Parse()
 	ElseIf buttonId == 99 Then
 		RunAllTests()
 	end If
 end sub
 
+
+sub OnSharedMemoryVariableChanged(map As SharedMemory, mapKey As String)
+	if NOT GetParameterBool("test_input_mode") AND mapKey == GetParameterString("shm_input_name") then
+		Parse()
+	end if
+end sub
+
+
+Sub Parse()
+	println("")
+	println("PARSE START ------------------ " &  GetCurrentTime().ToString())
+	if GetParameterBool("test_input_mode") Then
+		s_json_source = GetParameterString("test_json")
+	Else
+		s_json_source = System.Map[GetParameterString("shm_input_name")]
+	end if
+	s_json_source.Trim()
+	
+	s_json_path = GetParameterString("json_path")
+	s_json_path.Trim()
+	
+	'println("PrimitiveValidateJSON = " & PrimitiveValidateJSON(s_json_source))
+	'Println("s_json_source = " & s_json_source)
+	s_json_source = MinifyJSON(s_json_source)
+	Println("minified s_json_source = " & s_json_source)
+	
+	json_object = ParseJSON(s_json_source)
+	'PrintObject(json_object, 0)
+	
+	s_output.join( GetValueByPath(json_object, s_json_path), " | ")
+	'println(1, "s_output = " & s_output)
+	
+	
+	if GetParameterBool("test_output_mode") Then
+		this.Geometry.Text = s_output
+	Else
+		System.Map[GetParameterString("shm_output_name")] = s_output
+	end If
+End Sub
 
 
 
@@ -290,7 +300,9 @@ Function ParseJSON(ByVal _json_input As String) As JSONObject
 End Function
 
 
-
+Function GetValueOfCurrentByPath(_json_path As String) As Variant
+	GetValueOfCurrentByPath = GetValueByPath(json_object, _json_path)
+End Function
 
 Function GetValueByPath(_input_object As JSONObject, _json_path As String) As Variant
 	Dim _arr_path As Array[String]
@@ -330,21 +342,23 @@ Function GetValueByPath(_input_object As JSONObject, _json_path As String) As Va
 			_arr_output.Push( GetValueByPath(_wild_object.arr_objects[i], _unwild_name) )
 		next
 		GetValueByPath = _arr_output
-	elseif _arr_path[_arr_path.ubound] == "count()" then
+	elseif _arr_path.ubound >= 0 AND _arr_path[_arr_path.ubound] == "count()" then
 
 		_arr_path.Erase(_arr_path.ubound)
 		Dim _pre_function_path As String
 		_pre_function_path.Join(_arr_path,".")
 		
-		println(1, "PRE-COUNT OBJECT:")
-		PrintObject(GetObjectByPath(_input_object, _pre_function_path), 0)
+		'println(1, "PRE-COUNT OBJECT:")
+		'PrintObject(GetObjectByPath(_input_object, _pre_function_path), 0)
 		GetValueByPath = GetObjectByPath(_input_object, _pre_function_path).arr_objects.size
 	else
 		GetValueByPath = GetObjectByPath(_input_object, _json_path).value
 	end if
 End Function
 
-
+Function GetObjectOfCurrentByPath(_json_path As String) As JSONObject
+	GetObjectOfCurrentByPath = GetObjectByPath(json_object, _json_path)
+End Function
 
 Function GetObjectByPath(_input_object As JSONObject, _json_path As String) As JSONObject
 	Dim _arr_path As Array[String]
