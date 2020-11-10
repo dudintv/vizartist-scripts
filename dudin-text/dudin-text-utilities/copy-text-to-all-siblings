@@ -1,0 +1,21 @@
+Dim arr_c As Array[Container]
+Dim s, prev_s As String
+
+sub OnInit()
+	arr_c.Clear()
+	for i=0 to this.ParentContainer.ChildContainerCount-1
+		if this.ParentContainer.GetChildContainerByIndex(i) <> this then
+			arr_c.push(this.ParentContainer.GetChildContainerByIndex(i))
+		end if
+	next
+end sub
+
+sub OnExecPerField()
+	s = this.Geometry.Text
+	if s <> prev_s then
+		for i=0 to arr_c.ubound
+			arr_c[i].Geometry.Text = s
+		next
+		prev_s = s
+	end if
+end sub
