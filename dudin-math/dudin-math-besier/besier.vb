@@ -1,14 +1,12 @@
 Dim info As String = "Creator: Dmitry Dudin.
 Version 0.1 (3 december 2018)"
 
-'CLAMP
 Function ClampDbl(value as double, min  as double, max as double) as Double
 	if value < min then value = min
 	if value > max then value = max
 	ClampDbl = value
 End Function
 
-'BESIER
 Function Besizer(procent as double, begin_value as double, end_value as double, begin_weight as double, end_weight as double) as Double
 	Dim a, b, c, d, t_besier_value As Double
 	procent      = ClampDbl(procent,       0, 100)/100.0

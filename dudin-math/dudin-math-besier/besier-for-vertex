@@ -1,0 +1,29 @@
+Function ClampDbl(_value as double, _min  as double, _max as double) as Double
+	if _value < _min then _value = _min
+	if _value > _max then _value = _max
+	ClampDbl = _value
+End Function
+
+Function Besizer(ByVal _procent as double, ByVal _begin_value as double, ByVal _end_value as double, ByVal _begin_weight as double, ByVal _end_weight as double) as Double
+	Dim _a, _b, _c, _d, _t_besier_value As Double
+	_procent      = ClampDbl(_procent,       0, 100)/100.0
+	_begin_weight = ClampDbl(_begin_weight, 35, 100)/100.0
+	_end_weight   = ClampDbl(_end_weight,   35, 100)/100.0
+	
+	_a = 3*_begin_weight - 3*(1.0 - _end_weight) + 1
+	_b = - 6*_begin_weight + 3*(1.0 - _end_weight)
+	_c = 3*_begin_weight
+	_d = -_procent
+	
+	_t_besier_value = (sqrt((-27*_a^2*_d + 9*_a*_b*_c - 2*_b^3)^2 + 4*(3*_a*_c - _b^2)^3) - 27*_a^2*_d + 9*_a*_b*_c - 2*_b^3)^(1.0/3)/(3*2^(1.0/3)*_a) - (2^(1.0/3)*(3*_a*_c - _b^2))/(3*_a*(sqrt((-27*_a^2*_d + 9*_a*_b*_c - 2*_b^3)^2 + 4*(3*_a*_c - _b^2)^3) - 27*_a^2*_d + 9*_a*_b*_c - 2*_b^3)^(1.0/3)) - _b/(3*_a)
+	Besizer = _begin_value + (_end_value - _begin_value)*( 3*(1-_t_besier_value)*_t_besier_value^2 + _t_besier_value^3 ) 
+End Function
+
+Function VertexBesier(ByVal _procent as double, ByVal _begin_value as vertex, ByVal _end_value as vertex, ByVal _begin_weight as double, ByVal _end_weight as double) as Vertex
+	Dim _v As Vertex
+	_v.x = Besizer(_procent, _begin_value.x, _end_value.x, _begin_weight, _end_weight)
+	_v.y = Besizer(_procent, _begin_value.y, _end_value.y, _begin_weight, _end_weight)
+	_v.z = Besizer(_procent, _begin_value.z, _end_value.z, _begin_weight, _end_weight)
+	println("procent = " & _procent & " begin_value = " & _begin_value & " end_value = " & _end_value & " v = " & _v)
+	VertexBesier = _v
+End Function
