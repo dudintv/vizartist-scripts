@@ -1,4 +1,4 @@
-Function GetChildrenByNameContainsString(_parent As Container, _name As String) As Array[Container]
+Function FindAllSubContainersByMatch(_parent As Container, _name As String) As Array[Container]
 	Dim _arr_childs As Array[Container]
 	_parent.GetContainerAndSubContainers(_arr_childs, false)
 	_arr_childs.Erase(0)
@@ -8,5 +8,5 @@ Function GetChildrenByNameContainsString(_parent As Container, _name As String) 
 			_i -= 1
 		end if
 	next
-	GetChildrenByNameContainsString = _arr_childs
+	FindAllSubContainersByMatch = _arr_childs
 End Function
