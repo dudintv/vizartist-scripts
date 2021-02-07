@@ -3,7 +3,7 @@ Dim info As String = "Analogue of Temo plugin, only for Viz4 Fusion material. \n
 '--------------------------------------------------------------------
 
 Dim tiles_count_x, tiles_count_y, show_tile_x, show_tile_y, show_index As Integer
-Dim offset_x, offset_y, scale_x, scale_y, padding_x, padding_y As Double
+Dim offset_x, offset_y, scale_x, scale_y, crop_x, crop_y As Double
 
 Dim s As String
 Dim arr_names, arr_line_names As Array[String]
@@ -35,9 +35,9 @@ sub OnInitParameters()
 	RegisterParameterString("show_name", "Show name", "", 99, 99, "")
 	RegisterParameterBool("hide_if_cant_name", "Hide if cant find name", true)
 	
-	RegisterParameterDouble("padding_x", "Padding X, %", 0, -1000.0, 1000.0)
-	RegisterParameterDouble("padding_y", "Padding Y, %", 0, -1000.0, 1000.0)
-	RegisterParameterBool("locked_padding", "Lock padding (X = Y)", true)
+	RegisterParameterDouble("crop_x", "crop X, %", 0, -1000.0, 1000.0)
+	RegisterParameterDouble("crop_y", "crop Y, %", 0, -1000.0, 1000.0)
+	RegisterParameterBool("locked_crop", "Lock crop (X = Y)", true)
 end sub
 
 sub OnInit()
@@ -62,8 +62,8 @@ sub OnParameterChanged(parameterName As String)
 		end if
 	elseif parameterName == "names" then
 		ParseNames()
-	elseif parameterName == "locked_padding" then
-		SendGuiParameterShow("padding_y", CInt(NOT GetParameterBool("locked_padding")))
+	elseif parameterName == "locked_crop" then
+		SendGuiParameterShow("crop_y", CInt(NOT GetParameterBool("locked_crop")))
 	end If	
 	CalcTexturePosition()
 end sub
@@ -128,26 +128,26 @@ Sub CalcTexturePosition()
 		show_tile_y = show_index Mod tiles_count_y
 	end if
 	
-	' calc padding
-	padding_x = GetParameterDouble("padding_x")/100.0
-	if GetParameterBool("locked_padding") then
-		padding_y = padding_x
+	' calc crop
+	crop_x = GetParameterDouble("crop_x")/100.0
+	if GetParameterBool("locked_crop") then
+		crop_y = crop_x
 	else
-		padding_y = GetParameterDouble("padding_y")/100.0
+		crop_y = GetParameterDouble("crop_y")/100.0
 	end if
-		
+	
 	scale_x = 1.0/tiles_count_x
 	scale_y = 1.0/tiles_count_y
 	
 	offset_x = scale_x*show_tile_x 
 	offset_y = scale_y*(tiles_count_y - 1 - show_tile_y)
-	
-	if padding_x <> 0 OR padding_y <> 0 then
-		' consider padding
-		offset_x += scale_x*padding_x/2.0
-		offset_y += scale_y*padding_y/2.0
-		scale_x *= (1.0 - padding_x)
-		scale_y *= (1.0 - padding_y)
+
+	if crop_x <> 0 OR crop_y <> 0 then
+		' consider crop
+		offset_x += scale_x*crop_x/2.0
+		offset_y += scale_y*crop_y/2.0
+		scale_x *= (1.0 - crop_x)
+		scale_y *= (1.0 - crop_y)
 	end if
 	
 	SendCommand("#" & this.VizId & "*MATERIAL_DEFINITION*SCALE_UV SET " & DoubleToString(scale_x, 5) & " " & DoubleToString(scale_y, 5))
