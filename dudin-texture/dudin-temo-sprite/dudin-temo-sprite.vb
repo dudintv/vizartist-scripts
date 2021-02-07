@@ -1,15 +1,9 @@
-Dim info As String = "Analogue of Temo plugin, only for Viz4 Fusion material.
-
-It implements the classic technique of texture sprite.
-The texture is prepared as a chessboard with an arbitrary count of cells by the vertical and horizontal axis.
-Each horizontal or vertical cell should be equal to each other.
-
-Author — Dmitry Dudin, dudin.tv"
+Dim info As String = "Analogue of Temo plugin, only for Viz4 Fusion material. \n\n It implements the classic technique of texture sprite. The texture is prepared as a chessboard with an arbitrary count of cells by the vertical and horizontal axis. Each horizontal or vertical cell should be equal to each other. \n\n Author — Dmitry Dudin, dudin.tv"
 
 '--------------------------------------------------------------------
 
 Dim tiles_count_x, tiles_count_y, show_tile_x, show_tile_y, show_index As Integer
-Dim offset_x, offset_y, scale_x, scale_y As Double
+Dim offset_x, offset_y, scale_x, scale_y, padding_x, padding_y As Double
 
 Dim s As String
 Dim arr_names, arr_line_names As Array[String]
@@ -40,6 +34,10 @@ sub OnInitParameters()
 	RegisterParameterText("names", "", 40, 20)
 	RegisterParameterString("show_name", "Show name", "", 99, 99, "")
 	RegisterParameterBool("hide_if_cant_name", "Hide if cant find name", true)
+	
+	RegisterParameterDouble("padding_x", "Padding X, %", 0, -1000.0, 1000.0)
+	RegisterParameterDouble("padding_y", "Padding Y, %", 0, -1000.0, 1000.0)
+	RegisterParameterBool("locked_padding", "Lock padding (X = Y)", true)
 end sub
 
 sub OnInit()
@@ -64,6 +62,8 @@ sub OnParameterChanged(parameterName As String)
 		end if
 	elseif parameterName == "names" then
 		ParseNames()
+	elseif parameterName == "locked_padding" then
+		SendGuiParameterShow("padding_y", CInt(NOT GetParameterBool("locked_padding")))
 	end If	
 	CalcTexturePosition()
 end sub
@@ -101,18 +101,21 @@ Function FindIndexByName(name As String) As Integer
 End Function
 
 Sub CalcTexturePosition()
+	' find index:
 	if GetParameterInt("selection_mode") == SELECTION_MODE_NUMBER then
 		show_index = GetParameterInt("show_tile_number") - 1
 	elseif GetParameterInt("selection_mode") == SELECTION_MODE_NAME then
 		show_index = FindIndexByName(GetParameterString("show_name"))
 	end if
 	
+	' set Active status of this container
 	if GetParameterInt("selection_mode") == SELECTION_MODE_NAME AND GetParameterBool("hide_if_cant_name") then
 		this.active = (show_index >= 0)
 	else
 		this.active = true
 		if show_index < 0 then show_index = 0
 	end if
+	
 	
 	tiles_count_x = GetParameterInt("num_tiles_horizontal")
 	tiles_count_y = GetParameterInt("num_tiles_vertical")
@@ -125,10 +128,35 @@ Sub CalcTexturePosition()
 		show_tile_y = show_index Mod tiles_count_y
 	end if
 	
+	' calc padding
+	padding_x = GetParameterDouble("padding_x")/100.0
+	if GetParameterBool("locked_padding") then
+		padding_y = padding_x
+	else
+		padding_y = GetParameterDouble("padding_y")/100.0
+	end if
+	
+	println("")
+	println("tiles_count_x = " & tiles_count_x & " | tiles_count_y = " & tiles_count_y)
+	println("show_tile_x = " & show_tile_x & " | show_tile_y = " & show_tile_y)
+	
 	scale_x = 1.0/tiles_count_x
 	scale_y = 1.0/tiles_count_y
-	offset_x = scale_x*show_tile_x
-	offset_y = scale_y*(1-show_tile_y)
+
+	println("scale_x = " & scale_x & " | scale_y = " & scale_y)
+	println("padding_x = " & padding_x & " | padding_y = " & padding_y)
+	
+	offset_x = scale_x*show_tile_x 
+	offset_y = scale_y*(tiles_count_y - 1 - show_tile_y)
+	
+	println("offset_x = " & offset_x & " | offset_y = " & offset_y)
+	if padding_x <> 0 OR padding_y <> 0 then
+		' consider padding
+		offset_x += scale_x*padding_x/2.0
+		offset_y += scale_y*padding_y/2.0
+		scale_x *= (1.0 - padding_x)
+		scale_y *= (1.0 - padding_y)
+	end if
 	
 	SendCommand("#" & this.VizId & "*MATERIAL_DEFINITION*SCALE_UV SET " & DoubleToString(scale_x, 5) & " " & DoubleToString(scale_y, 5))
 	SendCommand("#" & this.VizId & "*MATERIAL_DEFINITION*OFFSET_UV SET " & DoubleToString(offset_x, 5) & " " & DoubleToString(offset_y, 5))
