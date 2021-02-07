@@ -3,6 +3,7 @@
 #### Version 1.2 (07 February 2021)
 * fix: shifting calculation of the first row
 * add: crop for cells — usefull to hide guide grid or cells titles
+* add: support legacy Viz3 textures
 
 #### Version 1.1 (07 February 2021)
 * add: now you can name each cell and show speciefic one by its name — cols separated by "|" and rows separated by "\n" (new line)
