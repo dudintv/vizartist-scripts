@@ -135,21 +135,13 @@ Sub CalcTexturePosition()
 	else
 		padding_y = GetParameterDouble("padding_y")/100.0
 	end if
-	
-	println("")
-	println("tiles_count_x = " & tiles_count_x & " | tiles_count_y = " & tiles_count_y)
-	println("show_tile_x = " & show_tile_x & " | show_tile_y = " & show_tile_y)
-	
+		
 	scale_x = 1.0/tiles_count_x
 	scale_y = 1.0/tiles_count_y
-
-	println("scale_x = " & scale_x & " | scale_y = " & scale_y)
-	println("padding_x = " & padding_x & " | padding_y = " & padding_y)
 	
 	offset_x = scale_x*show_tile_x 
 	offset_y = scale_y*(tiles_count_y - 1 - show_tile_y)
 	
-	println("offset_x = " & offset_x & " | offset_y = " & offset_y)
 	if padding_x <> 0 OR padding_y <> 0 then
 		' consider padding
 		offset_x += scale_x*padding_x/2.0
