@@ -1,3 +1,4 @@
+RegisterPluginVersion(1,2,0)
 Dim info As String = "Analogue of Temo plugin, only for Viz4 Fusion material. \n\n It implements the classic technique of texture sprite. The texture is prepared as a chessboard with an arbitrary count of cells by the vertical and horizontal axis. Each horizontal or vertical cell should be equal to each other. \n\n Author — Dmitry Dudin, dudin.tv"
 
 '--------------------------------------------------------------------
@@ -153,7 +154,7 @@ Sub CalcTexturePosition()
 		scale_y = tiles_count_y
 		
 		offset_x = 10*(tiles_count_x-1)/2.0 + 10*(tiles_count_x-1)*show_tile_x
-		offset_y = -10*(tiles_count_y-1)/2.0 - 10*(tiles_count_y-1)*show_tile_y
+		offset_y = 10*(tiles_count_y-1)/2.0 + 10*(tiles_count_y-1)*show_tile_y
 		
 		if crop_x <> 0 OR crop_y <> 0 then
 			scale_x  *= 1.0/(1.0 - crop_x)
@@ -163,7 +164,7 @@ Sub CalcTexturePosition()
 		end if
 		
 		this.texture.MapScaling = CVertex(scale_x, scale_y, 0)
-		this.texture.MapPosition = CVertex(offset_x, offset_y, 1)
+		this.texture.MapPosition = CVertex(offset_x, -offset_y, 1)
 	else
 		' VIZ_VERSION_4
 		scale_x = 1.0/tiles_count_x
