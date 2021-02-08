@@ -1,4 +1,4 @@
-## Temo-sprite — advanced analogue of original Vizrt Temo plugin, nut also support Viz4 fusion material.
+## Temo-sprite — advanced analogue of original Vizrt Temo plugin, but also supports Viz4 fusion material.
 
 #### Version 1.2 (07 February 2021)
 * fix: shifting calculation of the first row
