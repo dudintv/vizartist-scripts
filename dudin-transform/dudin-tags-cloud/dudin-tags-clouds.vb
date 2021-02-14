@@ -1,14 +1,15 @@
-RegisterPluginVersion(1,0,0)
+RegisterPluginVersion(1,1,0)
 
 Dim c, c_source, c_template, c_logo, c_target, c_gabarit As Container
 Dim s, separator As String
 Dim arr_s As Array[String]
 
 Dim arr_c As Array[Container]
-Dim border_x, border_y, gabarit_width, gabarit_height As Double
+Dim border_x, border_y, gabarit_width, gabarit_height, logo_width, logo_height As Double
 Dim v1, v2, vv1, vv2 As Vertex
 Dim gap As Double
 Dim rand_treshhold As Double = 20.0 'percent_from_max
+Dim m As Matrix
 
 Structure Line
     width As Double
@@ -22,10 +23,10 @@ Dim is_rand_order As Boolean
 sub OnInitParameters()
 	RegisterParameterContainer("source", "Text source")
 	RegisterParameterString("separator", "Separator", "\\n", 10, 99, "")
-	RegisterParameterContainer("template", "Template (optional)")
+	RegisterParameterContainer("template", "Template (or this)")
 	RegisterParameterContainer("logo", "Logo (optional)")
-	RegisterParameterContainer("target", "Target")
 	RegisterParameterContainer("gabarit", "Gabarit")
+	RegisterParameterContainer("target", "Target")
 	
 	RegisterPushButton("do", "Split text to containers", 1)
 	
@@ -33,7 +34,7 @@ sub OnInitParameters()
 	RegisterParameterBool("rand_order", "Random order", false)
 	RegisterParameterDouble("rand_x", "Random pos X", 0, 0, 999999)
 	RegisterParameterDouble("rand_y", "Random pos Y (%)", 0, 0, 100)
-	RegisterParameterDouble("scale_by_width", "Scale by width %", 0, 0, 100)
+	RegisterParameterDouble("scale_by_width", "Scale by width %", 0, -100, 100)
 	RegisterParameterDouble("rand_scale", "Random Scale", 0, 0, 999)
 	RegisterParameterDouble("rand_alpha", "Random Alpha", 0, 0, 100)
 	RegisterParameterBool("spread_animation", "Spread anim to dirs", false)
@@ -49,7 +50,11 @@ sub OnInit()
 	else
 		c_template = c_source
 	end if
+	
 	c_logo = GetParameterContainer("logo")
+	logo_width = c_logo.GetBoundingBoxDimensions().x * c_logo.scaling.x
+	logo_height = c_logo.GetBoundingBoxDimensions().y * c_logo.scaling.y
+	
 	gap = GetParameterDouble("gap")
 	is_rand_order = GetParameterBool("rand_order")
 	separator = GetParameterString("separator")
@@ -63,6 +68,9 @@ sub OnInit()
 	else
 		SendGuiParameterShow("root_dir",HIDE)
 	end if
+	
+	m = c_target.matrix
+	m.Invert()
 end sub
 sub OnParameterChanged(parameterName As String)
 	OnInit()
@@ -70,12 +78,14 @@ end sub
 
 sub OnExecAction(buttonId As Integer)
 	if buttonId == 1 then
+		OnInit()
 		c_gabarit.GetTransformedBoundingBox(v1,v2)
 		border_x = v1.x
 		border_y = v2.y
-		gabarit_width = v2.x - v1.x
+		gabarit_width  = v2.x - v1.x
 		gabarit_height = v2.y - v1.y
-		
+		v1 *= m
+		v2 *= m
 		Populate()
 		if is_rand_order then RandomOrder()
 		Place()
@@ -86,7 +96,7 @@ end sub
 
 '-----------------------------------------------------------------
 
-Function GetSubContainerByName(_c As Container, _name As String) As Array[Container]
+Function GetSubContainersByName(_c As Container, _name As String) As Array[Container]
 	Dim _arr As Array[Container]
 	_c.GetContainerAndSubContainers(_arr, false)
 	_arr.Erase(0)
@@ -96,11 +106,12 @@ Function GetSubContainerByName(_c As Container, _name As String) As Array[Contai
 			i += 1
 		end if
 	next
-	GetSubContainerByName = _arr
+	GetSubContainersByName = _arr
 End Function
 
 Dim decrease_scale_by_width As Double
 Dim max_width As Double = 0
+Dim min_width As Double = 9999999999
 Sub Populate()
 	s = c_source.geometry.text
 	s.Trim()
@@ -109,12 +120,12 @@ Sub Populate()
 	c_target.DeleteChildren()
 	arr_c.Clear()
 		
-	for i=arr_s.ubound to 0 step -1
+	for i=0 to arr_s.ubound
 		c = c_template.CopyTo(c_target, TL_DOWN)
 		c.name = c_source.name & "_" & CStr(i)
 		arr_s[i].Trim()
 		if GetParameterContainer("template") <> null then
-			Dim _text_containers As Array[Container] = GetSubContainerByName(c, "text")
+			Dim _text_containers As Array[Container] = GetSubContainersByName(c, "#text")
 			for y=0 to _text_containers.ubound
 				_text_containers[y].geometry.text = arr_s[i]
 			next
@@ -124,16 +135,25 @@ Sub Populate()
 		c.CreateAlpha()
 		c.Alpha.Value = 100 - Random()*GetParameterDouble("rand_alpha")
 		c.RecomputeMatrix()
-		if c.GetTransformedBoundingBoxDimensions().x > max_width then max_width = c.GetTransformedBoundingBoxDimensions().x
-		
+		if max_width < c.GetTransformedBoundingBoxDimensions().x then max_width = c.GetTransformedBoundingBoxDimensions().x
+		if min_width > c.GetTransformedBoundingBoxDimensions().x then min_width = c.GetTransformedBoundingBoxDimensions().x
+
 		arr_c.Push(c)
 	next
+	
 	for i=0 to arr_c.ubound
-		decrease_scale_by_width = c.scaling.x * (max_width - arr_c[i].GetTransformedBoundingBoxDimensions().x)/max_width * GetParameterDouble("scale_by_width")/100.0
+		'SCALING
+		c = arr_c[i]
+		if GetParameterDouble("scale_by_width") >= 0 then
+			println("c.GetTransformedBoundingBoxDimensions().x/max_width = " & c.GetTransformedBoundingBoxDimensions().x/max_width)
+			decrease_scale_by_width = c.scaling.x * (c.GetTransformedBoundingBoxDimensions().x - min_width)/(max_width - min_width) * GetParameterDouble("scale_by_width")/100.0
+			println("decrease_scale_by_width = " & decrease_scale_by_width)
+		else
+			decrease_scale_by_width = c.scaling.x * (1 - (c.GetTransformedBoundingBoxDimensions().x - min_width)/(max_width - min_width)) * -GetParameterDouble("scale_by_width")/100.0
+		end if
 		c.scaling.xyz = c.scaling.x + (Random()*GetParameterDouble("rand_scale")/100.0 - GetParameterDouble("rand_scale")/100.0/2.0) - decrease_scale_by_width
 		c.RecomputeMatrix()
 	next
-	
 End Sub
 
 Dim arr_order As Array[Integer]
@@ -179,17 +199,22 @@ Sub Place()
 	
 	line_height_step = gabarit_height / (arr_lines.size+1)
 	border_y = v2.y - line_height_step
+	println(v2)
+	println(border_x)
 	for i=0 to arr_lines.ubound
 		'place a line
 		border_x = v1.x
-		line_shift_x = (gabarit_width - arr_lines[i].width)/2
+		line_shift_x = (gabarit_width - arr_lines[i].width)/2.0
+		println("line_shift_x = " & line_shift_x)
 		if arr_lines[i].arr_c.size <= 1 then
-			'first separator
-			PlaceLogo(border_x + line_shift_x, border_y + GenRandY())
+			'first separator in line
+			PlaceLogo(border_x + line_shift_x - gap/2.0, border_y + GenRandY())
 		end if
 		for y=0 to arr_lines[i].arr_c.ubound
 			'place an element
 			arr_lines[i].arr_c[y].GetTransformedBoundingBox(vv1, vv2)
+			vv1 *= m
+			vv2 *= m
 			rand_x = Random()*GetParameterDouble("rand_x") - GetParameterDouble("rand_x")/2.0
 			rand_y = GenRandY()
 			arr_lines[i].arr_c[y].position.x = border_x + line_shift_x + (arr_lines[i].arr_c[y].position.x - vv1.x) + rand_x
@@ -197,12 +222,12 @@ Sub Place()
 			border_x += arr_lines[i].arr_c[y].GetTransformedBoundingBoxDimensions().x + gap
 			if y < arr_lines[i].arr_c.ubound then
 				'add separator after all elements exept the last one
-				PlaceLogo(border_x + line_shift_x, border_y + GenRandY())
+				PlaceLogo(border_x + line_shift_x - gap/2.0, border_y + GenRandY())
 			end if
 		next
 		if arr_lines[i].arr_c.size <= 1 then
-			'last separator
-			PlaceLogo(border_x + line_shift_x, border_y + GenRandY())
+			'last separator in line
+			PlaceLogo(border_x + line_shift_x - gap/2.0, border_y + GenRandY())
 		end if
 		border_y -= line_height_step
 	next
@@ -211,7 +236,6 @@ End Sub
 Sub PlaceLogo(_x As Double, _y As Double)
 	if c_logo <> null then
 		c = c_logo.CopyTo(c_target, TL_DOWN)
-		'c.GetTransformedBoundingBox(vv1, vv2)
 		c.position.x = _x
 		c.position.y = _y
 	end if
@@ -257,4 +281,22 @@ Function GenRandY() As Double
 		_new_rand = line_height_step*(  Random()*GetParameterDouble("rand_y") - GetParameterDouble("rand_y")/2.0  )/100.0
 	loop while _new_rand < rand_y + line_height_step*GetParameterDouble("rand_y")/100.0*rand_treshhold/100.0 AND _new_rand > rand_y - line_height_step*GetParameterDouble("rand_y")/100.0*rand_treshhold/100.0
 	GenRandY = _new_rand
+End Function
+
+Function PositionV1KeepGlobal(_gabarit As Container, _target As Container) As Vertex
+	Dim _v1, _v2 As Vertex
+	_gabarit.GetTransformedBoundingBox(_v1, _v2)
+	Dim _m As Matrix = _target.matrix
+	_m.Invert()
+	_v1 *= _m
+	PositionV1KeepGlobal = _v1
+End Function
+
+Function PositionV2KeepGlobal(_gabarit As Container, _target As Container) As Vertex
+	Dim _v1, _v2 As Vertex
+	_gabarit.GetTransformedBoundingBox(_v1, _v2)
+	Dim _m As Matrix = _target.matrix
+	_m.Invert()
+	_v2 *= _m
+	PositionV2KeepGlobal = _v2
 End Function
