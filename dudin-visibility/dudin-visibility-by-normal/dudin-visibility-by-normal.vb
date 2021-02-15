@@ -1,7 +1,7 @@
-RegisterPluginVersion(1,2,0)
+RegisterPluginVersion(1,3,0)
 Dim this_normal, normal, to_camera As Vertex
-Dim angle, out_alpha, besier_hidden, besier_visible As Double
-Dim inverse As Boolean
+Dim angle, out_alpha, besier_hidden, besier_visible, angle_visible, angle_hidden As Double
+Dim inverse, mirror_around_90 As Boolean
 Dim PI As Double = 3.1415926535
 
 Dim axes_names As Array[String]
@@ -12,15 +12,21 @@ Dim mode_names As Array[String]
 mode_names.Push(" Linear ")
 mode_names.Push(" Smooth ")
 sub OnInitParameters()
-	RegisterRadioButton("axis", "Normal Axis", 2, axes_names)
+	RegisterRadioButton("axis", "Direction Axis", 2, axes_names)
+	RegisterParameterDouble("angle_visible", "Visible angle", 0, 0, 180)
+	RegisterParameterDouble("angle_hidden", "Invisible angle", 90, 0, 180)
+	RegisterParameterBool("mirror_around_90", "Mirror around 90", false)
 	RegisterRadioButton("mode", "Mode", 0, mode_names)
-	RegisterParameterBool("inverse", "Inverse", false)
-	RegisterParameterDouble("besier_hidden", "Easy hiden", 30, 30, 100)
 	RegisterParameterDouble("besier_visible", "Easy visible", 100, 30, 100)
+	RegisterParameterDouble("besier_hidden", "Easy hiden", 30, 30, 100)
+	RegisterParameterBool("inverse", "Inverse", false)
 end sub
 
 sub OnInit()
 	this_normal = CVertex( CInt(GetParameterInt("axis")==0), CInt(GetParameterInt("axis")==1), CInt(GetParameterInt("axis")==2) )
+	angle_visible = GetParameterDouble("angle_visible")
+	angle_hidden = GetParameterDouble("angle_hidden")
+	mirror_around_90 = GetParameterBool("mirror_around_90")
 	besier_hidden = GetParameterDouble("besier_hidden")
 	besier_visible = GetParameterDouble("besier_visible")
 	inverse = GetParameterBool("inverse")
@@ -34,8 +40,13 @@ end sub
 sub OnExecPerField()
 	normal = RotateVertexByMatrix(this.Matrix, this_normal)
 	to_camera = Scene.CurrentCamera.Position.xyz - this.LocalPosToWorldPos(this.position.xyz)
-	angle = AngleBetweenVectors(normal, to_camera)
-	out_alpha = LinearWithLimits(angle, PI/2.0, 0, 0, 100.0)   ' [0..100]
+	angle = AngleBetweenVectors(normal, to_camera)*180.0/PI
+	
+	if mirror_around_90 and angle > 90 then
+		angle = 180 - angle
+	end if
+	
+	out_alpha = LinearWithLimits(angle, angle_hidden, angle_visible, 0, 100.0)   ' normilize and limit to [0..100] range
 	if inverse then out_alpha = 100 - out_alpha
 	if GetParameterInt("mode")==0 then
 		this.Alpha.Value = out_alpha
