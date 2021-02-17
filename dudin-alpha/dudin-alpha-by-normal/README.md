@@ -1,4 +1,4 @@
-## Show-and-hide by normal angle to current camera
+## Smoothly show-and-hide by angle to current camera
 
 #### Version 1.3 (15 February 2021)
 * add "visible" and "hidden" angle to define starting and enging agles for alpha transition
