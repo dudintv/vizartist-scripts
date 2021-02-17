@@ -1,4 +1,4 @@
-## Link transformation for array sub-containers
+## Link transformation for array sub-containers (sub-tree)
 
 #### Version 1.1 (15 June 2020)
 * Watch for all of sources (include all sub-sub-children) and link them all to the targets
