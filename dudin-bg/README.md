@@ -1,5 +1,8 @@
 ## BG takes size from "this" container and change size of another container with calculation
 
+#### Version 1.8 (17 February 2021)
+* translated to English
+
 #### Version 1.7 (22.09.2020)
 * add Z axis
 

@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,7,0)
+RegisterPluginVersion(1,8,0)
 
 Dim info As String = "Drop it on text container in case using with text+bg composition.
 The script continuosly measuring bounding box of this container and apply calculation on choosen container.
@@ -28,12 +28,12 @@ Dim MODE_Z  As Integer = 2
 Dim MODE_XY As Integer = 3
 
 Dim arr_ss As Array[String]
-arr_ss.Push("Общий размер")
-arr_ss.Push("Макс. из потомков")
-arr_ss.Push("Один из потомков")
+arr_ss.Push("This container size")
+arr_ss.Push("Max of childs")
+arr_ss.Push("Child by index")
 Dim arr_sss As Array[String]
-arr_sss.Push("Число")
-arr_sss.Push("Контейнер")
+arr_sss.Push("Number")
+arr_sss.Push("Container")
 Dim arr_sFonShangeMode As Array[String]
 arr_sFonShangeMode.Push("Scaling")
 arr_sFonShangeMode.Push("Geometry")
@@ -41,36 +41,36 @@ arr_sFonShangeMode.Push("Geometry")
  
 sub OnInitParameters()
     RegisterInfoText(info)
-	RegisterParameterContainer("fon","Фоновый контейнер:")
-	RegisterRadioButton("fon_change_mode", "└ Как изменять его размеры", 0, arr_sFonShangeMode)
-	RegisterRadioButton("mode_size", "Брать размеры: ", 0, arr_ss)
-	RegisterParameterInt("num_child", "└ Номер потомка (-1=никакой)", 0, -1, 100)
-	RegisterRadioButton("mode", "└ Какие размеры учитывать:", 0, arr_s)
-	RegisterParameterDouble("x_multy", "   └ Множитель по X", 1.0, 0.0, 10000000.0)
-	RegisterParameterDouble("x_padding", "   └ Отступ по X", 0.0, -100000.0, 10000000.0)
-	RegisterParameterDouble("y_multy", "   └ Множитель по Y", 1.0, 0.0, 10000000.0)
-	RegisterParameterDouble("y_padding", "   └ Отступ по Y", 0.0, -100000.0, 10000000.0)
-	RegisterParameterDouble("z_multy", "   └ Множитель по Z", 1.0, 0.0, 10000000.0)
-	RegisterParameterDouble("z_padding", "   └ Отступ по Z", 0.0, -100000.0, 10000000.0)
+	RegisterParameterContainer("fon","Bg container:")
+	RegisterRadioButton("fon_change_mode", "└ How to change its size", 0, arr_sFonShangeMode)
+	RegisterRadioButton("mode_size", "Get size from: ", 0, arr_ss)
+	RegisterParameterInt("num_child", "└ Child index (-1=none)", 0, -1, 100)
+	RegisterRadioButton("mode", "└ Axis to consider:", 0, arr_s)
+	RegisterParameterDouble("x_multy", "   └ Mult X", 1.0, 0.0, 10000000.0)
+	RegisterParameterDouble("x_padding", "   └ Add X", 0.0, -100000.0, 10000000.0)
+	RegisterParameterDouble("y_multy", "   └ Mult Y", 1.0, 0.0, 10000000.0)
+	RegisterParameterDouble("y_padding", "   └ Add Y", 0.0, -100000.0, 10000000.0)
+	RegisterParameterDouble("z_multy", "   └ Mult Z", 1.0, 0.0, 10000000.0)
+	RegisterParameterDouble("z_padding", "   └ Add Z", 0.0, -100000.0, 10000000.0)
 	
-	RegisterRadioButton("x_min_mode", "Минимальный фон по X", 0, arr_sss)
-	RegisterParameterDouble("x_min", "└ Мин. X", 0.0, 0.0, 10000000.0)
-	RegisterParameterContainer("x_min_c", "└ Мин. X")
+	RegisterRadioButton("x_min_mode", "Min BG X-axis mode", 0, arr_sss)
+	RegisterParameterDouble("x_min", "└ Min X value", 0.0, 0.0, 10000000.0)
+	RegisterParameterContainer("x_min_c", "└ Min X-axis container")
 	
-	RegisterRadioButton("y_min_mode", "Минимальный фон по Y", 0, arr_sss)
-	RegisterParameterDouble("y_min", "└ Мин. Y", 0.0, 0.0, 10000000.0)
-	RegisterParameterContainer("y_min_c", "└ Мин. Y")
+	RegisterRadioButton("y_min_mode", "Min BG Y-axis mode", 0, arr_sss)
+	RegisterParameterDouble("y_min", "└ Min Z value", 0.0, 0.0, 10000000.0)
+	RegisterParameterContainer("y_min_c", "└ Min Y-axis container")
 	
-	RegisterRadioButton("z_min_mode", "Минимальный фон по Z", 0, arr_sss)
-	RegisterParameterDouble("z_min", "└ Мин. Z", 0.0, 0.0, 10000000.0)
-	RegisterParameterContainer("z_min_c", "└ Мин. Z")
+	RegisterRadioButton("z_min_mode", "Min BG Z-axis mode", 0, arr_sss)
+	RegisterParameterDouble("z_min", "└ Min Z value", 0.0, 0.0, 10000000.0)
+	RegisterParameterContainer("z_min_c", "└ Min Z-axis container")
 	
-	RegisterParameterBool("hide_by_zero", "Скрыть фон если нул.размер", TRUE)
-	RegisterParameterDouble("treshold", "└ Типа-нулевой размер this", 0.1, 0.0, 1000.0)
-	RegisterParameterDouble("inertion", "Инерция анимации", 2.0, 1.0, 100.0)
+	RegisterParameterBool("hide_by_zero", "Hide bg if size close to zero", TRUE)
+	RegisterParameterDouble("treshold", "└ Zero-size of this container", 0.1, 0.0, 1000.0)
+	RegisterParameterDouble("inertion", "Animation inertion", 2.0, 1.0, 100.0)
 	
-	RegisterParameterBool("position_y", "Подстраивать позицию по Y", FALSE)
-	RegisterParameterDouble("position_y_shift", "Смещение позиции по Y", 0, -99999, 99999)
+	RegisterParameterBool("position_y", "Autofollow by Y axis", FALSE)
+	RegisterParameterDouble("position_y_shift", "└ Y shift", 0, -99999, 99999)
 end sub
  
 sub OnGuiStatus()
@@ -210,13 +210,13 @@ sub OnExecPerField()
 	
 	
 	
-	'логика режима ("Общий размер", "Максимальный из потомков", "Один из потомков")
+	'mode logic ("This container size", "Max child", "Child by index")
 	mode_size = GetParameterInt("mode_size")
 	If mode_size == 0 Then
-		'режим: "Общий размер"
+		'mode: "This container size"
 		size = GetLocalSize (this, fon)
 	ElseIf mode_size == 1 Then
-		'режим: "Максимальный из потомков"
+		'mode: "Max child"
 		child = this.FirstChildContainer
 		child.RecomputeMatrix()
 		size = GetLocalSize (child, fon)
@@ -230,7 +230,7 @@ sub OnExecPerField()
 			child = child.NextContainer
 		Loop 
 	ElseIf mode_size == 2 Then
-		'режим: "Один из потомков"
+		'mode: "Child by index"
 		child = GetChildContainerByIndex(GetParameterInt("num_child"))
 		child.RecomputeMatrix()
 		size = GetLocalSize (child, fon)
@@ -248,7 +248,7 @@ sub OnExecPerField()
 	c_min_z = GetParameterContainer("z_min_c")
 	
 	If mode_min_x == 1 Then
-		'надо брать минимальный размер у контейнера
+		'Max size from container
 		If c_min_x <> null Then
 			min_size = GetLocalSize (c_min_x, fon)
 			If min_size.X > sizeTreshold AND min_size.Y > sizeTreshold Then
@@ -260,12 +260,12 @@ sub OnExecPerField()
 			x_min = 0
 		End If
 	Else
-		'численный минимальный размер
+		'Max size from value
 		x_min = GetParameterDouble("x_min")
 	End If
 	
 	If mode_min_y == 1 Then
-		'надо брать минимальный размер у контейнера
+		'Max size from container
 		If c_min_y <> null Then
 			min_size = GetLocalSize (c_min_y, fon)
 			y_min = min_size.Y/100.0
@@ -278,7 +278,7 @@ sub OnExecPerField()
 			y_min = 0
 		End If
 	Else
-		'численный минимальный размер
+		'Max size from value
 		y_min = GetParameterDouble("y_min")
 	End If
 	
