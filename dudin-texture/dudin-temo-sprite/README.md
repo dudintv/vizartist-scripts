@@ -1,5 +1,11 @@
 ## Temo-sprite — advanced analogue of original Vizrt Temo plugin, but also supports Viz4 fusion material.
 
+#### Version 1.2.2 (26 February 2021)
+* search sprite by name without case sensitive matching
+
+#### Version 1.2.1 (24 February 2021)
+* fix: unexpexted activating the container when SelectionMode is Number
+
 #### Version 1.2 (07 February 2021)
 * fix: shifting calculation of the first row
 * add: crop for cells — usefull to hide guide grid or cells titles
