@@ -2,6 +2,10 @@
 
 Re-arrange array containers by some value inside (number from text sub-container).
 
+#### Version 1.1 (23 April 2021)
+* add reverse mode
+* add postiioning empty values (top / bottom)
+
 #### Version 1.0 (23 April 2021)
 * manually choose targets and items roots
 * set searching string which is using in FindSubContainer

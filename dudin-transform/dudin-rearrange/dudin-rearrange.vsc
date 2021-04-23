@@ -2,6 +2,7 @@ RegisterPluginVersion(1,0,0)
 Dim info As String = "Author: Dmitry Dudin, http://dudin.tv"
 
 Dim MIN_DOUBLE As Double = -2147483647
+Dim MAX_DOUBLE As Double = 2147483647
 Dim PI As Double = 3.1415926535
 Dim TRESHOLD As Double = 0.1
 
@@ -11,7 +12,6 @@ Dim search_value_path As String
 Dim arr_values As Array[Double]
 Dim arr_order As Array[Integer]
 Dim arr_next_pos, arr_current_pos, arr_prev_pos As Array[Vertex]
-Dim sort_order_asc As Boolean
 Dim prev_values, new_values As String
 Dim auto_re_arrgange, is_putting_empty_value_on_top, is_reversed As Boolean
 
@@ -28,7 +28,7 @@ sub OnInitParameters()
 	RegisterParameterString("search_value_path", "Search value container path", "", 100, 999, "")
 	RegisterParameterDouble("duration","Transition duration (sec)", 1, 0, 999)
 	RegisterParameterBool("auto", "Auto re-arrange", true)
-	RegisterParameterBool("put_empty_top", "Auto re-arrange", false)
+	RegisterParameterBool("put_empty_top", "Put empty on top?", false)
 	RegisterParameterBool("inverse", "Inverse order", false)
 	RegisterPushButton("init", "Move to position", 1)
 end sub
@@ -94,8 +94,10 @@ Sub OnExecPerField()
 		SetOrder()
 		SetNextPositions()
 		StartTransitionAnimation()
-		prev_values = new_values
+		
+		println("new_values = " & CStr(new_values))
 	end if
+	prev_values = new_values
 
 	if isTransitionAnimRunning then
 		if tick < duration_ticks then
@@ -120,14 +122,17 @@ end sub
 '-------------------
 
 
-Dim s As Double
+Dim s As String
 sub GetValues()
 	arr_values.Clear()
 	for i = 0 to arr_c_values.UBound
 		s = arr_c_values[i].Geometry.Text
 		s.Trim()
 		if s == "" then
-			arr_values.Push(MIN_DOUBLE)
+			if is_putting_empty_value_on_top AND is_reversed then arr_values.Push(MAX_DOUBLE)
+			if is_putting_empty_value_on_top AND NOT is_reversed then arr_values.Push(MIN_DOUBLE)
+			if NOT is_putting_empty_value_on_top AND is_reversed then arr_values.Push(MIN_DOUBLE)
+			if NOT is_putting_empty_value_on_top AND NOT is_reversed then arr_values.Push(MAX_DOUBLE)
 		else
 			arr_values.Push(CDbl(s))
 		end if
@@ -138,13 +143,287 @@ Dim prev_value As Double
 function IsCorrectOrder() As Boolean
 	' get first value
 	prev_value = arr_values[arr_order[0]]
-
 	for i = 1 to arr_order.UBound
-		if ( sort_order_asc AND prev_value > arr_values[arr_order[i]] ) OR ( NOT sort_order_asc AND prev_value < arr_values[arr_order[i]] ) then
+		if ( NOT is_reversed AND prev_value > arr_values[arr_order[i]] ) OR ( is_reversed AND prev_value < arr_values[arr_order[i]] ) then
+			println("IsCorrectOrder = false")
 			IsCorrectOrder = false
 			exit function
 		end if
-		prev_value = arr_values[i]
+		prev_value = arr_values[arr_order[i]]
+	next
+	IsCorrectOrder = true
+end function
+
+Dim temp_value As Double
+Dim temp_order As Integer
+Dim arr_values_temp As Array[Double]
+sub SetOrder()
+	arr_values_temp.Clear()
+	arr_order.Clear()
+	for i = 0 to arr_values.UBound
+		arr_values_temp.Push(arr_values[i])
+		arr_order.Push(i)
+	next
+
+	for i = 0 to arr_values_temp.UBound
+		for j = 0 to arr_values_temp.UBound - 1
+			if (NOT is_reversed AND arr_values_temp[j] > arr_values_temp[j+1]) OR (is_reversed AND arr_values_temp[j] < arr_values_temp[j+1]) then
+				temp_value = arr_values_temp[j]
+				arr_values_temp[j] = arr_values_temp[j+1]
+				arr_values_temp[j+1] = temp_value
+
+				temp_order = arr_order[j]
+				arr_order[j] = arr_order[j+1]
+				arr_order[j+1] = temp_order
+			end if
+		next
+	next
+end sub
+
+sub SetPrevPositions()
+	for i = 0 to arr_c_items.UBound
+		arr_prev_pos[i] = arr_c_items[i].Position.xyz
+	next
+end sub
+
+sub SetNextPositions()
+	for i = 0 to arr_c_items.UBound
+		arr_next_pos[i] = GetPosWithinAnotherContainer(  arr_c_targets[FindIndex(arr_order, i)],  c_items_root)
+	next
+end sub
+
+sub StartTransitionAnimation()
+	tick = 0
+	isTransitionAnimRunning = true
+end sub
+
+sub StopTransitionAnimation()
+	tick = -1
+	isTransitionAnimRunning = false
+end sub
+
+Dim playhead As Double
+sub MakeTransitionAnimStep()
+	playhead = CDbl(tick)/CDbl(duration_ticks) ' => 0...1
+	for i = 0 to arr_current_pos.UBound
+		arr_current_pos[i] = VertexBesier(playhead, arr_prev_pos[i], arr_next_pos[i], 40, 70)
+		if NOT IsAlmostEqualVertex(arr_prev_pos[i], arr_next_pos[i]) then
+			if IsUpDirectionMove(arr_prev_pos[i], arr_next_pos[i]) then
+				arr_current_pos[i] += GetMovingShift(v_up_move_shift, playhead) 
+			else
+				arr_current_pos[i] += GetMovingShift(v_down_move_shift, playhead) 
+			end if
+		else
+		end if
+		arr_c_items[i].Position.xyz = arr_current_pos[i]
+	next
+end sub
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function GetMovingShift(v_shift As Vertex, playhead As Double) As Vertex
+	Dim power = (Sin(playhead*2*PI - PI/2.0) + 1)/2.0 ' => 0...1
+	Dim v As Vertex
+	v.x = v_shift.x*power
+	v.y = v_shift.y*power
+	v.z = v_shift.z*power
+	GetMovingShift = v
+End Function
+
+Function IsUpDirectionMove(_prev_pos As Vertex, _next_pos As Vertex) As Boolean
+	IsUpDirectionMove = _prev_pos.y < _next_pos.y
+End Function
+
+Function IsAlmostEqualVertex(_v1 As Vertex, _v2 As Vertex) As Boolean
+	if (_v1.x + treshold) < _v2.x OR (_v1.x - treshold) > _v2.x then
+		IsAlmostEqualVertex = false
+		Exit Function
+	end if
+
+	if _v1.y + treshold < _v2.y OR _v1.y - treshold > _v2.y then
+		IsAlmostEqualVertex = false
+		Exit Function
+	end if
+
+	if _v1.z + treshold < _v2.z OR _v1.z - treshold > _v2.z then
+		IsAlmostEqualVertex = false
+		Exit Function
+	end if
+
+	IsAlmostEqualVertex = true
+End Function
+
+Function FindIndex(arr As Array[Integer], value As Integer) As Integer
+	for i = 0 to arr.ubound
+		if value == arr[i] then
+			FindIndex = i
+			Exit Function
+		end if
+	next
+	FindIndex = -1
+End Function
+
+'VERTEX BESIER
+Function VertexBesier(ByVal percent as double, ByVal begin_value as Vertex, ByVal end_value as Vertex, ByVal begin_weight as double, ByVal end_weight as double) as Vertex
+	Dim v As Vertex
+	v.x = Besizer(percent, begin_value.x, end_value.x, begin_weight, end_weight)
+	v.y = Besizer(percent, begin_value.y, end_value.y, begin_weight, end_weight)
+	v.z = Besizer(percent, begin_value.z, end_value.z, begin_weight, end_weight)
+	VertexBesier = v
+End Function
+
+'CLAMP
+Function ClampDbl(RegisterPluginVersion(1,1,0)
+Dim info As String = "Author: Dmitry Dudin, http://dudin.tv"
+
+Dim MIN_DOUBLE As Double = -2147483647
+Dim MAX_DOUBLE As Double = 2147483647
+Dim PI As Double = 3.1415926535
+Dim TRESHOLD As Double = 0.1
+
+Dim c_targets_root, c_items_root As Container
+Dim arr_c_targets, arr_c_items, arr_c_values As Array[Container]
+Dim search_value_path As String
+Dim arr_values As Array[Double]
+Dim arr_order As Array[Integer]
+Dim arr_next_pos, arr_current_pos, arr_prev_pos As Array[Vertex]
+Dim prev_values, new_values As String
+Dim auto_re_arrgange, is_putting_empty_value_on_top, is_reversed As Boolean
+
+Dim isTransitionAnimRunning As Boolean
+Dim duration_sec As Double
+Dim duration_ticks, tick As Integer
+
+Dim v_down_move_shift As Vertex = CVertex(-5, 0, -5)
+DIm v_up_move_shift As Vertex = CVertex(5, 0, 5)
+
+sub OnInitParameters()
+	RegisterParameterContainer("targets_root", "Targets root")
+	RegisterParameterContainer("items_root", "Items root (or this)")
+	RegisterParameterString("search_value_path", "Search value container path", "", 100, 999, "")
+	RegisterParameterDouble("duration","Transition duration (sec)", 1, 0, 999)
+	RegisterParameterBool("auto", "Auto re-arrange", true)
+	RegisterParameterBool("put_empty_top", "Put empty on top?", false)
+	RegisterParameterBool("inverse", "Inverse order", false)
+	RegisterPushButton("init", "Move to position", 1)
+end sub
+
+sub OnInit()
+	c_targets_root = GetParameterContainer("targets_root")
+	if c_targets_root == null then c_targets_root = this
+	c_items_root = GetParameterContainer("items_root")
+	if c_items_root == null then c_items_root = this
+
+	search_value_path = GetParameterString("search_value_path")
+
+	arr_c_targets.Clear()
+	for i = 0 to c_targets_root.ChildContainerCount - 1
+		arr_c_targets.Push(c_targets_root.GetChildContainerByIndex(i))
+	next
+
+	arr_c_items.Clear()
+	for i = 0 to c_items_root.ChildContainerCount - 1
+		arr_c_items.Push(c_items_root.GetChildContainerByIndex(i))
+	next
+
+	arr_c_values.Clear()
+	for i = 0 to arr_c_items.UBound
+		arr_c_values.Push(arr_c_items[i].FindSubContainer(search_value_path))
+	next
+
+	arr_order.Clear()
+	for i = 0 to arr_c_items.UBound
+		arr_order.Push(i)
+	next
+	
+	arr_prev_pos.Clear()
+	arr_current_pos.Clear()
+	arr_next_pos.Clear()
+	for i = 0 to arr_c_values.UBound
+		arr_prev_pos.Push(arr_c_values[i].Position.xyz)
+		arr_current_pos.Push(arr_c_values[i].Position.xyz)
+		arr_next_pos.Push(arr_c_values[i].Position.xyz)
+	next
+
+	duration_sec = GetParameterDouble("duration")
+	duration_ticks = CInt(duration_sec/System.System.CurrentRefreshRate)
+
+	auto_re_arrgange = GetParameterBool("auto")
+	is_putting_empty_value_on_top = GetParameterBool("put_empty_top")
+	is_reversed = GetParameterBool("inverse")
+
+	GetValues()
+end sub
+
+sub OnParameterChanged(parameterName As String)
+	OnInit()
+end sub
+
+'-------------------
+
+Sub OnExecPerField()
+	GetValues()
+	new_values = CStr(arr_values)
+	if auto_re_arrgange AND new_values <> prev_values AND NOT IsCorrectOrder() then
+		SetPrevPositions()
+		SetOrder()
+		SetNextPositions()
+		StartTransitionAnimation()
+		
+		println("new_values = " & CStr(new_values))
+	end if
+	prev_values = new_values
+
+	if isTransitionAnimRunning then
+		if tick < duration_ticks then
+			tick += 1
+			MakeTransitionAnimStep()
+		else
+			StopTransitionAnimation()
+		end if
+	end if
+End Sub
+
+sub OnExecAction(buttonId As Integer)
+	if buttonId == 1 then
+		' move items to correct positions
+		SetPrevPositions()
+		SetOrder()
+		SetNextPositions()
+		StartTransitionAnimation()
+	end if
+end sub
+
+'-------------------
+
+
+Dim s As String
+sub GetValues()
+	arr_values.Clear()
+	for i = 0 to arr_c_values.UBound
+		s = arr_c_values[i].Geometry.Text
+		s.Trim()
+		if s == "" then
+			if is_putting_empty_value_on_top AND is_reversed then arr_values.Push(MAX_DOUBLE)
+			if is_putting_empty_value_on_top AND NOT is_reversed then arr_values.Push(MIN_DOUBLE)
+			if NOT is_putting_empty_value_on_top AND is_reversed then arr_values.Push(MIN_DOUBLE)
+			if NOT is_putting_empty_value_on_top AND NOT is_reversed then arr_values.Push(MAX_DOUBLE)
+		else
+			arr_values.Push(CDbl(s))
+		end if
+	next
+end sub
+
+Dim prev_value As Double
+function IsCorrectOrder() As Boolean
+	' get first value
+	prev_value = arr_values[arr_order[0]]
+	for i = 1 to arr_order.UBound
+		if ( NOT is_reversed AND prev_value > arr_values[arr_order[i]] ) OR ( is_reversed AND prev_value < arr_values[arr_order[i]] ) then
+			println("IsCorrectOrder = false")
+			IsCorrectOrder = false
+			exit function
+		end if
+		prev_value = arr_values[arr_order[i]]
 	next
 	IsCorrectOrder = true
 end function
@@ -268,6 +547,51 @@ End Function
 
 'CLAMP
 Function ClampDbl(value as double, min  as double, max as double) as Double
+	if value < min then value = min
+	if value > max then value = max
+	ClampDbl = value
+End Function
+
+'BESIER
+Function Besizer(ByVal percent as double, ByVal begin_value as double, ByVal end_value as double, ByVal begin_weight as double, ByVal end_weight as double) as Double
+	Dim a, b, c, d, t_besier_value As Double
+	percent      = ClampDbl(percent,       0, 1)
+	begin_weight = ClampDbl(begin_weight, 35, 100)/100.0
+	end_weight   = ClampDbl(end_weight,   35, 100)/100.0
+	
+	a = 3*begin_weight - 3*(1.0 - end_weight) + 1
+	b = - 6*begin_weight + 3*(1.0 - end_weight)
+	c = 3*begin_weight
+	d = -percent
+	
+	t_besier_value = (sqrt((-27*a^2*d + 9*a*b*c - 2*b^3)^2 + 4*(3*a*c - b^2)^3) - 27*a^2*d + 9*a*b*c - 2*b^3)^(1.0/3)/(3*2^(1.0/3)*a) - (2^(1.0/3)*(3*a*c - b^2))/(3*a*(sqrt((-27*a^2*d + 9*a*b*c - 2*b^3)^2 + 4*(3*a*c - b^2)^3) - 27*a^2*d + 9*a*b*c - 2*b^3)^(1.0/3)) - b/(3*a)
+	Besizer = begin_value + (end_value - begin_value)*( 3*(1-t_besier_value)*t_besier_value^2 + t_besier_value^3 ) 
+End Function
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function GetGlobalPos(_c As Container) As Vertex
+	if _c.ParentContainer <> null then
+		Dim _v as Vertex = _c.position.xyz
+		_v *= _c.ParentContainer.matrix
+		GetGlobalPos = _v
+	elseif _c <> null then
+		GetGlobalPos = _c.position.xyz
+	else
+		GetGlobalPos = CVertex(0,0,0)
+	end if
+End Function
+
+Function GetPosWithinAnotherContainer(_c_pos As Container, _c_con As Container) As Vertex
+	Dim _m As Matrix = _c_con.matrix
+	_m.Invert()
+	Dim _v_glob_pos As Vertex = GetGlobalPos(_c_pos)
+	_v_glob_pos *= _m
+	GetPosWithinAnotherContainer = _v_glob_pos
+End Function
+
+
+value as double, min  as double, max as double) as Double
 	if value < min then value = min
 	if value > max then value = max
 	ClampDbl = value
