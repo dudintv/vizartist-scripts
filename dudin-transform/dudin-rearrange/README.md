@@ -2,6 +2,10 @@
 
 Re-arrange array containers by some value inside (number from text sub-container).
 
+#### Version 1.2 (28 April 2021)
+* add "Real-time" mode for debug purposes (and accurate positioning)
+* fix response of changing orders via the script interface
+
 #### Version 1.1 (23 April 2021)
 * add reverse mode
 * add postiioning empty values (top / bottom)
