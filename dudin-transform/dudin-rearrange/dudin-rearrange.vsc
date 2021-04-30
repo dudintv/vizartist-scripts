@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,2,0)
+RegisterPluginVersion(1,2,2)
 Dim info As String = "Author: Dmitry Dudin, http://dudin.tv"
 
 Dim MIN_DOUBLE As Double = -2147483647
@@ -14,14 +14,17 @@ Dim arr_order As Array[Integer]
 Dim arr_next_pos, arr_current_pos, arr_prev_pos As Array[Vertex]
 Dim prev_values, new_values As String
 Dim auto_re_arrgange, is_putting_empty_value_on_top, is_reversed As Boolean
-Dim is_debug As Boolean
+Dim is_debug As Boolean = true
 
 Dim isTransitionAnimRunning As Boolean
 Dim duration_sec As Double
 Dim duration_ticks, tick As Integer
+Dim startup_tick As Integer = 0
 
-Dim v_down_move_shift As Vertex = CVertex(-5, 0, 1)
-DIm v_up_move_shift As Vertex = CVertex(5, 0, 20)
+Dim arr_dir As Array[Director]
+
+Dim v_down_move_shift As Vertex = CVertex(2, 0, 1)
+DIm v_up_move_shift As Vertex = CVertex(-5, 0, 10)
 
 sub OnInitParameters()
 	RegisterParameterContainer("targets_root", "Targets root (or this)")
@@ -30,6 +33,7 @@ sub OnInitParameters()
 	RegisterParameterString("item_filter", "Item targets name (regexp)", "", 100, 999, "")
 	RegisterParameterString("search_value_path", "FindSubContainer with value", "", 100, 999, "")
 	RegisterParameterDouble("duration","Transition duration (sec)", 1, 0, 999)
+	RegisterParameterString("dirs_name", "Items dir name", "Line", 100, 999, "")
 	RegisterParameterBool("auto", "Auto re-arrange", true)
 	RegisterParameterBool("put_empty_top", "Put empty on top?", false)
 	RegisterParameterBool("inverse", "Inverse order", false)
@@ -85,6 +89,11 @@ sub OnInit()
 		arr_current_pos.Push(arr_c_values[i].Position.xyz)
 		arr_next_pos.Push(arr_c_values[i].Position.xyz)
 	next
+	
+	arr_dir.clear()
+	for i=1 to arr_c_values.size
+		arr_dir.Push(Stage.FindDirector(GetParameterString("dirs_name") & i))
+	next
 
 	duration_sec = GetParameterDouble("duration")
 	duration_ticks = CInt(duration_sec/System.System.CurrentRefreshRate)
@@ -99,7 +108,15 @@ sub OnInit()
 end sub
 
 sub OnParameterChanged(parameterName As String)
-	OnInit()
+	if parameterName == "auto" then
+		auto_re_arrgange = GetParameterBool("auto")
+	elseif parameterName == "put_empty_top" then
+		is_putting_empty_value_on_top = GetParameterBool("put_empty_top")
+	elseif parameterName == "inverse" then
+		is_reversed = GetParameterBool("inverse")
+	else
+		OnInit()
+	end if
 end sub
 
 '-------------------
@@ -109,12 +126,14 @@ Sub OnExecPerField()
 	new_values = CStr(arr_values)
 	
 	
-	if is_debug then
+	if is_debug OR startup_tick < 5 then
 		SetPrevPositions()
 		SetOrder()
+		SetDirectorShift()
 		SetNextPositions()
 		SetPositionsRightNow()
 		
+		startup_tick += 1
 		prev_values = new_values
 		Exit Sub
 	end if
@@ -122,6 +141,7 @@ Sub OnExecPerField()
 	if auto_re_arrgange AND (NOT IsCorrectOrder() OR new_values <> prev_values) then
 		SetPrevPositions()
 		SetOrder()
+		SetDirectorShift()
 		SetNextPositions()
 		StartTransitionAnimation()
 		
@@ -143,6 +163,7 @@ sub OnExecAction(buttonId As Integer)
 		' move items to correct positions
 		SetPrevPositions()
 		SetOrder()
+		SetDirectorShift()
 		SetNextPositions()
 		StartTransitionAnimation()
 	end if
@@ -191,19 +212,28 @@ sub SetOrder()
 		arr_values_temp.Push(arr_values[i])
 		arr_order.Push(i)
 	next
-
+	
 	for i = 0 to arr_values_temp.UBound
 		for j = 0 to arr_values_temp.UBound - 1
 			if (NOT is_reversed AND arr_values_temp[j] > arr_values_temp[j+1]) OR (is_reversed AND arr_values_temp[j] < arr_values_temp[j+1]) then
 				temp_value = arr_values_temp[j]
 				arr_values_temp[j] = arr_values_temp[j+1]
 				arr_values_temp[j+1] = temp_value
-
+				
 				temp_order = arr_order[j]
 				arr_order[j] = arr_order[j+1]
 				arr_order[j+1] = temp_order
 			end if
 		next
+	next
+end sub
+
+Dim time As Double
+sub SetDirectorShift()
+	for i=0 to arr_dir.ubound
+		time = arr_dir[i].time - arr_dir[i].offset
+		arr_dir[i].offset = 0.1*FindIndex(arr_order, i)
+		arr_dir[i].time = time + arr_dir[i].offset
 	next
 end sub
 

@@ -2,6 +2,9 @@
 
 Re-arrange array containers by some value inside (number from text sub-container).
 
+#### Version 1.2.1 (28 April 2021)
+* fix printing warnings to the console while there are not defined root containers
+
 #### Version 1.2 (28 April 2021)
 * add "Real-time" mode for debug purposes (and accurate positioning)
 * fix response of changing orders via the script interface
