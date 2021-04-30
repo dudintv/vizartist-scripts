@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,2,0)
+RegisterPluginVersion(1,3,1)
 Dim info As String = "
 Flex-position. Copies flex-logic from CSS3 / HTML5.
 Developer: Dmitry Dudin. 
@@ -9,12 +9,12 @@ http://dudin.tv/scripts/flex
 Dim treshhold As Double = 0.001
 
 'STUFF
-Dim c_gabarit As Container
+Dim c_gabarit, c_root As Container
 Dim children As Array[Container]
 Dim min_gap_param, mult_gap_param, shift_gap_param, gap_shift, power_magnetic_gap, gaps, freespace As Double
 Dim gabarit, child_gabarit, v1, v2, child_v1, child_v2, item_gabarit As Vertex
 Dim mode_axis, mode_gabarit_source, mode_justify, mode_align As Integer
-Dim width_step, sum_children_width, sum_children_height, gap, start As Double
+Dim width_step, sum_children_width, sum_children_height, total_children_width, total_children_height, gap, start As Double
 Dim arr_width, arr_height, arr_shift_x, arr_shift_y As Array[Double]
 Dim childrenCount, prev_childrenCount As Integer
 
@@ -62,6 +62,7 @@ arr_ease.Push("back")
 arr_ease.Push("bounce")
 
 sub OnInitParameters()
+	RegisterParameterContainer("root", "Root (or this)")
 	RegisterParameterContainer("gabarit", "Area")
 	RegisterRadioButton("axis", "Axis", 0, arr_axis)
 	RegisterRadioButton("gabarit_source", "Size of children", 0, arr_gabarit_source)
@@ -78,6 +79,8 @@ sub OnInitParameters()
 end sub
 
 sub OnInit()
+	c_root = GetParameterContainer("root")
+	if c_root == null then c_root = this
 	c_gabarit = GetParameterContainer("gabarit")
 	mode_axis = GetParameterInt("axis")
 	mode_gabarit_source = GetParameterInt("gabarit_source")
@@ -119,7 +122,7 @@ Function GetChildGabarit(child As Container) As Vertex
 End Function
 
 Sub CalcGapAndStart(gabarit_size As Double, sum_children_size As Double)
-	freespace = gabarit_size-sum_children_size
+	freespace = gabarit_size - sum_children_size
 	gap_shift = freespace*(mult_gap_param/100)/(childrenCount-1)
 	
 	'CALC BASE GAP
@@ -180,14 +183,18 @@ Sub CalcGapAndStart(gabarit_size As Double, sum_children_size As Double)
 		'4 - space-around
 		start = (gabarit_size - sum_children_size)/2.0 - gap*(childrenCount-1)/2.0
 	End Select
+	
+'	println("")
+'	println("childrenCount = " & childrenCount)
+'	println("gabarit_size = " & gabarit_size & " | sum_children_size = " & sum_children_size & " | gap = " & gap & " | start = " & start)
 End Sub
 
 Dim visibleChildrenCount As Integer
 Function GetVisibleChildContainerCount() As Integer
 	visibleChildrenCount = 0
-	for i=0 to this.ChildContainerCount-1
-		item_gabarit = this.GetChildContainerByIndex(i).GetTransformedBoundingBoxDimensions()
-		if this.GetChildContainerByIndex(i).active AND item_gabarit.X > treshhold AND item_gabarit.Y > treshhold then
+	for i=0 to c_root.ChildContainerCount-1
+		item_gabarit = c_root.GetChildContainerByIndex(i).GetTransformedBoundingBoxDimensions()
+		if c_root.GetChildContainerByIndex(i).active AND item_gabarit.X > treshhold AND item_gabarit.Y > treshhold then
 			visibleChildrenCount += 1
 		end if
 	next
@@ -199,11 +206,11 @@ Sub ChildrenCountWasChanged()
 	arr_transitions.clear()
 	prev_pos_child.clear()
 	prev_bb_child.clear()
-	for i=0 to this.ChildContainerCount-1
-		item_gabarit = this.GetChildContainerByIndex(i).GetTransformedBoundingBoxDimensions()
+	for i=0 to c_root.ChildContainerCount-1
+		item_gabarit = c_root.GetChildContainerByIndex(i).GetTransformedBoundingBoxDimensions()
 		
-		if this.GetChildContainerByIndex(i).active AND item_gabarit.X > treshhold AND item_gabarit.Y > treshhold then
-			children.push(this.GetChildContainerByIndex(i))
+		if c_root.GetChildContainerByIndex(i).active AND item_gabarit.X > treshhold AND item_gabarit.Y > treshhold then
+			children.push(c_root.GetChildContainerByIndex(i))
 			Dim t As Transition
 			t.prev_pos = children[i].position.xyz
 			arr_transitions.Push(t)
@@ -214,64 +221,54 @@ Sub ChildrenCountWasChanged()
 	childrenCount = children.size
 End Sub
 
-Dim tv1, tv2 As Vertex
+Dim tv1, tv2, cntr As Vertex
 Sub Update()
-	c_gabarit.GetTransformedBoundingBox(v1,v2)
-	v1 = this.WorldPosToLocalPos(v1)
-	v2 = this.WorldPosToLocalPos(v2)
+	' c_gabarit.GetTransformedBoundingBox(v1,v2)
+	' v1 = c_root.WorldPosToLocalPos(v1)
+	' v2 = c_root.WorldPosToLocalPos(v2)
 	
-	v1.x = (v1.x - this.position.x)/this.scaling.x
-	v1.y = (v1.y - this.position.y)/this.scaling.y
-	v1.z = (v1.z - this.position.z)/this.scaling.z
-	v2.x = (v2.x - this.position.x)/this.scaling.x
-	v2.y = (v2.y - this.position.y)/this.scaling.y
-	v2.z = (v2.z - this.position.z)/this.scaling.z
+	' v1.x = (v1.x - c_root.position.x)/c_root.scaling.x
+	' v1.y = (v1.y - c_root.position.y)/c_root.scaling.y
+	' v1.z = (v1.z - c_root.position.z)/c_root.scaling.z
+	' v2.x = (v2.x - c_root.position.x)/c_root.scaling.x
+	' v2.y = (v2.y - c_root.position.y)/c_root.scaling.y
+	' v2.z = (v2.z - c_root.position.z)/c_root.scaling.z
 	
-	gabarit.x = v2.x - v1.x
-	gabarit.y = v2.y - v1.y
+	gabarit = GetBountingBoxWithinAnotherContainer(c_gabarit, c_root, v1, v2)
 	
 	arr_width.clear
 	arr_height.clear
 	arr_shift_x.clear
 	arr_shift_y.clear
-	sum_children_width = 0
-	sum_children_height = 0
+	total_children_width = 0
+	total_children_height = 0
 	for i=0 to children.ubound
-		SetChildrenVertexes(children[i])   'set child_v1 and child_v2
-		child_gabarit = GetChildGabarit(children[i])
+		child_gabarit = SetChildrenVertexes(children[i])   'set child_v1 and child_v2
 		
-		arr_width.push(child_gabarit.X)
-		arr_height.push(child_gabarit.Y)
-		sum_children_width  += child_gabarit.X
-		sum_children_height += child_gabarit.Y
-		
-		arr_shift_x.push( sum_children_width  + (child_v1.x - children[i].center.x)*children[i].scaling.x )
-		arr_shift_y.push( sum_children_height + (child_v1.y - children[i].center.y)*children[i].scaling.y )
+		arr_width.push(child_gabarit.x)
+		arr_height.push(child_gabarit.y)
+		total_children_width += child_gabarit.x
+		total_children_height += child_gabarit.y
+		cntr = ProjectVertexFromOneContainerToAnother(-children[i].center.xyz, children[i], c_root) 
+
+		arr_shift_x.push( child_v1.x - cntr.x )
+		arr_shift_y.push( child_v1.y - cntr.y )
 	next
 	
 	if mode_axis == 0 then 'X
-		CalcGapAndStart(gabarit.X, sum_children_width)
+		CalcGapAndStart(gabarit.X, total_children_width)
 	elseif mode_axis == 1 then 'Y
-		CalcGapAndStart(gabarit.Y, sum_children_height)
+		CalcGapAndStart(gabarit.Y, total_children_height)
 	end if
 End Sub
 
-Sub SetChildrenVertexes(child As Container)
-	if mode_gabarit_source == 1 AND child.ChildContainerCount > 0 then
-		'first sub-container of child
-		child.FirstChildContainer.GetBoundingBox(child_v1, child_v2)
-		child_v1.x *= child.FirstChildContainer.scaling.x
-		child_v1.y *= child.FirstChildContainer.scaling.y
-		child_v2.x *= child.FirstChildContainer.scaling.x
-		child_v2.y *= child.FirstChildContainer.scaling.y
-		child_v1 += child.FirstChildContainer.position.xyz
-		child_v2 += child.FirstChildContainer.position.xyz
-		child_v1 = child_v1
-	else
-		'whole child
-		child.GetBoundingBox(child_v1, child_v2)
-	end if
-End Sub
+Function SetChildrenVertexes(child As Container) As Vertex
+  if mode_gabarit_source == 1 AND child.ChildContainerCount > 0 then
+    SetChildrenVertexes = GetBountingBoxWithinAnotherContainer(child.FirstChildContainer, c_root, child_v1, child_v2)
+  else
+    SetChildrenVertexes = GetBountingBoxWithinAnotherContainer(child, c_root, child_v1, child_v2)
+  end if
+End Function
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -385,6 +382,8 @@ sub OnExecPerField()
 			end if
 		end if
 
+		sum_children_width = 0
+		sum_children_height = 0
 		for i=0 to children.ubound
 			SetChildrenVertexes(children[i])   'set child_v1 and child_v2
 			
@@ -393,7 +392,8 @@ sub OnExecPerField()
 				handle_x_pos = true
 				handle_y_pos = mode_align <> 0
 
-				arr_transitions[i].target_pos.x = v1.x + start + i*gap + arr_shift_x[i]
+				arr_transitions[i].target_pos.x = v1.x + start + i*gap - arr_shift_x[i] + sum_children_width
+				sum_children_width += arr_width[i]
 				Select Case mode_align
 				Case 1
 					'min align
@@ -411,6 +411,7 @@ sub OnExecPerField()
 				handle_y_pos = true
 
 				arr_transitions[i].target_pos.y = v2.y - start - i*gap - arr_shift_y[i]
+				sum_children_height += arr_height[i]
 				Select Case mode_align
 				Case 1
 					'min align
@@ -438,3 +439,31 @@ sub OnExecPerField()
 		next
 	end if
 end sub
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function GetBountingBoxWithinAnotherContainer(_c_bb As Container, _c_con As Container, ByRef _v1 As Vertex, ByRef _v2 As Vertex) As Vertex
+	if _c_bb <> null then
+		_c_bb.GetBoundingBox(_v1, _v2)
+		_v1 *= _c_bb.matrix
+		_v2 *= _c_bb.matrix
+		Dim _m As Matrix = _c_con.matrix
+		_m.Invert()
+		_v1 *= _m
+		_v2 *= _m
+		GetBountingBoxWithinAnotherContainer = _v2 - _v1
+	else
+		GetBountingBoxWithinAnotherContainer = CVertex(0,0,0)
+	end if
+End Function
+
+Function ProjectVertexFromOneContainerToAnother(ByVal _v As Vertex, _c_from As Container, _c_to As Container) As Vertex
+	Dim _m_from As Matrix = _c_from.matrix
+	Dim _m_to As Matrix = _c_to.matrix
+	_m_to.Invert()
+	
+	_v *= _c_from.matrix
+	_v *= _m_to
+	ProjectVertexFromOneContainerToAnother = _v
+End Function

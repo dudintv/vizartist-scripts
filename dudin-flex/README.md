@@ -1,5 +1,12 @@
 ## Flex-positioning. Partly implemented of "flexbox" conception from html/css.
 
+#### Version 1.3.1 (29 April 2021)
+* fix: working with crazy shifted center points by X-axis
+* broke: all Y-logic ! CAUTION !
+
+#### Version 1.3 (28 April 2021)
+* You can select any container as a root (not only this)
+
 #### Version 1.2 (28 May 2020)
 * Add animate transition with duration and several ease functions 
 
