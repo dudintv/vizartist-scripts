@@ -1,6 +1,7 @@
 ## Flex-positioning. Partly implemented of "flexbox" conception from html/css.
 
 Known issue:
+
 * It doen't support VizArtist 4.3 if you use it with one child container. I'll fix with the next version.
 
 #### Version 1.3.1 (29 April 2021)
