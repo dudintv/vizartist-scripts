@@ -2,7 +2,7 @@
 
 Known issue:
 
-* It doen't support VizArtist 4.3 if you use it with one child container. I'll fix with the next version.
+* It doesn't support VizArtist 4.3 (and above) with one child container. I'll fix with the next version.
 
 #### Version 1.3.1 (29 April 2021)
 * fix: working with crazy shifted center points by X-axis
