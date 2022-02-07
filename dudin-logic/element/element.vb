@@ -1,4 +1,4 @@
-RegisterPluginVersion(4,3,6)
+RegisterPluginVersion(4,3,7)
 Dim info As String = "Developer: Dmitry Dudin
 http://dudin.tv/scripts/logic
 -------------------------------------------------------
@@ -922,7 +922,7 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 			end if
 			
 			If PlayheadIsMore(0) AND PlayheadIsLess(end_time) Then
-				If PlayheadIsLess(stoper_b) Then d_OnOff.Show(stoper_b)				
+				If PlayheadIsLess(stoper_b) Then d_OnOff.Show(stoper_b)	
 				d_OnOff.ContinueAnimation()
 				takeout_change()
 			End If
@@ -1028,8 +1028,8 @@ Sub CalculateDirector()
 		stoper_a = d_OnOff.EventChannel.FirstKeyframe.Time
 		stoper_b = d_OnOff.EventChannel.LastKeyframe.Time
 		
-		start_time = CDbl(  System.SendCommand("THIS_SCENE*STAGE*#" & d_OnOff.VizID & "*START_TIME GET")  )
-		end_time   = CDbl(  System.SendCommand("THIS_SCENE*STAGE*#" & d_OnOff.VizID & "*END_TIME GET"  )  )
+		start_time = CDbl(  System.SendCommand("#" & Scene.VizId & "*STAGE*#" & d_OnOff.VizID & "*START_TIME GET")  )
+		end_time   = CDbl(  System.SendCommand("#" & Scene.VizId & "*STAGE*#" & d_OnOff.VizID & "*END_TIME GET"  )  )
 	End If
 End Sub
 '----------------------------------------------------------
