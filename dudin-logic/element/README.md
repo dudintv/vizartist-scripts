@@ -1,5 +1,8 @@
 ## Element (a lower third)
 
+#### Version 4.3.7 (7 february 2022)
+* FIX: "out" command by fixing getting the end time of the main director
+
 #### Version 4.3.6 (18 february 2019)
 * CHANGE: serial pause logic. Before: timer started at begin of transition animations. After: timer starts at end of transition animations.
 * FIX: checking not only loading in layer but checking loaded in render at all, it's useful for loading scene with dudin-logic into GFXs
