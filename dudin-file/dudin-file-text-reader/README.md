@@ -8,6 +8,6 @@ Inputs:
 * button: read file now
 
 Basic functional:
-* read text file and put the content to a global variable
-* read only once in customize interval in seconds
-* ignore (auto-removed) empty lines
+* reads text file and put the content to a global variable
+* reads by interval in seconds
+* ignore empty lines
