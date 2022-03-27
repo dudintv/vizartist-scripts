@@ -13,4 +13,3 @@ It's possible to use this script as a subsitution for the standard "Connector". 
 * "strech efffect": you can scale current container in order to reach the atrget conatiner
 * you can also scale current container by two secondary axes, or keep them equal 1
 * you also can multiplay the strech effect (to accuratelly fix the length)
-* 
