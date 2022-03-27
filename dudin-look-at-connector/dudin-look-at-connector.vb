@@ -1,7 +1,7 @@
-RegisterPluginVersion(1,0,0)
+RegisterPluginVersion(1,0,1)
 
 Dim c_origin, c_target As Container
-Dim prev_v_origin, prev_v_target As Vertex
+Dim prev_v_origin, prev_v_target, new_v_origin, new_v_target As Vertex
 Dim up, v_lookat, v_tangent As Vertex
 Dim rot_matrix As Matrix
 Dim look_axis As Integer
@@ -52,20 +52,23 @@ Function AreTwoVerticesEqual(_v1 As Vertex, _v2 As Vertex) As Boolean
 End Function
 
 sub OnExecPerField()
-	if AreTwoVerticesEqual(prev_v_origin, c_origin.position.xyz) AND AreTwoVerticesEqual(prev_v_target, c_target.position.xyz) then
-		exit sub
+	new_v_origin = c_origin.LocalPosToWorldPos(c_origin.position.xyz)
+	new_v_target = c_target.LocalPosToWorldPos(c_target.position.xyz)
+	if AreTwoVerticesEqual(prev_v_origin, new_v_origin) AND AreTwoVerticesEqual(prev_v_target, new_v_target) then		
+		exit sub		
 	end if
-	prev_v_origin = c_origin.position.xyz
-	prev_v_target = c_target.position.xyz
+	prev_v_origin = new_v_origin
+	prev_v_target = new_v_target
 
-	this.position.xyz = this.ParentContainer.WorldPosToLocalPos(c_origin.LocalPosToWorldPos(c_origin.position.xyz))
+	this.position.xyz = this.WorldPosToLocalPos(prev_v_origin)
 	this.RecomputeMatrix()
 	LootAt()
 	
 	if scale_to_target then
 		Dim v_origin = this.position.xyz
-		Dim v_target = this.WorldPosToLocalPos(c_target.LocalPosToWorldPos(c_target.position.xyz))
+		Dim v_target = GetPosWithinAnotherContainer(c_target, this.ParentContainer)
 		dist = Distance(v_origin, v_target)
+		println(dist)
 		scale = dist * scale_mult /100.0 /100.0
 		if uniform_scale then
 			this.scaling.xyz = CVertex(scale, scale, scale)
@@ -94,7 +97,7 @@ sub OnExecPerField()
 end sub
 
 Sub LootAt()
-	v_lookat = this.ParentContainer.WorldPosToLocalPos(c_target.ParentContainer.LocalPosToWorldPos(c_target.position.xyz)) - this.position.xyz
+	v_lookat = GetPosWithinAnotherContainer(c_target, this.ParentContainer) - this.position.xyz
 	rot_matrix = GetRotationMatrix(v_lookat)	
 	this.rotation.xyz = GetRotationFromMatrix(rot_matrix)
 End Sub
@@ -193,4 +196,24 @@ Function CrossVectors(v1 As Vertex, v2 As Vertex) As Vertex
 	cy = v1.z*v2.x - v1.x*v2.z
 	cz = v1.x*v2.y - v1.y*v2.x
 	CrossVectors = CVertex(cx, cy, cz)
+End Function
+
+Function GetGlobalPos(_c As Container) As Vertex
+	if _c.ParentContainer <> null then
+		Dim _v as Vertex = _c.position.xyz
+		_v *= _c.ParentContainer.matrix
+		GetGlobalPos = _v
+	elseif _c <> null then
+		GetGlobalPos = _c.position.xyz
+	else
+		GetGlobalPos = CVertex(0,0,0)
+	end if
+End Function
+
+Function GetPosWithinAnotherContainer(_c_pos As Container, _c_con As Container) As Vertex
+	Dim _m As Matrix = _c_con.matrix
+	_m.Invert()
+	Dim _v_glob_pos As Vertex = GetGlobalPos(_c_pos)
+	_v_glob_pos *= _m
+	GetPosWithinAnotherContainer = _v_glob_pos
 End Function
