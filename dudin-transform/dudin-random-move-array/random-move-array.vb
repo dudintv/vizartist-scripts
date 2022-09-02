@@ -1,5 +1,5 @@
-Dim version As String = "1.01 (21 сентября 2017)"
-Dim info As String = "Колебания непосредственных потомков по оси Y"
+Dim version As String = "1.1 (2 September 2021)"
+Dim info As String = "Oscillates direct children only by Y axis"
 
 Dim speed, amplitude, random As Double
 Dim rand_amplitudes, cur_amplitudes As Array[Double]
@@ -9,9 +9,9 @@ Dim childs As Array[Container]
 
 sub OnInitParameters()
 	RegisterInfoText(version & "\n" & info)
-	RegisterParameterDouble("amplitude", "Амплитуда колебаний", 1, 0, 9999)
-	RegisterParameterDouble("speed", "Скорость", 50, 0, 9999)
-	RegisterParameterDouble("random", "Фактор случайности", 50, 0, 100)
+	RegisterParameterDouble("amplitude", "Amplitude", 1, 0, 9999)
+	RegisterParameterDouble("speed", "Speed", 50, 0, 9999)
+	RegisterParameterDouble("random", "Random level", 50, 0, 100)
 end sub
 
 sub OnInit()
@@ -35,7 +35,6 @@ end sub
 
 sub OnExecPerField()
 	for i=0 to childs.UBound-1
-		'println("i = " & i)
 		if ticks[i] > speeds[i] then
 			ticks[i] = 0
 			SetRandom(i)
