@@ -4,9 +4,9 @@ Dim x, y, z, speed_x, speed_y, speed_z As Double
 Dim dir_x, dir_y, dir_z As Integer
 
 sub OnInitParameters()
-	RegisterParameterDouble("pos_x", "Position X", 0, 0, 999999)
-	RegisterParameterDouble("pos_y", "Position X", 0, 0, 999999)
-	RegisterParameterDouble("pos_z", "Position X", 0, 0, 999999)
+	RegisterParameterDouble("pos_x", "X amplitude", 0, 0, 999999)
+	RegisterParameterDouble("pos_y", "Y amplitude", 0, 0, 999999)
+	RegisterParameterDouble("pos_z", "Z amplitude", 0, 0, 999999)
 	RegisterParameterDouble("pos_speed", "Position Speed", 0, 0, 999999)
 end sub
 
