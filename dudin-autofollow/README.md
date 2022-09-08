@@ -1,7 +1,10 @@
 ## Autofollow
 
+#### 1.4 (09.09.2022)
+* added searching targets inside containers by path (supports "." as a separator)
+
 #### 1.3 (22.09.2020)
-* add Z axis
+* added Z axis
 
 #### 1.2 (09.01.2019)
 * translated to English
