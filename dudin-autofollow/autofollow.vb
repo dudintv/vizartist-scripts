@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,3,0)
+RegisterPluginVersion(1,4,0)
 Dim info As String = "Autofollow for multiple containers.
 Check maximum point of selected containers
 and align this_container to this point (in global).
@@ -7,7 +7,8 @@ Developer: Dmitry Dudin, dudin.tv
 
 ' SETTINGS
 ' just set up count of container for observing
-Dim quantity_of_container As Integer = 1
+Dim quantity_of_container As Integer = 2
+
 Dim thresholdZero As Double = 0.001
 Dim thresholdMove As Double = 0.01
 Dim animDamping As Double = 1.0
@@ -35,6 +36,10 @@ Dim i As Integer
 Dim min, max, mid, new As Vertex
 Dim v1,v2, v_world, thisSize As Vertex
 Dim defY,defX As Double
+
+' for sub-container targets
+Dim isChildMode, isRealtimeRetarget As Boolean
+
  
 sub OnInitParameters()
 	RegisterInfoText(info)
@@ -46,18 +51,18 @@ sub OnInitParameters()
 	RegisterParameterDouble("zeroY", "Y-pos if self empty:", 0, -1000.0, 1000.0)
 	RegisterParameterDouble("defY", "Y-pos default:", 0, -1000.0, 1000.0)
 	RegisterParameterDouble("shiftY", "Y-shift:", 0, -1000.0, 1000.0)
+	RegisterParameterBool("is_child_mode", "Follow sub-containers by name", false)
+	RegisterParameterBool("is_realtime_retarget", "└ Realtime re-search containers", true)
 	For i = 1 to quantity_of_container
 		RegisterParameterContainer("c" & i,"Container " & i & ":")
+		RegisterParameterString("c_name" & i, "└ Sub-container path", "", 100, 999, "")
 	Next
 end sub
 
 sub OnInit()
-	arr_c.Clear()
- 
-	For i = 1 to quantity_of_container
-		c = GetParameterContainer("c" & i)
-		If c <> null Then arr_c.Push(c)
-	Next
+	isChildMode = GetParameterBool("is_child_mode")
+	isRealtimeRetarget = GetParameterBool("is_realtime_retarget")
+	FindTargets()
 end sub
 
 sub OnParameterChanged(parameterName As String)
@@ -94,6 +99,11 @@ sub OnParameterChanged(parameterName As String)
 		SendGuiParameterShow("shiftY",HIDE)
 		SendGuiParameterShow("shiftZ",SHOW)
 	End Select
+	
+	For i = 1 to quantity_of_container
+		SendGuiParameterShow("c_name" & i, CInt(isChildMode))
+	Next
+	SendGuiParameterShow("is_realtime_retarget", CInt(isChildMode))
 end sub
 
 Function IsHaveSize(_c As Container) As Boolean
@@ -102,10 +112,48 @@ Function IsHaveSize(_c As Container) As Boolean
 	IsHaveSize = (v2.x > v1.x + thresholdZero OR v2.x < v1.x - thresholdZero) AND (v2.y > v1.y + thresholdZero OR v2.y < v1.y - thresholdZero)
 End Function
 
+Function FindSubContainerByPath(ByVal _c As Container, _path as String) As Container
+	Dim _cCurrent As Container
+	Dim _arrsSubContainerPath As Array[String]
+	_path.split(".", _arrsSubContainerPath)
+	for _pathIndex=0 to _arrsSubContainerPath.ubound
+		_arrsSubContainerPath[_pathIndex].Trim()
+		if _arrsSubContainerPath[_pathIndex] == "" then _arrsSubContainerPath.Erase(_pathIndex)
+	next
+	for _pathIndex=0 to _arrsSubContainerPath.ubound
+		_cCurrent = _c.FindSubContainer(_arrsSubContainerPath[_pathIndex])
+		if _cCurrent == null then
+			FindSubContainerByPath = _c
+			Exit Function
+		end if
+		_c = _cCurrent
+	next
+	FindSubContainerByPath = _c
+End Function
+sub FindTargets()
+	arr_c.Clear()
+	if isChildMode then
+		For i = 1 to quantity_of_container
+			c = FindSubContainerByPath(GetParameterContainer("c" & i), GetParameterString("c_name" & i))
+			'if c == null then c = GetParameterContainer("c" & i)
+			If c <> null Then arr_c.Push(c)
+		Next
+	else
+		For i = 1 to quantity_of_container
+			c = GetParameterContainer("c" & i)
+			If c <> null Then arr_c.Push(c)
+		Next
+	end if
+end sub
+
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
  
 sub OnExecPerField()
+	if isChildMode AND isRealtimeRetarget then
+		FindTargets()
+	end if
+
 	thisSize = this.GetTransformedBoundingBoxDimensions()
 	
 	arr_sized.Clear
@@ -249,3 +297,4 @@ sub OnExecPerField()
 		End If
 	End Select
 end sub
+	
