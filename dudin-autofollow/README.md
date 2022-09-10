@@ -1,5 +1,9 @@
 ## Autofollow
 
+#### 1.5 (10.09.2022)
+* exposed "inertia" to UI, where 1 = instant following (like standard Autofollow), when the "inertia" is bigger than this container is slower 
+* added pauses before react with animation 
+
 #### 1.4 (09.09.2022)
 * added searching targets inside containers by path (supports "." as a separator)
 
