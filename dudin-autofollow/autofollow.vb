@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,4,0)
+RegisterPluginVersion(1,5,0)
 Dim info As String = "Autofollow for multiple containers.
 Check maximum point of selected containers
 and align this_container to this point (in global).
@@ -11,30 +11,40 @@ Dim quantity_of_container As Integer = 2
 
 Dim thresholdZero As Double = 0.001
 Dim thresholdMove As Double = 0.01
-Dim animDamping As Double = 1.0
 
 ' INTERFACE
 Dim arr_mode As Array[String]
-arr_mode.Push("[ X ]")
-arr_mode.Push("[ Y ]")
-arr_mode.Push("[ Z ]")
+arr_mode.Push(" X ")
+arr_mode.Push(" Y ")
+arr_mode.Push(" Z ")
 
 Dim MODE_X As Integer = 0
 Dim MODE_Y As Integer = 1
 Dim MODE_Z As Integer = 2
 
 Dim arr_direction As Array[String]
-arr_direction.Push("[ > ]")
-arr_direction.Push("[ * ]")
-arr_direction.Push("[ < ]")
+arr_direction.Push(" *— ")
+arr_direction.Push(" -*- ")
+arr_direction.Push(" —* ")
 Dim arr_c, arr_sized As Array[Container]
+
+Dim arrPauseMode As Array[String]
+arrPauseMode.Push("none")
+arrPauseMode.Push("<-")
+arrPauseMode.Push("->")
+arrPauseMode.Push("<->")
+
+Dim PAUSE_MODE_NONE As Integer = 0
+Dim PAUSE_MODE_LESS As Integer = 1
+Dim PAUSE_MODE_MORE As Integer = 2
+Dim PAUSE_MODE_BOTH As Integer = 3
 
 ' STUFF
 Dim c As Container
 Dim i As Integer
 'use vertexes for easy world to local transformation
 Dim min, max, mid, new As Vertex
-Dim v1,v2, v_world, thisSize As Vertex
+Dim v1, v2, v_world, thisSize As Vertex
 Dim defY,defX As Double
 
 ' for sub-container targets
@@ -51,6 +61,10 @@ sub OnInitParameters()
 	RegisterParameterDouble("zeroY", "Y-pos if self empty:", 0, -1000.0, 1000.0)
 	RegisterParameterDouble("defY", "Y-pos default:", 0, -1000.0, 1000.0)
 	RegisterParameterDouble("shiftY", "Y-shift:", 0, -1000.0, 1000.0)
+	RegisterParameterDouble("inertia", "Itertia (1=none)", 1, 1, 1000.0)
+	RegisterRadioButton("pause_mode", "└ Pause direction", 0, arrPauseMode)
+	RegisterParameterInt("pause_less", "   └ Pause <- (frames)", 0, 0, 1000)
+	RegisterParameterInt("pause_more", "   └ Pause -> (frames)", 0, 0, 1000)
 	RegisterParameterBool("is_child_mode", "Follow sub-containers by name", false)
 	RegisterParameterBool("is_realtime_retarget", "└ Realtime re-search containers", true)
 	For i = 1 to quantity_of_container
@@ -99,6 +113,10 @@ sub OnParameterChanged(parameterName As String)
 		SendGuiParameterShow("shiftY",HIDE)
 		SendGuiParameterShow("shiftZ",SHOW)
 	End Select
+	
+	SendGuiParameterShow("pause_mode", CInt( GetParameterDouble("inertia") > 1 ))
+	SendGuiParameterShow("pause_less", CInt( (GetParameterInt("pause_mode") == PAUSE_MODE_LESS OR GetParameterInt("pause_mode") == PAUSE_MODE_BOTH) AND GetParameterDouble("inertia") > 1 )) 
+	SendGuiParameterShow("pause_more", CInt( (GetParameterInt("pause_mode") == PAUSE_MODE_MORE OR GetParameterInt("pause_mode") == PAUSE_MODE_BOTH) AND GetParameterDouble("inertia") > 1 )) 
 	
 	For i = 1 to quantity_of_container
 		SendGuiParameterShow("c_name" & i, CInt(isChildMode))
@@ -284,17 +302,37 @@ sub OnExecPerField()
 	new = this.WorldPosToLocalPos(new)
 	Select Case GetParameterInt("mode")
 	Case MODE_X
-		If Abs(new.x - this.position.x) > thresholdMove Then
-			this.position.x += (new.x - this.position.x)/animDamping
-		End If
+		Animate(this.position.x, new.x)
 	Case MODE_Y
-		If Abs(new.y - this.position.y) > thresholdMove Then
-			this.position.y += (new.y - this.position.y)/animDamping
-		End If
+		Animate(this.position.y, new.y)
 	Case MODE_Z
-		If Abs(new.z - this.position.z) > thresholdMove Then
-			this.position.z += (new.z - this.position.z)/animDamping
-		End If
+		Animate(this.position.z, new.z)
 	End Select
 end sub
+
+Dim iPauseDownTicks As Integer
+Dim prevNewValue As Double
+Sub Animate(ByRef thisValue as Double, newValue As Double)
+	if prevNewValue <> newValue then
+		prevNewValue = newValue
+		If GetParameterInt("pause_mode") == PAUSE_MODE_NONE Then
+			iPauseDownTicks = 0
+		Else
+			If (GetParameterInt("pause_mode") == PAUSE_MODE_MORE OR GetParameterInt("pause_mode") == PAUSE_MODE_BOTH) AND newValue - thisValue > thresholdMove Then
+				iPauseDownTicks = GetParameterInt("pause_more")
+			End If
+			If (GetParameterInt("pause_mode") == PAUSE_MODE_LESS OR GetParameterInt("pause_mode") == PAUSE_MODE_BOTH) AND thisValue - newValue > thresholdMove Then
+				iPauseDownTicks = GetParameterInt("pause_less")
+			End If
+		End If
+	end if
 	
+	If iPauseDownTicks > 0 then
+		iPauseDownTicks -= 1
+		Exit Sub
+	End if
+	
+	If Abs(newValue - thisValue) > thresholdMove Then
+		thisValue += (newValue - thisValue)/GetParameterDouble("inertia")
+	End If
+End Sub
