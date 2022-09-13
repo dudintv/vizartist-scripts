@@ -1,5 +1,9 @@
 ## Text file reader
 
+#### Version 1.1 (13 September 2022)
+* added an output mode — to specific container with text geometry (with default as "this")
+* now you can disable removing empty lines
+
 #### Version 1.0 (8 February 2022)
 Inputs:
 * full filepath
