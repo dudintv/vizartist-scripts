@@ -1,7 +1,7 @@
 RegisterPluginVersion(1,1,2)
 Dim info As String = "Moving/arrange animation channels to certain directors. to Developer: Dmitry Dudin, dudin.tv"
 
-Dim c_root As Container
+Dim cRoot As Container
 Dim arr_c_parts, arr_c As Array[Container]
 Dim arr_ch As Array[Channel]
 Dim dir As Director
@@ -28,14 +28,12 @@ sub OnInitParameters()
 end sub
 
 sub OnInit()
-	if GetParameterContainer("root") <> null then
-		c_root = GetParameterContainer("root")
-	else
-		c_root = this
-	end if
+	cRoot = GetParameterContainer("root")
+	if cRoot == null then cRoot = this
+	
 	arr_c_parts.Clear()
-	for i=1 to c_root.ChildContainerCount
-		arr_c_parts.Push(c_root.GetChildContainerByIndex(i-1))
+	for i=1 to cRoot.ChildContainerCount
+		arr_c_parts.Push(cRoot.GetChildContainerByIndex(i-1))
 	next
 	offset_start = GetParameterDouble("offset_start")
 	offset_step = GetParameterDouble("offset_step")
