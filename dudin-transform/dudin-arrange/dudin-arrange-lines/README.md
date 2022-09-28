@@ -1,7 +1,8 @@
-## Place all direct children in lines
+## Place conatiners in lines and rows
 
 #### Vetsion 1.2.0 (28.09.2022)
 * NEW: offset director according sorting order
+* Now you can arbitrary define the root container
 
 #### Version 1.1.0 (27.05.2019)
 * NEW: add source of order: by order in scene tree, by name of children and by digit value in text in some sub-container
