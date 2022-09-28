@@ -1,5 +1,8 @@
 ## Moving/arranging animations to certain directors
 
+#### Version 1.1.2 (29.09.2022)
+* a small refactor
+
 #### Version 1.1.1 (27.05.2019)
 * rewrite condition with using constants
 
