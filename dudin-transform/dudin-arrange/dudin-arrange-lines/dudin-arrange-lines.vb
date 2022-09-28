@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,1,0)
+RegisterPluginVersion(1,2,0)
 Dim infoText As String = "Arrange children in lines. Author: Dmitry Dudin, dudin.tv"
 
 Dim max_in_row, max_col, count_rows As Integer
@@ -6,7 +6,8 @@ Dim row, col, prev_count As Integer
 Dim gap_x, gap_y As Double
 Dim xx,yy,zz, shift_xx, shift_yy As Double
 Dim arr_childs, arr_ctexts As Array[Container]
-Dim c As Container
+Dim c, cRoot As Container
+Dim d As Director
 
 Dim randomize As Boolean
 Dim random_x, random_y, random_z As Double
@@ -14,16 +15,17 @@ Dim random_x, random_y, random_z As Double
 Dim type_sort As Array[String]
 type_sort.Push("by tree")
 type_sort.Push("by name")
-type_sort.Push("by text")
+type_sort.Push("by value")
 Dim SORT_BY_TREE As Integer = 0
 Dim SORT_BY_NAME As Integer = 1
-Dim SORT_BY_TEXT As Integer = 2
+Dim SORT_BY_VALUE As Integer = 2
 
 sub OnInitParameters()
 	RegisterInfoText(infoText)
+	RegisterParameterContainer("root", "Root container (or this)")
 	RegisterParameterInt("max_in_line", "Max count in line", 1, 1, 999)
-	RegisterParameterDouble("gap_x", "Distance X", 0, -999999, 999999)
-	RegisterParameterDouble("gap_y", "Distance Y", 0, -999999, 999999)
+	RegisterParameterDouble("gap_x", "Step X", 0, -999999, 999999)
+	RegisterParameterDouble("gap_y", "Step Y", 0, -999999, 999999)
 	RegisterParameterBool("randomize", "Randomize", false)
 	RegisterParameterDouble("random_x", "Random X", 0, 0, 999999)
 	RegisterParameterDouble("random_y", "Random Y", 0, 0, 999999)
@@ -31,16 +33,23 @@ sub OnInitParameters()
 	RegisterRadioButton("sort_type", "Sort", 0, type_sort)
 	RegisterParameterString("sort_name", "Text container path", "item$container", 40, 999, "")
 	RegisterParameterBool("sort_inverse", "Inverse", false)
+	RegisterParameterBool("offset_directors", "Offset directors (find by child name)", false)
+	RegisterParameterDouble("offset_start", "└ Offset start (sec)", 0, 0, 999999)
+	RegisterParameterDouble("offset_step", "└ Offset step (sec)", 0, 0, 999999)
 end sub
 
 sub OnInit()
 	max_in_row = GetParameterInt("max_in_line")
 	gap_x = GetParameterDouble("gap_x")
 	gap_y = GetParameterDouble("gap_y")
+	
+	cRoot = GetParameterContainer("root")
+	if cRoot == null then cRoot = this
+	
 	arr_childs.Clear()
-	for i=0 to this.ChildContainerCount-1
-		if this.GetChildContainerByIndex(i).Active then
-			arr_childs.Push(this.GetChildContainerByIndex(i))
+	for i=0 to cRoot.ChildContainerCount-1
+		if cRoot.GetChildContainerByIndex(i).Active then
+			arr_childs.Push(cRoot.GetChildContainerByIndex(i))
 		end if
 	next
 	arr_ctexts.Clear()
@@ -48,7 +57,7 @@ sub OnInit()
 		c = arr_childs[i].FindSubContainer(GetParameterString("sort_name"))
 		if c == null then c = arr_childs[i]
 		arr_ctexts.Push(c)
-		if GetParameterInt("sort_type")==SORT_BY_TEXT then
+		if GetParameterInt("sort_type")==SORT_BY_VALUE then
 			c.Geometry.RegisterTextChangedCallback()
 		else
 			c.Geometry.UnregisterChangedCallback()
@@ -63,14 +72,17 @@ sub OnInit()
 	SendGuiParameterShow("random_x", CInt(randomize))
 	SendGuiParameterShow("random_y", CInt(randomize))
 	SendGuiParameterShow("random_z", CInt(randomize))
-	SendGuiParameterShow("sort_name", CInt( GetParameterInt("sort_type")==SORT_BY_TEXT ))
+	SendGuiParameterShow("sort_name", CInt( GetParameterInt("sort_type")==SORT_BY_VALUE ))
+	
+	SendGuiParameterShow("offset_start", CInt(GetParameterBool("offset_directors")))
+	SendGuiParameterShow("offset_step", CInt(GetParameterBool("offset_directors")))
 end sub
 
 sub OnExecPerField()
 	arr_childs.Clear()
-	for i=0 to this.ChildContainerCount-1
-		if this.GetChildContainerByIndex(i).Active then
-			arr_childs.Push(this.GetChildContainerByIndex(i))
+	for i=0 to cRoot.ChildContainerCount-1
+		if cRoot.GetChildContainerByIndex(i).Active then
+			arr_childs.Push(cRoot.GetChildContainerByIndex(i))
 		end if
 	next
 	
@@ -91,9 +103,18 @@ end sub
 Sub Update()
 	OnInit()
 	if GetParameterInt("sort_type")==SORT_BY_NAME then SortByName()
-	if GetParameterInt("sort_type")==SORT_BY_TEXT then SortByText()
+	if GetParameterInt("sort_type")==SORT_BY_VALUE then SortByValue()
 	if GetParameterBool("sort_inverse") then Inverse()
+	
 	ArrangeInLines()
+	if GetParameterBool("offset_directors") then ArrangeDirectors()
+End Sub
+
+Sub ArrangeDirectors()
+	for i=0 to arr_childs.ubound
+		d = Stage.FindDirector(arr_childs[i].name)
+		d.offset = GetParameterDouble("offset_start") + i*GetParameterDouble("offset_step")
+	next
 End Sub
 
 Sub ArrangeInLines()
@@ -128,7 +149,7 @@ Sub Swap(_c1 As Container, _c2 As Container)
 	_c2 = _c
 End Sub
 
-Sub SortByText()
+Sub SortByValue()
 	Dim _finish As Boolean
 	Dim _s1, _s2 As String
 	for j=0 to arr_ctexts.ubound-1
