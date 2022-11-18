@@ -75,7 +75,7 @@ sub OnInitParameters()
 	RegisterParameterDouble("shift_gap", "Shift gap", 0, -1000, 1000)
 	RegisterParameterBool("collapse_if_overflow", "Collapse gap if overflow", true)
 	RegisterParameterBool("is_animated", "Animate transitions", false)
-	RegisterParameterBool("force_update", "Force update each frame", false)
+	RegisterParameterBool("force_update", "React on child size change", false)
 	RegisterParameterDouble("transition_duration", "Transition duration (sec)", 1.0, 0, 1000)
 	RegisterRadioButton("ease_fn", "Ease function", 0, arr_ease)
 end sub
