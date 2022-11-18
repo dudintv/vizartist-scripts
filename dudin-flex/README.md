@@ -1,5 +1,8 @@
 ## Flex-positioning. Partly implemented of "flexbox" conception from html/css.
 
+#### Knows issues:
+* animation works random when "Reacting on child sizes chenge" is enabled
+
 #### Version 1.3.4 (18 November 2022)
 * fix: variaous aligment
 * fix: Y direction
