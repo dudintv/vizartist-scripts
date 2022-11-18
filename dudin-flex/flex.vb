@@ -1,7 +1,7 @@
-RegisterPluginVersion(1,3,1)
+RegisterPluginVersion(1,3,4)
 Dim info As String = "
 Flex-position. Copies flex-logic from CSS3 / HTML5.
-Developer: Dmitry Dudin. 
+Developer: Dmitry Dudin.
 http://dudin.tv/scripts/flex
 "
 
@@ -15,15 +15,16 @@ Dim min_gap_param, mult_gap_param, shift_gap_param, gap_shift, power_magnetic_ga
 Dim gabarit, child_gabarit, v1, v2, child_v1, child_v2, item_gabarit As Vertex
 Dim mode_axis, mode_gabarit_source, mode_justify, mode_align As Integer
 Dim width_step, sum_children_width, sum_children_height, total_children_width, total_children_height, gap, start As Double
-Dim arr_width, arr_height, arr_shift_x, arr_shift_y As Array[Double]
+Dim arr_width, arr_height, arr_start_shift_x, arr_start_shift_y, arr_center_shift_x, arr_center_shift_y, arr_end_shift_x, arr_end_shift_y As Array[Double]
 Dim childrenCount, prev_childrenCount As Integer
+Dim force_update As Boolean
 
 'ANIMATION STUFF
 Structure Transition
 	target_pos, prev_pos As Vertex
 End Structure
 Dim arr_transitions As Array[Transition]
-Dim playhead As Double = 1.0 
+Dim playhead As Double = 1.0
 ' playhead = [0.0 ... 1.0]
 ' playhead = 1.0 means STOP
 Dim currentAnimValue As Double
@@ -74,6 +75,7 @@ sub OnInitParameters()
 	RegisterParameterDouble("shift_gap", "Shift gap", 0, -1000, 1000)
 	RegisterParameterBool("collapse_if_overflow", "Collapse gap if overflow", true)
 	RegisterParameterBool("is_animated", "Animate transitions", false)
+	RegisterParameterBool("force_update", "Force update each frame", false)
 	RegisterParameterDouble("transition_duration", "Transition duration (sec)", 1.0, 0, 1000)
 	RegisterRadioButton("ease_fn", "Ease function", 0, arr_ease)
 end sub
@@ -90,18 +92,14 @@ sub OnInit()
 	power_magnetic_gap = GetParameterDouble("power_gap")/100.0 + 1.0
 	shift_gap_param = GetParameterDouble("shift_gap")
 	min_gap_param = GetParameterDouble("min_gap")
+	force_update = GetParameterBool("force_update")
 end sub
 sub OnParameterChanged(parameterName As String)
 	OnInit()
-	
-	if mode_justify == 4 then
-		SendGuiParameterShow("mult_gap", SHOW)
-		SendGuiParameterShow("power_gap", SHOW)
-	else
-		SendGuiParameterShow("mult_gap", HIDE)
-		SendGuiParameterShow("power_gap", HIDE)
-	end if
-	
+
+  SendGuiParameterShow("mult_gap", CInt(mode_justify == 4))
+  SendGuiParameterShow("power_gap", CInt(mode_justify == 4))
+
 	SendGuiParameterShow("transition_duration", CInt(GetParameterBool("is_animated")))
 	SendGuiParameterShow("ease_fn", CInt(GetParameterBool("is_animated")))
 	hasNewState = true
@@ -121,10 +119,16 @@ Function GetChildGabarit(child As Container) As Vertex
 	end if
 End Function
 
-Sub CalcGapAndStart(gabarit_size As Double, sum_children_size As Double)
+Sub CalcGap(gabarit_size As Double, sum_children_size As Double)
+	if childrenCount <= 1 then
+		gap_shift = 0
+		gap = 0
+		exit sub
+	end if
+
 	freespace = gabarit_size - sum_children_size
 	gap_shift = freespace*(mult_gap_param/100)/(childrenCount-1)
-	
+
 	'CALC BASE GAP
 	Select Case mode_justify
 	Case 0 To 2
@@ -141,9 +145,9 @@ Sub CalcGapAndStart(gabarit_size As Double, sum_children_size As Double)
 		'I want the expecting accurate of position with "Shift of gap" = 100.0
 		gap += (2*gap)/(childrenCount-1)*(mult_gap_param/100)
 	End Select
-	
+
 	gaps = gap*(childrenCount-1)
-	
+
 	'ADD MAGNETIC
 	Select Case mode_justify
 	Case 0 To 2
@@ -158,7 +162,7 @@ Sub CalcGapAndStart(gabarit_size As Double, sum_children_size As Double)
 		'4 - space-around
 		gap = (freespace/(childrenCount-1))*(gaps/freespace)^power_magnetic_gap
 	End Select
-	
+
 	'CONSIDER MIN GAP
 	if gap < min_gap_param then
 		if GetParameterBool("collapse_if_overflow") AND (gabarit_size - sum_children_size)/(childrenCount-1) < min_gap_param then
@@ -168,8 +172,9 @@ Sub CalcGapAndStart(gabarit_size As Double, sum_children_size As Double)
 		end if
 	end if
 	gap += shift_gap_param
-	
-	'CACL START SHIFT
+End Sub
+
+Sub CalcStart(gabarit_size As Double, sum_children_size As Double)
 	Select Case mode_justify
 	Case 0
 		'start
@@ -183,10 +188,6 @@ Sub CalcGapAndStart(gabarit_size As Double, sum_children_size As Double)
 		'4 - space-around
 		start = (gabarit_size - sum_children_size)/2.0 - gap*(childrenCount-1)/2.0
 	End Select
-	
-'	println("")
-'	println("childrenCount = " & childrenCount)
-'	println("gabarit_size = " & gabarit_size & " | sum_children_size = " & sum_children_size & " | gap = " & gap & " | start = " & start)
 End Sub
 
 Dim visibleChildrenCount As Integer
@@ -201,64 +202,63 @@ Function GetVisibleChildContainerCount() As Integer
 	GetVisibleChildContainerCount = visibleChildrenCount
 End Function
 
-Sub ChildrenCountWasChanged()
+Sub OnChildrenCountChanged()
 	children.clear()
 	arr_transitions.clear()
 	prev_pos_child.clear()
 	prev_bb_child.clear()
 	for i=0 to c_root.ChildContainerCount-1
 		item_gabarit = c_root.GetChildContainerByIndex(i).GetTransformedBoundingBoxDimensions()
-		
+
 		if c_root.GetChildContainerByIndex(i).active AND item_gabarit.X > treshhold AND item_gabarit.Y > treshhold then
 			children.push(c_root.GetChildContainerByIndex(i))
 			Dim t As Transition
-			t.prev_pos = children[i].position.xyz
+			t.prev_pos = children[children.ubound].position.xyz
 			arr_transitions.Push(t)
-			prev_pos_child.Push(children[i].position.xyz)
-			prev_bb_child.Push(children[i].GetTransformedBoundingBoxDimensions())
+			prev_pos_child.Push(children[children.ubound].position.xyz)
+			prev_bb_child.Push(children[children.ubound].GetTransformedBoundingBoxDimensions())
 		end if
 	next
 	childrenCount = children.size
 End Sub
 
 Dim tv1, tv2, cntr As Vertex
-Sub Update()
-	' c_gabarit.GetTransformedBoundingBox(v1,v2)
-	' v1 = c_root.WorldPosToLocalPos(v1)
-	' v2 = c_root.WorldPosToLocalPos(v2)
-	
-	' v1.x = (v1.x - c_root.position.x)/c_root.scaling.x
-	' v1.y = (v1.y - c_root.position.y)/c_root.scaling.y
-	' v1.z = (v1.z - c_root.position.z)/c_root.scaling.z
-	' v2.x = (v2.x - c_root.position.x)/c_root.scaling.x
-	' v2.y = (v2.y - c_root.position.y)/c_root.scaling.y
-	' v2.z = (v2.z - c_root.position.z)/c_root.scaling.z
-	
+Sub UpdateChildrenInfo()
 	gabarit = GetBountingBoxWithinAnotherContainer(c_gabarit, c_root, v1, v2)
-	
+
 	arr_width.clear
 	arr_height.clear
-	arr_shift_x.clear
-	arr_shift_y.clear
+	arr_start_shift_x.clear
+	arr_start_shift_y.clear
+	arr_center_shift_x.clear
+	arr_center_shift_y.clear
+	arr_end_shift_x.clear
+	arr_end_shift_y.clear
 	total_children_width = 0
 	total_children_height = 0
 	for i=0 to children.ubound
 		child_gabarit = SetChildrenVertexes(children[i])   'set child_v1 and child_v2
-		
+
 		arr_width.push(child_gabarit.x)
 		arr_height.push(child_gabarit.y)
 		total_children_width += child_gabarit.x
 		total_children_height += child_gabarit.y
-		cntr = ProjectVertexFromOneContainerToAnother(-children[i].center.xyz, children[i], c_root) 
+		cntr = ProjectVertexFromOneContainerToAnother(-children[i].center.xyz, children[i], c_root)
 
-		arr_shift_x.push( child_v1.x - cntr.x )
-		arr_shift_y.push( child_v1.y - cntr.y )
+		arr_start_shift_x.push( child_v1.x - cntr.x )
+		arr_start_shift_y.push( child_v1.y - cntr.y )
+		arr_center_shift_x.push( (child_v1.x + child_v2.x)/2.0 - cntr.x )
+		arr_center_shift_y.push( (child_v1.y + child_v2.y)/2.0 - cntr.y )
+		arr_end_shift_x.push( child_v2.x - cntr.x )
+		arr_end_shift_y.push( child_v2.y - cntr.y )
 	next
-	
+
 	if mode_axis == 0 then 'X
-		CalcGapAndStart(gabarit.X, total_children_width)
+		CalcGap(gabarit.X, total_children_width)
+		CalcStart(gabarit.X, total_children_width)
 	elseif mode_axis == 1 then 'Y
-		CalcGapAndStart(gabarit.Y, total_children_height)
+		CalcGap(gabarit.Y, total_children_height)
+		CalcStart(gabarit.Y, total_children_height)
 	end if
 End Sub
 
@@ -347,21 +347,21 @@ End Sub
 sub OnExecPerField()
 	' check count of children
 	if GetVisibleChildContainerCount() <> prev_childrenCount then
-		ChildrenCountWasChanged()
+		OnChildrenCountChanged()
 		hasNewState = true
 		prev_childrenCount = GetVisibleChildContainerCount()
 	end if
-	
-	Update()
+
+	UpdateChildrenInfo()
 
 	' check new state
-	if c_gabarit.position.xyz <> prev_pos_gabarit OR c_gabarit.GetTransformedBoundingBoxDimensions() <> prev_bb_gabarit then
+	if force_update OR (c_gabarit.position.xyz <> prev_pos_gabarit OR c_gabarit.GetTransformedBoundingBoxDimensions() <> prev_bb_gabarit) then
 		hasNewState = true
 		prev_pos_gabarit = c_gabarit.position.xyz
 		prev_bb_gabarit  = c_gabarit.GetTransformedBoundingBoxDimensions()
 	else
 		for i=0 to children.ubound
-			if children[i].GetTransformedBoundingBoxDimensions() <> prev_bb_child[i] then
+			if NOT AreTwoVerticesEqual(children[i].GetTransformedBoundingBoxDimensions(), prev_bb_child[i]) then
 				hasNewState = true
 				prev_pos_child[i] = children[i].position.xyz
 				prev_bb_child[i]  = children[i].GetTransformedBoundingBoxDimensions()
@@ -374,10 +374,10 @@ sub OnExecPerField()
 		if playhead >= 1.0 then StartTransition()
 
 		' calc playhead
-		if GetParameterBool("is_animated") AND playhead < 1.0 then
+		if GetParameterBool("is_animated") AND playhead < 1.0 - 0.00001 then
 			playhead += System.CurrentRefreshRate / GetParameterDouble("transition_duration")
 			CalcCurrentAnimValue()
-			if playhead >= 1.0 then
+			if playhead > (1.0 - 0.00001) then
 				StopTransition()
 			end if
 		end if
@@ -386,45 +386,46 @@ sub OnExecPerField()
 		sum_children_height = 0
 		for i=0 to children.ubound
 			SetChildrenVertexes(children[i])   'set child_v1 and child_v2
-			
+
 			If mode_axis == 0 then
 				'X
 				handle_x_pos = true
 				handle_y_pos = mode_align <> 0
 
-				arr_transitions[i].target_pos.x = v1.x + start + i*gap - arr_shift_x[i] + sum_children_width
+				arr_transitions[i].target_pos.x = v1.x + start + i*gap - arr_start_shift_x[i] + sum_children_width
 				sum_children_width += arr_width[i]
 				Select Case mode_align
 				Case 1
 					'min align
-					arr_transitions[i].target_pos.y = v1.y - child_v1.y*children[i].scaling.y
+					arr_transitions[i].target_pos.y = v1.y - arr_start_shift_y[i]
 				Case 2
 					'center align
-					arr_transitions[i].target_pos.y = (v1.y+v2.y)/2.0 - (child_v1.y+child_v2.y)*children[i].scaling.y/2.0
+					arr_transitions[i].target_pos.y = (v1.y+v2.y)/2.0 - arr_center_shift_y[i]
 				Case 3
 					'max align
-					arr_transitions[i].target_pos.y = v2.y - child_v2.y*children[i].scaling.y
-				End Select 
+					arr_transitions[i].target_pos.y = v2.y - arr_end_shift_y[i]
+				End Select
 			Elseif mode_axis == 1 then
 				'Y
 				handle_x_pos = mode_align <> 0
 				handle_y_pos = true
 
-				arr_transitions[i].target_pos.y = v2.y - start - i*gap - arr_shift_y[i]
+				arr_transitions[i].target_pos.y = v2.y - start - i*gap - arr_end_shift_y[i] - sum_children_height
 				sum_children_height += arr_height[i]
 				Select Case mode_align
 				Case 1
 					'min align
-					arr_transitions[i].target_pos.x = v1.x - child_v1.x*children[i].scaling.x
+					arr_transitions[i].target_pos.x = v1.x - arr_start_shift_x[i]
 				Case 2
 					'center align
-					arr_transitions[i].target_pos.x = (v1.x+v2.x)/2.0 - (child_v1.x+child_v2.x)*children[i].scaling.x/2.0
+					arr_transitions[i].target_pos.x = (v1.x+v2.x)/2.0 - arr_center_shift_x[i]
 				Case 3
 					'max align
-					arr_transitions[i].target_pos.x = v2.x - child_v2.x*children[i].scaling.x
+					arr_transitions[i].target_pos.x = v2.x - arr_end_shift_x[i]
 				End Select
 			end if
 		next
+
 
 		for i=0 to children.ubound
 			if GetParameterBool("is_animated") then
@@ -462,8 +463,23 @@ Function ProjectVertexFromOneContainerToAnother(ByVal _v As Vertex, _c_from As C
 	Dim _m_from As Matrix = _c_from.matrix
 	Dim _m_to As Matrix = _c_to.matrix
 	_m_to.Invert()
-	
+
 	_v *= _c_from.matrix
 	_v *= _m_to
 	ProjectVertexFromOneContainerToAnother = _v
+End Function
+
+Dim _vertexTreshold = 0.0001
+Function AreTwoVerticesEqual(_v1 As Vertex, _v2 As Vertex) As Boolean
+	if _v1.x > _v2.x - _vertexTreshold AND _v1.x < _v2.x + _vertexTreshold then
+		AreTwoVerticesEqual = true
+		Exit Function
+	end if
+
+	if _v1.y > _v2.y - _vertexTreshold AND _v1.y < _v2.y + _vertexTreshold then
+		AreTwoVerticesEqual = true
+		Exit Function
+	end if
+
+	AreTwoVerticesEqual = false
 End Function
