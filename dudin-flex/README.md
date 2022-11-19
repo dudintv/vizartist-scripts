@@ -3,6 +3,9 @@
 #### Knows issues:
 * animation works random when "Reacting on child sizes chenge" is enabled
 
+#### Version 1.3.5 (20 November 2022)
+* add: reverse children order
+
 #### Version 1.3.4 (18 November 2022)
 * fix: variaous aligment
 * fix: Y direction
