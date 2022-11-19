@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,3,5)
+RegisterPluginVersion(1,3,6)
 Dim info As String = "
 Flex-position. Copies flex-logic from CSS3 / HTML5.
 Developer: Dmitry Dudin.
@@ -6,7 +6,7 @@ http://dudin.tv/scripts/flex
 "
 
 'SETTING
-Dim treshhold As Double = 0.001
+Dim threshold As Double = 0.001
 
 'STUFF
 Dim c_gabarit, c_root As Container
@@ -17,7 +17,6 @@ Dim mode_axis, mode_gabarit_source, mode_justify, mode_align As Integer
 Dim width_step, sum_children_width, sum_children_height, total_children_width, total_children_height, gap, start As Double
 Dim arr_width, arr_height, arr_start_shift_x, arr_start_shift_y, arr_center_shift_x, arr_center_shift_y, arr_end_shift_x, arr_end_shift_y As Array[Double]
 Dim childrenCount, prev_childrenCount As Integer
-Dim force_update As Boolean
 
 'ANIMATION STUFF
 Structure Transition
@@ -74,7 +73,6 @@ sub OnInitParameters()
 	RegisterParameterDouble("min_gap", "Min gap", 0, 0, 1000)
 	RegisterParameterDouble("shift_gap", "Shift gap", 0, -1000, 1000)
 	RegisterParameterBool("collapse_if_overflow", "Collapse gap if overflow", true)
-	RegisterParameterBool("force_update", "Compute children each frame", false)
 	RegisterParameterBool("is_animated", "Animate transitions", false)	
 	RegisterParameterDouble("transition_duration", "└ Transition duration (sec)", 1.0, 0, 1000)
 	RegisterRadioButton("ease_fn", "└ Ease function", 0, arr_ease)
@@ -92,7 +90,6 @@ sub OnInit()
 	power_magnetic_gap = GetParameterDouble("power_gap")/100.0 + 1.0
 	shift_gap_param = GetParameterDouble("shift_gap")
 	min_gap_param = GetParameterDouble("min_gap")
-	force_update = GetParameterBool("force_update")
 end sub
 sub OnParameterChanged(parameterName As String)
 	OnInit()
@@ -197,7 +194,7 @@ Function GetVisibleChildContainerCount() As Integer
 	visibleChildrenCount = 0
 	for i=0 to c_root.ChildContainerCount-1
 		item_gabarit = c_root.GetChildContainerByIndex(i).GetTransformedBoundingBoxDimensions()
-		if c_root.GetChildContainerByIndex(i).active AND item_gabarit.X > treshhold AND item_gabarit.Y > treshhold then
+		if c_root.GetChildContainerByIndex(i).active AND item_gabarit.X > threshold AND item_gabarit.Y > threshold then
 			visibleChildrenCount += 1
 		end if
 	next
@@ -222,7 +219,7 @@ Sub OnChildrenCountChanged()
 	for i=startChildIndex to endChildIndex step stepChildIndex
 		item_gabarit = c_root.GetChildContainerByIndex(i).GetTransformedBoundingBoxDimensions()
 
-		if c_root.GetChildContainerByIndex(i).active AND item_gabarit.X > treshhold AND item_gabarit.Y > treshhold then
+		if c_root.GetChildContainerByIndex(i).active AND item_gabarit.X > threshold AND item_gabarit.Y > threshold then
 			children.push(c_root.GetChildContainerByIndex(i))
 			Dim t As Transition
 			t.prev_pos = children[children.ubound].position.xyz
@@ -367,7 +364,7 @@ sub OnExecPerField()
 	UpdateChildrenInfo()
 
 	' check new state
-	if force_update OR (c_gabarit.position.xyz <> prev_pos_gabarit OR c_gabarit.GetTransformedBoundingBoxDimensions() <> prev_bb_gabarit) then
+	if (c_gabarit.position.xyz <> prev_pos_gabarit OR c_gabarit.GetTransformedBoundingBoxDimensions() <> prev_bb_gabarit) then
 		hasNewState = true
 		prev_pos_gabarit = c_gabarit.position.xyz
 		prev_bb_gabarit  = c_gabarit.GetTransformedBoundingBoxDimensions()
@@ -481,14 +478,13 @@ Function ProjectVertexFromOneContainerToAnother(ByVal _v As Vertex, _c_from As C
 	ProjectVertexFromOneContainerToAnother = _v
 End Function
 
-Dim _vertexTreshold = 0.0001
 Function AreTwoVerticesEqual(_v1 As Vertex, _v2 As Vertex) As Boolean
-	if _v1.x > _v2.x - _vertexTreshold AND _v1.x < _v2.x + _vertexTreshold then
+	if _v1.x > _v2.x - threshold AND _v1.x < _v2.x + threshold then
 		AreTwoVerticesEqual = true
 		Exit Function
 	end if
 	
-	if _v1.y > _v2.y - _vertexTreshold AND _v1.y < _v2.y + _vertexTreshold then
+	if _v1.y > _v2.y - threshold AND _v1.y < _v2.y + threshold then
 		AreTwoVerticesEqual = true
 		Exit Function
 	end if
