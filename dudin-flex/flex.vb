@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,3,4)
+RegisterPluginVersion(1,3,5)
 Dim info As String = "
 Flex-position. Copies flex-logic from CSS3 / HTML5.
 Developer: Dmitry Dudin.
@@ -33,7 +33,6 @@ Dim handle_x_pos, handle_y_pos As Boolean
 Dim prev_pos_gabarit, prev_bb_gabarit AS Vertex
 Dim prev_pos_child, prev_bb_child As Array[Vertex]
 
-
 'INTERFACE
 Dim arr_axis As Array[String]
 arr_axis.Push(" X ")
@@ -66,6 +65,7 @@ sub OnInitParameters()
 	RegisterParameterContainer("root", "Root (or this)")
 	RegisterParameterContainer("gabarit", "Area")
 	RegisterRadioButton("axis", "Axis", 0, arr_axis)
+	RegisterParameterBool("is_reverse", "└ Reverse", false)
 	RegisterRadioButton("gabarit_source", "Size of children", 0, arr_gabarit_source)
 	RegisterRadioButton("justify", "Justify", 0, arr_justify)
 	RegisterRadioButton("align", "Align", 0, arr_align)
@@ -74,10 +74,10 @@ sub OnInitParameters()
 	RegisterParameterDouble("min_gap", "Min gap", 0, 0, 1000)
 	RegisterParameterDouble("shift_gap", "Shift gap", 0, -1000, 1000)
 	RegisterParameterBool("collapse_if_overflow", "Collapse gap if overflow", true)
-	RegisterParameterBool("is_animated", "Animate transitions", false)
-	RegisterParameterBool("force_update", "React on child size change", false)
-	RegisterParameterDouble("transition_duration", "Transition duration (sec)", 1.0, 0, 1000)
-	RegisterRadioButton("ease_fn", "Ease function", 0, arr_ease)
+	RegisterParameterBool("force_update", "Compute children each frame", false)
+	RegisterParameterBool("is_animated", "Animate transitions", false)	
+	RegisterParameterDouble("transition_duration", "└ Transition duration (sec)", 1.0, 0, 1000)
+	RegisterRadioButton("ease_fn", "└ Ease function", 0, arr_ease)
 end sub
 
 sub OnInit()
@@ -97,12 +97,14 @@ end sub
 sub OnParameterChanged(parameterName As String)
 	OnInit()
 
-  SendGuiParameterShow("mult_gap", CInt(mode_justify == 4))
-  SendGuiParameterShow("power_gap", CInt(mode_justify == 4))
+	SendGuiParameterShow("mult_gap", CInt(mode_justify == 4))
+	SendGuiParameterShow("power_gap", CInt(mode_justify == 4))
 
 	SendGuiParameterShow("transition_duration", CInt(GetParameterBool("is_animated")))
 	SendGuiParameterShow("ease_fn", CInt(GetParameterBool("is_animated")))
 	hasNewState = true
+	
+	if parameterName == "is_reverse" then OnChildrenCountChanged()
 end sub
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -207,7 +209,17 @@ Sub OnChildrenCountChanged()
 	arr_transitions.clear()
 	prev_pos_child.clear()
 	prev_bb_child.clear()
-	for i=0 to c_root.ChildContainerCount-1
+	
+	Dim startChildIndex = 0
+	Dim endChildIndex = c_root.ChildContainerCount-1
+	Dim stepChildIndex = 1
+	if GetParameterBool("is_reverse") then
+		startChildIndex = c_root.ChildContainerCount-1
+		endChildIndex = 0
+		stepChildIndex = -1
+	end if
+	
+	for i=startChildIndex to endChildIndex step stepChildIndex
 		item_gabarit = c_root.GetChildContainerByIndex(i).GetTransformedBoundingBoxDimensions()
 
 		if c_root.GetChildContainerByIndex(i).active AND item_gabarit.X > treshhold AND item_gabarit.Y > treshhold then
@@ -426,7 +438,7 @@ sub OnExecPerField()
 			end if
 		next
 
-
+		
 		for i=0 to children.ubound
 			if GetParameterBool("is_animated") then
 				if handle_x_pos then children[i].position.x = arr_transitions[i].prev_pos.x + (arr_transitions[i].target_pos.x-arr_transitions[i].prev_pos.x) * currentAnimValue
@@ -475,11 +487,11 @@ Function AreTwoVerticesEqual(_v1 As Vertex, _v2 As Vertex) As Boolean
 		AreTwoVerticesEqual = true
 		Exit Function
 	end if
-
+	
 	if _v1.y > _v2.y - _vertexTreshold AND _v1.y < _v2.y + _vertexTreshold then
 		AreTwoVerticesEqual = true
 		Exit Function
 	end if
-
+	
 	AreTwoVerticesEqual = false
-End Function
+End Function 
