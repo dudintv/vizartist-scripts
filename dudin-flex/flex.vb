@@ -76,6 +76,7 @@ sub OnInitParameters()
 	RegisterParameterBool("is_animated", "Animate transitions", false)	
 	RegisterParameterDouble("transition_duration", "└ Transition duration (sec)", 1.0, 0, 1000)
 	RegisterRadioButton("ease_fn", "└ Ease function", 0, arr_ease)
+	RegisterPushButton("init", "Init", 1)
 end sub
 
 sub OnInit()
@@ -102,6 +103,13 @@ sub OnParameterChanged(parameterName As String)
 	hasNewState = true
 	
 	if parameterName == "is_reverse" then OnChildrenCountChanged()
+end sub
+sub OnExecAction(buttonId As Integer)
+	if buttonId == 1 then
+		OnInit()
+		OnChildrenCountChanged()
+		hasNewState = true
+	end if
 end sub
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -449,7 +457,6 @@ sub OnExecPerField()
 		next
 	end if
 end sub
-
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''
 
