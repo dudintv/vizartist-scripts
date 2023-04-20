@@ -1,5 +1,8 @@
 ## BG takes size from "this" container and change size of another container with calculation
 
+#### Version 1.8.1 (20 April 2023)
+* fix "random floating" effect when the bg changes size and position at the same time
+
 #### Version 1.8 (17 February 2021)
 * translated to English
 * add autofollow by X
