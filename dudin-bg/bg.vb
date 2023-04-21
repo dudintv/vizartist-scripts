@@ -123,55 +123,55 @@ sub OnGuiStatus()
 	
 	SendGuiParameterShow( "treshold", CInt(GetParameterBool("hide_by_zero")) )
 	
-	Dim showXMulti as Integer = 0
-	Dim showYMulti as Integer = 0
-	Dim showZMulti as Integer = 0
-	Dim showXPadding as Integer = 0
-	Dim showYPadding as Integer = 0
-	Dim showZPadding as Integer = 0
-	Dim showXMinMode as Integer = 0
-	Dim showXMin as Integer = 0
-	Dim showXMinC as Integer = 0
-	Dim showYMinMode as Integer = 0
-	Dim showYMin as Integer = 0
-	Dim showYMinC as Integer = 0
-	Dim showZMinMode as Integer = 0
-	Dim showZMin as Integer = 0
-	Dim showZMinC as Integer = 0
-	Dim showPauseAxis as Integer = 0
+	Dim showXMulti as Integer = HIDE
+	Dim showYMulti as Integer = HIDE
+	Dim showZMulti as Integer = HIDE
+	Dim showXPadding as Integer = HIDE
+	Dim showYPadding as Integer = HIDE
+	Dim showZPadding as Integer = HIDE
+	Dim showXMinMode as Integer = HIDE
+	Dim showXMin as Integer = HIDE
+	Dim showXMinC as Integer = HIDE
+	Dim showYMinMode as Integer = HIDE
+	Dim showYMin as Integer = HIDE
+	Dim showYMinC as Integer = HIDE
+	Dim showZMinMode as Integer = HIDE
+	Dim showZMin as Integer = HIDE
+	Dim showZMinC as Integer = HIDE
+	Dim showPauseAxis as Integer = HIDE
 	
 	mode = GetParameterInt("mode")
 	Select Case mode
 	Case MODE_X
-		showXMulti = 1
-		showXPadding = 1
-		showXMinMode = 1
-		showXMin = 1
-		showXMinC = 1
+		showXMulti = SHOW
+		showXPadding = SHOW
+		showXMinMode = SHOW
+		showXMin = SHOW
+		showXMinC = SHOW
 	Case MODE_Y
-		showYMulti = 1
-		showYPadding = 1
-		showYMinMode = 1
-		showYMin = 1
-		showYMinC = 1
+		showYMulti = SHOW
+		showYPadding = SHOW
+		showYMinMode = SHOW
+		showYMin = SHOW
+		showYMinC = SHOW
 	Case MODE_Z
-		showZMulti = 1
-		showZPadding = 1
-		showZMinMode = 1
-		showZMin = 1
-		showZMinC = 1
+		showZMulti = SHOW
+		showZPadding = SHOW
+		showZMinMode = SHOW
+		showZMin = SHOW
+		showZMinC = SHOW
 	Case MODE_XY
-		showXMulti = 1
-		showYMulti = 1
-		showXPadding = 1
-		showYPadding = 1
-		showXMinMode = 1
-		showXMin = 1
-		showXMinC = 1
-		showYMinMode = 1
-		showYMin = 1
-		showYMinC = 1
-		showPauseAxis = 1
+		showXMulti = SHOW
+		showYMulti = SHOW
+		showXPadding = SHOW
+		showYPadding = SHOW
+		showXMinMode = SHOW
+		showXMin = SHOW
+		showXMinC = SHOW
+		showYMinMode = SHOW
+		showYMin = SHOW
+		showYMinC = SHOW
+		showPauseAxis = SHOW
 	End Select
 	
 	SendGuiParameterShow("x_multy", showXMulti)
