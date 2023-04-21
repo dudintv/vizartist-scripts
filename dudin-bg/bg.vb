@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,9,1)
+RegisterPluginVersion(1,10,0)
 
 Dim info As String = "
 Developer: Dmitry Dudin, dudin.tv
@@ -6,7 +6,7 @@ Developer: Dmitry Dudin, dudin.tv
 
 Dim cBg As Container = this
 Dim cSource, cExactSource, child, cMinX, cMinY, cMinZ, cMaxChild As Container
-Dim modeSize, mode, modeMinX, modeMinY, modeMinZ, fonChangeMode, maxSizeMode, pauseAxis As Integer
+Dim modeSize, mode, modeMinX, modeMinY, modeMinZ, fonChangeMode, maxSizeMode, pauseAxis, alignX, alignY As Integer
 Dim x,y,z, xMulty, yMulty, zMulty, xPadding, yPadding, zPadding, xMin, yMin, zMin As Double
 Dim pos As Vertex
 Dim size, childSize, minSize As Vertex
@@ -47,6 +47,20 @@ Dim arrFonShangeMode As Array[String]
 arrFonShangeMode.Push("Scaling")
 arrFonShangeMode.Push("Geometry")
 
+Dim arrAlignX, arrAlignY As Array[String]
+arrAlignX.Push("Left")
+arrAlignX.Push("Center")
+arrAlignX.Push("Right")
+arrAlignY.Push("Top")
+arrAlignY.Push("Center")
+arrAlignY.Push("Bottom")
+Dim ALIGN_X_LEFT As Integer = 0
+Dim ALIGN_X_CENTER As Integer = 1
+Dim ALIGN_X_RIGHT As Integer = 2
+Dim ALIGN_Y_TOP As Integer = 0
+Dim ALIGN_Y_CENTER As Integer = 1
+Dim ALIGN_Y_BOTTOM As Integer = 2
+
 Dim arrPauseMode As Array[String]
 arrPauseMode.Push("none")
 arrPauseMode.Push("><")
@@ -62,45 +76,47 @@ Dim iPauseDownTicks As Integer
 sub OnInitParameters()
     RegisterInfoText(info)
 	RegisterParameterContainer("source","Source container:")
-	RegisterRadioButton("fonChangeMode", "└ How to change bg size", 0, arrFonShangeMode)
-	RegisterRadioButton("modeSize", "Get size from: ", 0, arrGetSizeFrom)
-	RegisterRadioButton("maxSizeMode", "└ max size by asix:", 0, arrAxis)
-	RegisterParameterInt("numChild", "└ Child index (0=none)", 1, 0, 100)
-	RegisterRadioButton("mode", "└ Axis to consider:", 0, arrConsideringAxis)
-	RegisterParameterDouble("xMulty", "   └ Mult X", 1.0, 0.0, 10000000.0)
+	RegisterRadioButton("fonChangeMode","└ How to change bg size", 0, arrFonShangeMode)
+	RegisterRadioButton("modeSize",     "Get size from: ", 0, arrGetSizeFrom)
+	RegisterRadioButton("maxSizeMode",  "└ max size by asix:", 0, arrAxis)
+	RegisterParameterInt("numChild",    "└ Child index (0=none)", 1, 0, 100)
+	RegisterRadioButton("mode",         "└ Axis to consider:", 0, arrConsideringAxis)
+	RegisterParameterDouble("xMulty",   "   └ Mult X", 1.0, 0.0, 10000000.0)
 	RegisterParameterDouble("xPadding", "   └ Add X", 0.0, -100000.0, 10000000.0)
-	RegisterParameterDouble("yMulty", "   └ Mult Y", 1.0, 0.0, 10000000.0)
+	RegisterParameterDouble("yMulty",   "   └ Mult Y", 1.0, 0.0, 10000000.0)
 	RegisterParameterDouble("yPadding", "   └ Add Y", 0.0, -100000.0, 10000000.0)
-	RegisterParameterDouble("zMulty", "   └ Mult Z", 1.0, 0.0, 10000000.0)
+	RegisterParameterDouble("zMulty",   "   └ Mult Z", 1.0, 0.0, 10000000.0)
 	RegisterParameterDouble("zPadding", "   └ Add Z", 0.0, -100000.0, 10000000.0)
 	
-	RegisterRadioButton("xMinMode", "Min BG X-axis mode", 0, arrMinMode)
-	RegisterParameterDouble("xMin", "└ Min X value", 0.0, 0.0, 10000000.0)
+	RegisterRadioButton("xMinMode",             "Min BG X-axis mode", 0, arrMinMode)
+	RegisterParameterDouble("xMin",             "└ Min X value", 0.0, 0.0, 10000000.0)
 	RegisterParameterContainer("xMinContainer", "└ Min X-axis container")
 	
-	RegisterRadioButton("yMinMode", "Min BG Y-axis mode", 0, arrMinMode)
-	RegisterParameterDouble("yMin", "└ Min Y value", 0.0, 0.0, 10000000.0)
+	RegisterRadioButton("yMinMode",             "Min BG Y-axis mode", 0, arrMinMode)
+	RegisterParameterDouble("yMin",             "└ Min Y value", 0.0, 0.0, 10000000.0)
 	RegisterParameterContainer("yMinContainer", "└ Min Y-axis container")
 	
-	RegisterRadioButton("zMinMode", "Min BG Z-axis mode", 0, arrMinMode)
-	RegisterParameterDouble("zMin", "└ Min Z value", 0.0, 0.0, 10000000.0)
+	RegisterRadioButton("zMinMode",             "Min BG Z-axis mode", 0, arrMinMode)
+	RegisterParameterDouble("zMin",             "└ Min Z value", 0.0, 0.0, 10000000.0)
 	RegisterParameterContainer("zMinContainer", "└ Min Z-axis container")
 	
 	RegisterParameterBool("hideByZero", "Hide bg if size close to zero", TRUE)
 	RegisterParameterDouble("treshold", "└ Zero-size of source container", 0.1, 0.0, 1000.0)
 	
 	
-	RegisterParameterBool("positionX", "Autofollow by X axis", FALSE)
+	RegisterParameterBool("positionX",        "Autofollow by X axis", FALSE)
+	RegisterRadioButton("positionAlignX",     "└ X Align", ALIGN_X_CENTER, arrAlignX)
 	RegisterParameterDouble("positionShiftX", "└ X shift", 0, -99999, 99999)
-	RegisterParameterBool("positionY", "Autofollow by Y axis", FALSE)
+	RegisterParameterBool("positionY",        "Autofollow by Y axis", FALSE)
+	RegisterRadioButton("positionAlignY",     "└ Y Align", ALIGN_Y_CENTER, arrAlignY)
 	RegisterParameterDouble("positionShiftY", "└ Y shift", 0, -99999, 99999)
 	
 	
 	RegisterParameterDouble("inertion", "Animation inertion", 1.0, 1.0, 100.0)
-	RegisterRadioButton("pauseMode", "└ Pause direction", 0, arrPauseMode)
-	RegisterRadioButton("pauseAxis", "   └ Considering size axis", 0, arrPauseAxis)
-	RegisterParameterInt("pauseLess", "   └ Pause >< (frames)", 0, 0, 1000)
-	RegisterParameterInt("pauseMore", "   └ Pause <> (frames)", 0, 0, 1000)
+	RegisterRadioButton("pauseMode",    "└ Pause direction", 0, arrPauseMode)
+	RegisterRadioButton("pauseAxis",    "   └ Considering size axis", 0, arrPauseAxis)
+	RegisterParameterInt("pauseLess",   "   └ Pause >< (frames)", 0, 0, 1000)
+	RegisterParameterInt("pauseMore",   "   └ Pause <> (frames)", 0, 0, 1000)
 end sub
 
 sub OnParameterChanged(parameterName As String)
@@ -239,6 +255,9 @@ sub OnGuiStatus()
 	
 	SendGuiParameterShow( "positionShiftX", CInt( GetParameterBool("positionX") ) )
 	SendGuiParameterShow( "positionShiftY", CInt( GetParameterBool("positionY") ) )
+	
+	SendGuiParameterShow( "positionAlignX", CInt( GetParameterBool("positionX") ) )
+	SendGuiParameterShow( "positionAlignY", CInt( GetParameterBool("positionY") ) )
 end sub
  
 sub OnExecPerField()
@@ -259,6 +278,15 @@ sub OnExecPerField()
 	yPadding = GetParameterDouble("yPadding")
 	zPadding = GetParameterDouble("zPadding")
 	
+	'set newSize as the current in order to support various alignments
+	if fonChangeMode == 0 then
+		newSize.x = cBg.scaling.x
+		newSize.y = cBg.scaling.y
+	elseif fonChangeMode == 1 then
+		newSize.x = cBg.geometry.GetParameterDouble(  "width" )/100.0
+		newSize.y = cBg.geometry.GetParameterDouble(  "height" )/100.0
+	end if
+	
 	'processing X
 	If mode == MODE_X OR mode == MODE_XY Then
 		If size.X < sizeTreshold Then
@@ -267,13 +295,13 @@ sub OnExecPerField()
 				'Exit Sub
 			Else
 				cBg.Active = true
-				newSize.X = 0
+				newSize.x = 0
 			End If
 		Else
 			cBg.Active = true
 			x = size.X/100.0 * xMulty + xPadding/10.0
 			If x < xMin Then x = xMin
-			newSize.X = x
+			newSize.x = x
 		End If
 	End If
 	
@@ -285,13 +313,13 @@ sub OnExecPerField()
 				'Exit Sub
 			Else
 				cBg.Active = true
-				newSize.Y = 0
+				newSize.y = 0
 			End If
 		Else
 			cBg.Active = true
 			y = size.Y/100.0 * yMulty + yPadding/100.0
 			If y < yMin Then y = yMin
-			newSize.Y = y
+			newSize.y = y
 		End If
 	End If
 	
@@ -303,13 +331,13 @@ sub OnExecPerField()
 				Exit Sub
 			Else
 				cBg.Active = true
-				newSize.Z = 0
+				newSize.z = 0
 			End If
 		Else
 			cBg.Active = true
 			z = size.Z/100.0 * zMulty + zPadding/100.0
 			If z < zMin Then z = zMin
-			newSize.Z = z
+			newSize.z = z
 		End If
 	End If
 	
@@ -414,6 +442,9 @@ Sub PreCalcFinishGabarits()
 End Sub
 
 Sub CalcPosition()
+	alignX = GetParameterInt("positionAlignX")
+	alignY = GetParameterInt("positionAlignY")
+	
 	if GetParameterBool("positionX") OR GetParameterBool("positionY") then
 		cExactSource.GetTransformedBoundingBox(vSource1, vSource2)
 		PreCalcFinishGabarits()
@@ -421,13 +452,28 @@ Sub CalcPosition()
 		if GetParameterBool("positionX") then
 			vSource1 = cSource.LocalPosToWorldPos(vSource1)
 			vSource1 = cExactSource.parentContainer.WorldPosToLocalPos(vSource1)
-			newPosition.x = vSource1.x - (v1.x-cBg.position.x) + GetParameterDouble("positionShiftX")
+			if alignX == ALIGN_X_LEFT then
+				newPosition.x = vSource1.x + (cBg.position.x - v1.x)
+			elseif alignX == ALIGN_X_CENTER then
+				newPosition.x = (vSource1.x + vSource2.x)/2.0 + (cBg.position.x - (v1.x + v2.x)/2.0)
+			elseif alignX == ALIGN_X_RIGHT then
+				newPosition.x = vSource2.x + (cBg.position.x - v2.x)
+			end if
+			newPosition.x += GetParameterDouble("positionShiftX")
 		end if
 		
 		if GetParameterBool("positionY") then
 			vSource2 = cSource.LocalPosToWorldPos(vSource2)
 			vSource2 = cExactSource.parentContainer.WorldPosToLocalPos(vSource2)
-			newPosition.y = vSource2.y - (v2.y-cBg.position.y) + GetParameterDouble("positionShiftY")
+			'newPosition.y = vSource2.y - (v2.y-cBg.position.y) + GetParameterDouble("positionShiftY")
+			if alignY == ALIGN_Y_TOP then
+				newPosition.y = vSource2.y + (cBg.position.y - v2.y)
+			elseif alignY == ALIGN_Y_CENTER then
+				newPosition.y = (vSource1.y + vSource2.y)/2.0 + (cBg.position.y - (v1.y + v2.y)/2.0)
+			elseif alignY == ALIGN_Y_BOTTOM then
+				newPosition.y = vSource1.y + (cBg.position.y - v1.y)
+			end if
+			newPosition.y += GetParameterDouble("positionShiftY")
 		end if
 	end if
 End Sub
