@@ -1,51 +1,51 @@
-RegisterPluginVersion(1,9,0)
+RegisterPluginVersion(1,9,1)
 
 Dim info As String = "
 Developer: Dmitry Dudin, dudin.tv
 "
 
-Dim c_bg As Container = this
-Dim c_source, c_exact_source, child, c_min_x, c_min_y, c_min_z, c_max_child As Container
-Dim mode_size, mode, mode_min_x, mode_min_y, mode_min_z, fon_change_mode, max_size_mode, pauseAxis As Integer
-Dim x,y,z, x_multy, y_multy, z_multy, x_padding, y_padding, z_padding, x_min, y_min, z_min As Double
+Dim cBg As Container = this
+Dim cSource, cExactSource, child, cMinX, cMinY, cMinZ, cMaxChild As Container
+Dim modeSize, mode, modeMinX, modeMinY, modeMinZ, fonChangeMode, maxSizeMode, pauseAxis As Integer
+Dim x,y,z, xMulty, yMulty, zMulty, xPadding, yPadding, zPadding, xMin, yMin, zMin As Double
 Dim pos As Vertex
-Dim size, child_size, min_size As Vertex
+Dim size, childSize, minSize As Vertex
 Dim newSize, newPosition, v1, v2, vSource1, vSource2 As Vertex
 Dim newPosX, newPosY As Double
 Dim sizeTreshold, prevNewValue, newValue As Double
 Dim animTreshold As Double = 0.001
 
-Dim arr_pause_axis As Array[String]
-arr_pause_axis.Push("X")
-arr_pause_axis.Push("Y")
+Dim arrPauseAxis As Array[String]
+arrPauseAxis.Push("X")
+arrPauseAxis.Push("Y")
 
-Dim arr_axis As Array[String]
-arr_axis.Push("X")
-arr_axis.Push("Y")
-arr_axis.Push("Z")
+Dim arrAxis As Array[String]
+arrAxis.Push("X")
+arrAxis.Push("Y")
+arrAxis.Push("Z")
 
-Dim arr_s As Array[String]
-arr_s.Push("X")
-arr_s.Push("Y")
-arr_s.Push("Z")
-arr_s.Push("XY")
+Dim arrConsideringAxis As Array[String]
+arrConsideringAxis.Push("X")
+arrConsideringAxis.Push("Y")
+arrConsideringAxis.Push("Z")
+arrConsideringAxis.Push("XY")
 
 Dim MODE_X  As Integer = 0
 Dim MODE_Y  As Integer = 1
 Dim MODE_Z  As Integer = 2
 Dim MODE_XY As Integer = 3
 
-Dim arr_ss As Array[String]
-arr_ss.Push("Source container size")
-arr_ss.Push("Max of childs")
-arr_ss.Push("Child by index")
-Dim arr_sss As Array[String]
-arr_sss.Push("Off")
-arr_sss.Push("Number")
-arr_sss.Push("Container")
-Dim arr_sFonShangeMode As Array[String]
-arr_sFonShangeMode.Push("Scaling")
-arr_sFonShangeMode.Push("Geometry")
+Dim arrGetSizeFrom As Array[String]
+arrGetSizeFrom.Push("Source container size")
+arrGetSizeFrom.Push("Max of childs")
+arrGetSizeFrom.Push("Child by index")
+Dim arrMinMode As Array[String]
+arrMinMode.Push("Off")
+arrMinMode.Push("Number")
+arrMinMode.Push("Container")
+Dim arrFonShangeMode As Array[String]
+arrFonShangeMode.Push("Scaling")
+arrFonShangeMode.Push("Geometry")
 
 Dim arrPauseMode As Array[String]
 arrPauseMode.Push("none")
@@ -62,66 +62,66 @@ Dim iPauseDownTicks As Integer
 sub OnInitParameters()
     RegisterInfoText(info)
 	RegisterParameterContainer("source","Source container:")
-	RegisterRadioButton("fon_change_mode", "└ How to change bg size", 0, arr_sFonShangeMode)
-	RegisterRadioButton("mode_size", "Get size from: ", 0, arr_ss)
-	RegisterRadioButton("max_size_mode", "└ max size by asix:", 0, arr_axis)
-	RegisterParameterInt("num_child", "└ Child index (0=none)", 1, 0, 100)
-	RegisterRadioButton("mode", "└ Axis to consider:", 0, arr_s)
-	RegisterParameterDouble("x_multy", "   └ Mult X", 1.0, 0.0, 10000000.0)
-	RegisterParameterDouble("x_padding", "   └ Add X", 0.0, -100000.0, 10000000.0)
-	RegisterParameterDouble("y_multy", "   └ Mult Y", 1.0, 0.0, 10000000.0)
-	RegisterParameterDouble("y_padding", "   └ Add Y", 0.0, -100000.0, 10000000.0)
-	RegisterParameterDouble("z_multy", "   └ Mult Z", 1.0, 0.0, 10000000.0)
-	RegisterParameterDouble("z_padding", "   └ Add Z", 0.0, -100000.0, 10000000.0)
+	RegisterRadioButton("fonChangeMode", "└ How to change bg size", 0, arrFonShangeMode)
+	RegisterRadioButton("modeSize", "Get size from: ", 0, arrGetSizeFrom)
+	RegisterRadioButton("maxSizeMode", "└ max size by asix:", 0, arrAxis)
+	RegisterParameterInt("numChild", "└ Child index (0=none)", 1, 0, 100)
+	RegisterRadioButton("mode", "└ Axis to consider:", 0, arrConsideringAxis)
+	RegisterParameterDouble("xMulty", "   └ Mult X", 1.0, 0.0, 10000000.0)
+	RegisterParameterDouble("xPadding", "   └ Add X", 0.0, -100000.0, 10000000.0)
+	RegisterParameterDouble("yMulty", "   └ Mult Y", 1.0, 0.0, 10000000.0)
+	RegisterParameterDouble("yPadding", "   └ Add Y", 0.0, -100000.0, 10000000.0)
+	RegisterParameterDouble("zMulty", "   └ Mult Z", 1.0, 0.0, 10000000.0)
+	RegisterParameterDouble("zPadding", "   └ Add Z", 0.0, -100000.0, 10000000.0)
 	
-	RegisterRadioButton("x_min_mode", "Min BG X-axis mode", 0, arr_sss)
-	RegisterParameterDouble("x_min", "└ Min X value", 0.0, 0.0, 10000000.0)
-	RegisterParameterContainer("x_min_c", "└ Min X-axis container")
+	RegisterRadioButton("xMinMode", "Min BG X-axis mode", 0, arrMinMode)
+	RegisterParameterDouble("xMin", "└ Min X value", 0.0, 0.0, 10000000.0)
+	RegisterParameterContainer("xMinContainer", "└ Min X-axis container")
 	
-	RegisterRadioButton("y_min_mode", "Min BG Y-axis mode", 0, arr_sss)
-	RegisterParameterDouble("y_min", "└ Min Y value", 0.0, 0.0, 10000000.0)
-	RegisterParameterContainer("y_min_c", "└ Min Y-axis container")
+	RegisterRadioButton("yMinMode", "Min BG Y-axis mode", 0, arrMinMode)
+	RegisterParameterDouble("yMin", "└ Min Y value", 0.0, 0.0, 10000000.0)
+	RegisterParameterContainer("yMinContainer", "└ Min Y-axis container")
 	
-	RegisterRadioButton("z_min_mode", "Min BG Z-axis mode", 0, arr_sss)
-	RegisterParameterDouble("z_min", "└ Min Z value", 0.0, 0.0, 10000000.0)
-	RegisterParameterContainer("z_min_c", "└ Min Z-axis container")
+	RegisterRadioButton("zMinMode", "Min BG Z-axis mode", 0, arrMinMode)
+	RegisterParameterDouble("zMin", "└ Min Z value", 0.0, 0.0, 10000000.0)
+	RegisterParameterContainer("zMinContainer", "└ Min Z-axis container")
 	
-	RegisterParameterBool("hide_by_zero", "Hide bg if size close to zero", TRUE)
+	RegisterParameterBool("hideByZero", "Hide bg if size close to zero", TRUE)
 	RegisterParameterDouble("treshold", "└ Zero-size of source container", 0.1, 0.0, 1000.0)
 	
 	
-	RegisterParameterBool("position_x", "Autofollow by X axis", FALSE)
-	RegisterParameterDouble("position_x_shift", "└ X shift", 0, -99999, 99999)
-	RegisterParameterBool("position_y", "Autofollow by Y axis", FALSE)
-	RegisterParameterDouble("position_y_shift", "└ Y shift", 0, -99999, 99999)
+	RegisterParameterBool("positionX", "Autofollow by X axis", FALSE)
+	RegisterParameterDouble("positionShiftX", "└ X shift", 0, -99999, 99999)
+	RegisterParameterBool("positionY", "Autofollow by Y axis", FALSE)
+	RegisterParameterDouble("positionShiftY", "└ Y shift", 0, -99999, 99999)
 	
 	
-	RegisterParameterDouble("inertion", "Animation inertion", 2.0, 1.0, 100.0)
-	RegisterRadioButton("pause_mode", "└ Pause direction", 0, arrPauseMode)
-	RegisterRadioButton("pause_axis", "   └ Considering size axis", 0, arr_pause_axis)
-	RegisterParameterInt("pause_less", "   └ Pause >< (frames)", 0, 0, 1000)
-	RegisterParameterInt("pause_more", "   └ Pause <> (frames)", 0, 0, 1000)
+	RegisterParameterDouble("inertion", "Animation inertion", 1.0, 1.0, 100.0)
+	RegisterRadioButton("pauseMode", "└ Pause direction", 0, arrPauseMode)
+	RegisterRadioButton("pauseAxis", "   └ Considering size axis", 0, arrPauseAxis)
+	RegisterParameterInt("pauseLess", "   └ Pause >< (frames)", 0, 0, 1000)
+	RegisterParameterInt("pauseMore", "   └ Pause <> (frames)", 0, 0, 1000)
 end sub
 
 sub OnParameterChanged(parameterName As String)
-	c_source = GetParameterContainer("source")
-	max_size_mode = GetParameterInt("max_size_mode")
+	cSource = GetParameterContainer("source")
+	maxSizeMode = GetParameterInt("maxSizeMode")
 end sub
  
 sub OnGuiStatus()
-	mode_size = GetParameterInt("mode_size")
-	If mode_size == 0 Then
-		SendGuiParameterShow("num_child",HIDE)
-		SendGuiParameterShow("max_size_mode",HIDE)
-	ElseIf mode_size == 1 Then
-		SendGuiParameterShow("num_child",HIDE)
-		SendGuiParameterShow("max_size_mode",SHOW)
-	ElseIf mode_size == 2 Then
-		SendGuiParameterShow("num_child",SHOW)
-		SendGuiParameterShow("max_size_mode",HIDE)
+	modeSize = GetParameterInt("modeSize")
+	If modeSize == 0 Then
+		SendGuiParameterShow("numChild",HIDE)
+		SendGuiParameterShow("maxSizeMode",HIDE)
+	ElseIf modeSize == 1 Then
+		SendGuiParameterShow("numChild",HIDE)
+		SendGuiParameterShow("maxSizeMode",SHOW)
+	ElseIf modeSize == 2 Then
+		SendGuiParameterShow("numChild",SHOW)
+		SendGuiParameterShow("maxSizeMode",HIDE)
 	End If
 	
-	SendGuiParameterShow( "treshold", CInt(GetParameterBool("hide_by_zero")) )
+	SendGuiParameterShow( "treshold", CInt(GetParameterBool("hideByZero")) )
 	
 	Dim showXMulti as Integer = HIDE
 	Dim showYMulti as Integer = HIDE
@@ -140,6 +140,7 @@ sub OnGuiStatus()
 	Dim showZMinC as Integer = HIDE
 	Dim showPauseAxis as Integer = HIDE
 	
+	SendGuiParameterShow("pauseMode", CInt( GetParameterDouble("inertion") > 1 ))	
 	mode = GetParameterInt("mode")
 	Select Case mode
 	Case MODE_X
@@ -171,108 +172,107 @@ sub OnGuiStatus()
 		showYMinMode = SHOW
 		showYMin = SHOW
 		showYMinC = SHOW
-		showPauseAxis = SHOW
+		showPauseAxis = CInt( GetParameterDouble("inertion") > 1 AND GetParameterInt("pauseMode") > 0)
 	End Select
 	
-	SendGuiParameterShow("x_multy", showXMulti)
-	SendGuiParameterShow("y_multy", showYMulti)
-	SendGuiParameterShow("z_multy", showZMulti)
-	SendGuiParameterShow("x_padding", showXPadding)
-	SendGuiParameterShow("y_padding", showYPadding)
-	SendGuiParameterShow("z_padding", showZPadding)
-	SendGuiParameterShow("x_min_mode", showXMinMode)
-	SendGuiParameterShow("x_min", showXMin)
-	SendGuiParameterShow("x_min_c", showXMinC)
-	SendGuiParameterShow("y_min_mode", showYMinMode)
-	SendGuiParameterShow("y_min", showYMin)
-	SendGuiParameterShow("y_min_c", showYMinC)
-	SendGuiParameterShow("z_min_mode", showZMinMode)
-	SendGuiParameterShow("z_min", showZMin)
-	SendGuiParameterShow("z_min_c", showZMinC)
-	SendGuiParameterShow("pause_axis", showPauseAxis)
+	SendGuiParameterShow("xMulty", showXMulti)
+	SendGuiParameterShow("yMulty", showYMulti)
+	SendGuiParameterShow("zMulty", showZMulti)
+	SendGuiParameterShow("xPadding", showXPadding)
+	SendGuiParameterShow("yPadding", showYPadding)
+	SendGuiParameterShow("zPadding", showZPadding)
+	SendGuiParameterShow("xMinMode", showXMinMode)
+	SendGuiParameterShow("xMin", showXMin)
+	SendGuiParameterShow("xMinContainer", showXMinC)
+	SendGuiParameterShow("yMinMode", showYMinMode)
+	SendGuiParameterShow("yMin", showYMin)
+	SendGuiParameterShow("yMinContainer", showYMinC)
+	SendGuiParameterShow("zMinMode", showZMinMode)
+	SendGuiParameterShow("zMin", showZMin)
+	SendGuiParameterShow("zMinContainer", showZMinC)
+	SendGuiParameterShow("pauseAxis", showPauseAxis)
 	
-	SendGuiParameterShow("pause_mode", CInt( GetParameterDouble("inertion") > 1 ))
-	SendGuiParameterShow("pause_less", CInt( (GetParameterInt("pause_mode") == PAUSE_MODE_LESS OR GetParameterInt("pause_mode") == PAUSE_MODE_BOTH) AND GetParameterDouble("inertion") > 1 )) 
-	SendGuiParameterShow("pause_more", CInt( (GetParameterInt("pause_mode") == PAUSE_MODE_MORE OR GetParameterInt("pause_mode") == PAUSE_MODE_BOTH) AND GetParameterDouble("inertion") > 1 )) 
+	SendGuiParameterShow("pauseLess", CInt( (GetParameterInt("pauseMode") == PAUSE_MODE_LESS OR GetParameterInt("pauseMode") == PAUSE_MODE_BOTH) AND GetParameterDouble("inertion") > 1 )) 
+	SendGuiParameterShow("pauseMore", CInt( (GetParameterInt("pauseMode") == PAUSE_MODE_MORE OR GetParameterInt("pauseMode") == PAUSE_MODE_BOTH) AND GetParameterDouble("inertion") > 1 )) 
 	
 	If mode == MODE_X OR mode == MODE_XY Then
-		mode_min_x = GetParameterInt("x_min_mode")
-		If mode_min_x == 0 Then
-			SendGuiParameterShow("x_min",HIDE)
-			SendGuiParameterShow("x_min_c",HIDE)
-		ElseIf mode_min_x == 1 Then
-			SendGuiParameterShow("x_min",SHOW)
-			SendGuiParameterShow("x_min_c",HIDE)
-		ElseIf mode_min_x == 2 Then
-			SendGuiParameterShow("x_min",HIDE)
-			SendGuiParameterShow("x_min_c",SHOW)
+		modeMinX = GetParameterInt("xMinMode")
+		If modeMinX == 0 Then
+			SendGuiParameterShow("xMin",HIDE)
+			SendGuiParameterShow("xMinContainer",HIDE)
+		ElseIf modeMinX == 1 Then
+			SendGuiParameterShow("xMin",SHOW)
+			SendGuiParameterShow("xMinContainer",HIDE)
+		ElseIf modeMinX == 2 Then
+			SendGuiParameterShow("xMin",HIDE)
+			SendGuiParameterShow("xMinContainer",SHOW)
 		End If
 	End If
 	
 	If mode == MODE_Y OR mode == MODE_XY Then
-		mode_min_y = GetParameterInt("y_min_mode")
-		If mode_min_y == 0 Then
-			SendGuiParameterShow("y_min",HIDE)
-			SendGuiParameterShow("y_min_c",HIDE)
-		ElseIf mode_min_y == 1 Then
-			SendGuiParameterShow("y_min",SHOW)
-			SendGuiParameterShow("y_min_c",HIDE)
-		ElseIf mode_min_y == 1 Then
-			SendGuiParameterShow("y_min",HIDE)
-			SendGuiParameterShow("y_min_c",SHOW)
+		modeMinY = GetParameterInt("yMinMode")
+		If modeMinY == 0 Then
+			SendGuiParameterShow("yMin",HIDE)
+			SendGuiParameterShow("yMinContainer",HIDE)
+		ElseIf modeMinY == 1 Then
+			SendGuiParameterShow("yMin",SHOW)
+			SendGuiParameterShow("yMinContainer",HIDE)
+		ElseIf modeMinY == 1 Then
+			SendGuiParameterShow("yMin",HIDE)
+			SendGuiParameterShow("yMinContainer",SHOW)
 		End If
 	End If
 	
 	If mode == MODE_Z Then
-		mode_min_z = GetParameterInt("z_min_mode")
-		If mode_min_z == 0 Then
-			SendGuiParameterShow("z_min",HIDE)
-			SendGuiParameterShow("z_min_c",HIDE)
-		ElseIf mode_min_z == 1 Then
-			SendGuiParameterShow("z_min",SHOW)
-			SendGuiParameterShow("z_min_c",HIDE)
-		ElseIf mode_min_z == 2 Then
-			SendGuiParameterShow("z_min",HIDE)
-			SendGuiParameterShow("z_min_c",SHOW)
+		modeMinZ = GetParameterInt("zMinMode")
+		If modeMinZ == 0 Then
+			SendGuiParameterShow("zMin",HIDE)
+			SendGuiParameterShow("zMinContainer",HIDE)
+		ElseIf modeMinZ == 1 Then
+			SendGuiParameterShow("zMin",SHOW)
+			SendGuiParameterShow("zMinContainer",HIDE)
+		ElseIf modeMinZ == 2 Then
+			SendGuiParameterShow("zMin",HIDE)
+			SendGuiParameterShow("zMinContainer",SHOW)
 		End If
 	End If
 	
-	SendGuiParameterShow( "position_x_shift", CInt( GetParameterBool("position_x") ) )
-	SendGuiParameterShow( "position_y_shift", CInt( GetParameterBool("position_y") ) )
+	SendGuiParameterShow( "positionShiftX", CInt( GetParameterBool("positionX") ) )
+	SendGuiParameterShow( "positionShiftY", CInt( GetParameterBool("positionY") ) )
 end sub
  
 sub OnExecPerField()
-	If c_source == null Then exit sub
+	If cSource == null Then exit sub
 	
 	mode = GetParameterInt("mode")
 	sizeTreshold = GetParameterDouble("treshold")/100.0
-	fon_change_mode = GetParameterInt("fon_change_mode")
+	fonChangeMode = GetParameterInt("fonChangeMode")
 	
 	GetSourceSize()
 	CalcMinSize()
 	
 	'-------------------------------------------------------------------------------------------------
-	x_multy = GetParameterDouble("x_multy")
-	y_multy = GetParameterDouble("y_multy")
-	z_multy = GetParameterDouble("z_multy")
-	x_padding = GetParameterDouble("x_padding")
-	y_padding = GetParameterDouble("y_padding")
-	z_padding = GetParameterDouble("z_padding")
+	xMulty = GetParameterDouble("xMulty")
+	yMulty = GetParameterDouble("yMulty")
+	zMulty = GetParameterDouble("zMulty")
+	xPadding = GetParameterDouble("xPadding")
+	yPadding = GetParameterDouble("yPadding")
+	zPadding = GetParameterDouble("zPadding")
 	
 	'processing X
 	If mode == MODE_X OR mode == MODE_XY Then
 		If size.X < sizeTreshold Then
-			If GetParameterBool("hide_by_zero") Then
-				c_bg.Active = false
+			If GetParameterBool("hideByZero") Then
+				cBg.Active = false
 				'Exit Sub
 			Else
-				c_bg.Active = true
+				cBg.Active = true
 				newSize.X = 0
 			End If
 		Else
-			c_bg.Active = true
-			x = size.X/100.0 * x_multy + x_padding/10.0
-			If x < x_min Then x = x_min
+			cBg.Active = true
+			x = size.X/100.0 * xMulty + xPadding/10.0
+			If x < xMin Then x = xMin
 			newSize.X = x
 		End If
 	End If
@@ -280,17 +280,17 @@ sub OnExecPerField()
 	'processing Y
 	If mode == MODE_Y OR mode == MODE_XY Then
 		If size.Y < sizeTreshold Then
-			If GetParameterBool("hide_by_zero") Then
-				c_bg.Active = false
+			If GetParameterBool("hideByZero") Then
+				cBg.Active = false
 				'Exit Sub
 			Else
-				c_bg.Active = true
+				cBg.Active = true
 				newSize.Y = 0
 			End If
 		Else
-			c_bg.Active = true
-			y = size.Y/100.0 * y_multy + y_padding/100.0
-			If y < y_min Then y = y_min
+			cBg.Active = true
+			y = size.Y/100.0 * yMulty + yPadding/100.0
+			If y < yMin Then y = yMin
 			newSize.Y = y
 		End If
 	End If
@@ -298,17 +298,17 @@ sub OnExecPerField()
 	'processing Z
 	If mode == MODE_Z Then
 		If size.Z < sizeTreshold Then
-			If GetParameterBool("hide_by_zero") Then
-				c_bg.Active = false
+			If GetParameterBool("hideByZero") Then
+				cBg.Active = false
 				Exit Sub
 			Else
-				c_bg.Active = true
+				cBg.Active = true
 				newSize.Z = 0
 			End If
 		Else
-			c_bg.Active = true
-			z = size.Z/100.0 * z_multy + z_padding/100.0
-			If z < z_min Then z = z_min
+			cBg.Active = true
+			z = size.Z/100.0 * zMulty + zPadding/100.0
+			If z < zMin Then z = zMin
 			newSize.Z = z
 		End If
 	End If
@@ -316,158 +316,160 @@ sub OnExecPerField()
 	'-------------------------------------------------------------------------------------------------
 	CalcPosition()
 	ApplyTransformationWithInertion()
-	c_bg.RecomputeMatrix()
+	cBg.RecomputeMatrix()
 End Sub
 
 Sub GetSourceSize()
 	'mode logic ("Source container size", "Max child", "Child by index")
-	mode_size = GetParameterInt("mode_size")
-	If mode_size == 0 Then
+	modeSize = GetParameterInt("modeSize")
+	If modeSize == 0 Then
 		'mode: "Source container size"
-		c_exact_source = c_source
-	ElseIf mode_size == 1 Then
+		cExactSource = cSource
+	ElseIf modeSize == 1 Then
 		'mode: "Max child"
-		child = c_source.FirstChildContainer
-		c_max_child = child
-		size = GetLocalSize (child, c_bg)
+		child = cSource.FirstChildContainer
+		cMaxChild = child
+		size = GetLocalSize (child, cBg)
 		child = child.NextContainer
 		Do While child <> null
 			child.RecomputeMatrix()
-			child_size = GetLocalSize (child, c_bg)
-			If max_size_mode == 0 AND child_size.X > size.X Then c_max_child = child
-			If max_size_mode == 1 AND child_size.Y > size.Y Then c_max_child = child
-			If max_size_mode == 2 AND child_size.Z > size.Z Then c_max_child = child
-			if c_max_child == child then size = child_size
+			childSize = GetLocalSize (child, cBg)
+			If maxSizeMode == 0 AND childSize.X > size.X Then cMaxChild = child
+			If maxSizeMode == 1 AND childSize.Y > size.Y Then cMaxChild = child
+			If maxSizeMode == 2 AND childSize.Z > size.Z Then cMaxChild = child
+			if cMaxChild == child then size = childSize
 			child = child.NextContainer
 		Loop
-		c_exact_source = c_max_child
-	ElseIf mode_size == 2 Then
+		cExactSource = cMaxChild
+	ElseIf modeSize == 2 Then
 		'mode: "Child by index"
-		c_exact_source = c_source.GetChildContainerByIndex(GetParameterInt("num_child") - 1)
-		c_exact_source.RecomputeMatrix()
+		cExactSource = cSource.GetChildContainerByIndex(GetParameterInt("numChild") - 1)
+		cExactSource.RecomputeMatrix()
 	End If
 	
-	size = GetLocalSize (c_exact_source, c_bg)
+	size = GetLocalSize (cExactSource, cBg)
 End Sub
 
 Sub CalcMinSize()
-	c_min_x = GetParameterContainer("x_min_c")
-	c_min_y = GetParameterContainer("y_min_c")
-	c_min_z = GetParameterContainer("z_min_c")
+	cMinX = GetParameterContainer("xMinContainer")
+	cMinY = GetParameterContainer("yMinContainer")
+	cMinZ = GetParameterContainer("zMinContainer")
 	
-	If mode_min_x == 1 Then
+	If modeMinX == 1 Then
 		'Min size from value
-		x_min = GetParameterDouble("x_min")
-	ElseIf mode_min_x == 2 AND c_min_x <> null Then
+		xMin = GetParameterDouble("xMin")
+	ElseIf modeMinX == 2 AND cMinX <> null Then
 		'Min size from container
-		min_size = GetLocalSize (c_min_x, c_bg)
-		If min_size.X > sizeTreshold AND min_size.Y > sizeTreshold Then
-			x_min = min_size.X/100.0
+		minSize = GetLocalSize (cMinX, cBg)
+		If minSize.X > sizeTreshold AND minSize.Y > sizeTreshold Then
+			xMin = minSize.X/100.0
 		Else
-			x_min = 0
+			xMin = 0
 		End If
 	Else
-		x_min = 0
+		xMin = 0
 	End If
 	
-	If mode_min_y == 1 Then
+	If modeMinY == 1 Then
 		'Min size from value
-		y_min = GetParameterDouble("y_min")
-	ElseIF mode_min_y == 2 AND c_min_y <> null Then
+		yMin = GetParameterDouble("yMin")
+	ElseIF modeMinY == 2 AND cMinY <> null Then
 		'Min size from container
-		min_size = GetLocalSize (c_min_y, c_bg)
-		y_min = min_size.Y/100.0
-		If min_size.X > sizeTreshold AND min_size.Y > sizeTreshold Then
-			y_min = min_size.Y/100.0
+		minSize = GetLocalSize (cMinY, cBg)
+		yMin = minSize.Y/100.0
+		If minSize.X > sizeTreshold AND minSize.Y > sizeTreshold Then
+			yMin = minSize.Y/100.0
 		Else
-			y_min = 0
+			yMin = 0
 		End If
 	Else
-		y_min = 0
+		yMin = 0
 	End If
 End Sub
 
+Dim cachedScalingX, cachedScalingY, cachedWidth, cachedHeight As Double
 Sub PreCalcFinishGabarits()
-	Dim cached_scalinx_x = c_bg.scaling.x
-	Dim cached_scalinx_y = c_bg.scaling.y
-	Dim cached_width = c_bg.geometry.GetParameterDouble("width")
-	Dim cached_height = c_bg.geometry.GetParameterDouble("height")
-	if fon_change_mode == 0 then
-		c_bg.scaling.x = newSize.x
-		c_bg.scaling.y = newSize.y
-	elseif fon_change_mode == 1 then
-		c_bg.geometry.SetParameterDouble(  "width", 100.0*newSize.x )
-		c_bg.geometry.SetParameterDouble(  "height", 100.0*newSize.y )
+	cachedScalingX = cBg.scaling.x
+	cachedScalingY = cBg.scaling.y
+	cachedWidth = cBg.geometry.GetParameterDouble("width")
+	cachedHeight = cBg.geometry.GetParameterDouble("height")
+
+	if fonChangeMode == 0 then
+		cBg.scaling.x = newSize.x
+		cBg.scaling.y = newSize.y
+	elseif fonChangeMode == 1 then
+		cBg.geometry.SetParameterDouble(  "width", 100.0*newSize.x )
+		cBg.geometry.SetParameterDouble(  "height", 100.0*newSize.y )
 	end if
-	c_bg.RecomputeMatrix()
+	cBg.RecomputeMatrix()
 	
 	' calculate the target bounding box like it's already finished
-	c_bg.GetTransformedBoundingBox(v1, v2)
+	cBg.GetTransformedBoundingBox(v1, v2)
 	
-	c_bg.scaling.x = cached_scalinx_x
-	c_bg.scaling.y = cached_scalinx_y
-	c_bg.geometry.SetParameterDouble(  "width", cached_width )
-	c_bg.geometry.SetParameterDouble(  "height", cached_height )
-	c_bg.RecomputeMatrix()
+	cBg.scaling.x = cachedScalingX
+	cBg.scaling.y = cachedScalingY
+	cBg.geometry.SetParameterDouble(  "width", cachedWidth )
+	cBg.geometry.SetParameterDouble(  "height", cachedHeight )
+	cBg.RecomputeMatrix()
 End Sub
 
 Sub CalcPosition()
-	if GetParameterBool("position_x") OR GetParameterBool("position_y") then
-		c_exact_source.GetTransformedBoundingBox(vSource1, vSource2)
+	if GetParameterBool("positionX") OR GetParameterBool("positionY") then
+		cExactSource.GetTransformedBoundingBox(vSource1, vSource2)
 		PreCalcFinishGabarits()
 		
-		if GetParameterBool("position_x") then
-			vSource1 = c_source.LocalPosToWorldPos(vSource1)
-			vSource1 = c_exact_source.parentContainer.WorldPosToLocalPos(vSource1)
-			newPosition.x = vSource1.x - (v1.x-c_bg.position.x) + GetParameterDouble("position_x_shift")
+		if GetParameterBool("positionX") then
+			vSource1 = cSource.LocalPosToWorldPos(vSource1)
+			vSource1 = cExactSource.parentContainer.WorldPosToLocalPos(vSource1)
+			newPosition.x = vSource1.x - (v1.x-cBg.position.x) + GetParameterDouble("positionShiftX")
 		end if
 		
-		if GetParameterBool("position_y") then
-			vSource2 = c_source.LocalPosToWorldPos(vSource2)
-			vSource2 = c_exact_source.parentContainer.WorldPosToLocalPos(vSource2)
-			newPosition.y = vSource2.y - (v2.y-c_bg.position.y) + GetParameterDouble("position_y_shift")
+		if GetParameterBool("positionY") then
+			vSource2 = cSource.LocalPosToWorldPos(vSource2)
+			vSource2 = cExactSource.parentContainer.WorldPosToLocalPos(vSource2)
+			newPosition.y = vSource2.y - (v2.y-cBg.position.y) + GetParameterDouble("positionShiftY")
 		end if
 	end if
 End Sub
 
 Function HasPause() as Boolean
-	pauseAxis = GetParameterInt("pause_axis")
+	pauseAxis = GetParameterInt("pauseAxis")
 	Dim currentValue As Double
 	if mode == MODE_X OR (mode == MODE_XY AND pauseAxis == MODE_X) Then
 		newValue = newSize.x
-		if fon_change_mode == 0 then
-			currentValue = c_bg.scaling.x
-		elseif fon_change_mode == 1 then
+		if fonChangeMode == 0 then
+			currentValue = cBg.scaling.x
+		elseif fonChangeMode == 1 then
 			newValue *= 100
-			currentValue = c_bg.geometry.GetParameterDouble("width")
+			currentValue = cBg.geometry.GetParameterDouble("width")
 		end if
 	elseif mode == MODE_Y OR (mode == MODE_XY AND pauseAxis == MODE_Y) Then
 		newValue = newSize.y
-		if fon_change_mode == 0 then
-			currentValue = c_bg.scaling.y
-		elseif fon_change_mode == 1 then
+		if fonChangeMode == 0 then
+			currentValue = cBg.scaling.y
+		elseif fonChangeMode == 1 then
 			newValue *= 100
-			currentValue = c_bg.geometry.GetParameterDouble("height")
+			currentValue = cBg.geometry.GetParameterDouble("height")
 		end if
 	elseif mode == MODE_Z Then
 		newValue = newSize.z
-		if fon_change_mode == 0 then
-			currentValue = c_bg.scaling.z
-		elseif fon_change_mode == 1 then
+		if fonChangeMode == 0 then
+			currentValue = cBg.scaling.z
+		elseif fonChangeMode == 1 then
 			newValue *= 100
-			currentValue = c_bg.geometry.GetParameterDouble("height")
+			currentValue = cBg.geometry.GetParameterDouble("height")
 		end if
 	end if
 	
 	if prevNewValue <> newValue then
-		If GetParameterInt("pause_mode") == PAUSE_MODE_NONE Then
+		If GetParameterInt("pauseMode") == PAUSE_MODE_NONE Then
 			iPauseDownTicks = 0
 		Else
-			If (GetParameterInt("pause_mode") == PAUSE_MODE_MORE OR GetParameterInt("pause_mode") == PAUSE_MODE_BOTH) AND newValue > currentValue + animTreshold Then
-				iPauseDownTicks = GetParameterInt("pause_more")
+			If (GetParameterInt("pauseMode") == PAUSE_MODE_MORE OR GetParameterInt("pauseMode") == PAUSE_MODE_BOTH) AND newValue > currentValue + animTreshold Then
+				iPauseDownTicks = GetParameterInt("pauseMore")
 			End If
-			If (GetParameterInt("pause_mode") == PAUSE_MODE_LESS OR GetParameterInt("pause_mode") == PAUSE_MODE_BOTH) AND newValue < currentValue - animTreshold Then
-				iPauseDownTicks = GetParameterInt("pause_less")
+			If (GetParameterInt("pauseMode") == PAUSE_MODE_LESS OR GetParameterInt("pauseMode") == PAUSE_MODE_BOTH) AND newValue < currentValue - animTreshold Then
+				iPauseDownTicks = GetParameterInt("pauseLess")
 			End If
 		End If
 		
@@ -486,33 +488,33 @@ Sub ApplyTransformationWithInertion()
 	If HasPause() then exit sub
 	
 	if mode == MODE_X OR mode == MODE_XY Then
-		if fon_change_mode == 0 then
-			c_bg.scaling.x = GetAnimatedValue(c_bg.scaling.x, newSize.x)
-		elseif fon_change_mode == 1 then
-			c_bg.geometry.SetParameterDouble(  "width", GetAnimatedValue(c_bg.geometry.GetParameterDouble("width"), 100.0*newSize.x)  )
+		if fonChangeMode == 0 then
+			cBg.scaling.x = GetAnimatedValue(cBg.scaling.x, newSize.x)
+		elseif fonChangeMode == 1 then
+			cBg.geometry.SetParameterDouble(  "width", GetAnimatedValue(cBg.geometry.GetParameterDouble("width"), 100.0*newSize.x)  )
 		end if
 	end if
 	if mode == MODE_Y OR mode == MODE_XY Then
-		if fon_change_mode == 0 then
-			c_bg.scaling.y = GetAnimatedValue(c_bg.scaling.y, newSize.y)
-		elseif fon_change_mode == 1 then
-			c_bg.geometry.SetParameterDouble(  "height", GetAnimatedValue(c_bg.geometry.GetParameterDouble("height"), 100.0*newSize.y)  )
+		if fonChangeMode == 0 then
+			cBg.scaling.y = GetAnimatedValue(cBg.scaling.y, newSize.y)
+		elseif fonChangeMode == 1 then
+			cBg.geometry.SetParameterDouble(  "height", GetAnimatedValue(cBg.geometry.GetParameterDouble("height"), 100.0*newSize.y)  )
 		end if
 	end if
 	if mode == MODE_Z Then
-		if fon_change_mode == 0 then
-			c_bg.scaling.z = GetAnimatedValue(c_bg.scaling.z, newSize.z)
-		elseif fon_change_mode == 1 then
-			c_bg.geometry.SetParameterDouble(  "height", GetAnimatedValue(c_bg.geometry.GetParameterDouble("height"), 100.0*newSize.z)  )
+		if fonChangeMode == 0 then
+			cBg.scaling.z = GetAnimatedValue(cBg.scaling.z, newSize.z)
+		elseif fonChangeMode == 1 then
+			cBg.geometry.SetParameterDouble(  "height", GetAnimatedValue(cBg.geometry.GetParameterDouble("height"), 100.0*newSize.z)  )
 		end if
 	end if
 	
-	if GetParameterBool("position_x") then
-		c_bg.position.x = GetAnimatedValue(c_bg.position.x, newPosition.x)
+	if GetParameterBool("positionX") then
+		cBg.position.x = GetAnimatedValue(cBg.position.x, newPosition.x)
 	end if
 	
-	if GetParameterBool("position_y") then
-		c_bg.position.y = GetAnimatedValue(c_bg.position.y, newPosition.y)
+	if GetParameterBool("positionY") then
+		cBg.position.y = GetAnimatedValue(cBg.position.y, newPosition.y)
 	end if
 End Sub
 
