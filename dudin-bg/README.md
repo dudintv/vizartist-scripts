@@ -1,5 +1,8 @@
 ## BG takes size from "this" container and change size of another container with calculation
 
+#### Version 1.10.0 (21 April 2023)
+* add dynamic alignment by X and Y axis
+
 #### Version 1.9.1 (21 April 2023)
 * refactor variables names to camelCase
 * small UI fixes
