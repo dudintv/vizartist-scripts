@@ -1,5 +1,9 @@
 ## BG takes size from "this" container and change size of another container with calculation
 
+#### Version 1.9.1 (21 April 2023)
+* refactor variables names to camelCase
+* small UI fixes
+
 #### Version 1.9.0 (21 April 2023)
 * add sizing-pause functionality
 
