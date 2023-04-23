@@ -1,5 +1,8 @@
 ## BG takes size from "this" container and change size of another container with calculation
 
+#### Version 1.11.0 (23 April 2023)
+* add comprehensive source container selector
+
 #### Version 1.10.0 (21 April 2023)
 * add dynamic alignment by X and Y axis
 
@@ -38,12 +41,3 @@
 
 #### Версия 1.2 (10 августа 2011)
 * исправил нерабочий режим "Максимальный из потомков"
-
-
-
-
-
-
-
-
-
