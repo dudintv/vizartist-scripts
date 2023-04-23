@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,10,0)
+RegisterPluginVersion(1,11,0)
 
 Dim info As String = "
 Developer: Dmitry Dudin, dudin.tv
@@ -6,7 +6,7 @@ Developer: Dmitry Dudin, dudin.tv
 
 Dim cBg As Container = this
 Dim cSource, cExactSource, child, cMinX, cMinY, cMinZ, cMaxChild As Container
-Dim modeSize, mode, modeMinX, modeMinY, modeMinZ, fonChangeMode, maxSizeMode, pauseAxis, alignX, alignY As Integer
+Dim modeSize, mode, modeMinX, modeMinY, modeMinZ, fonChangeMode, maxSizeMode, pauseAxis, alignX, alignY, sourceMode As Integer
 Dim x,y,z, xMulty, yMulty, zMulty, xPadding, yPadding, zPadding, xMin, yMin, zMin As Double
 Dim pos As Vertex
 Dim size, childSize, minSize As Vertex
@@ -14,6 +14,18 @@ Dim newSize, newPosition, v1, v2, vSource1, vSource2 As Vertex
 Dim newPosX, newPosY As Double
 Dim sizeTreshold, prevNewValue, newValue As Double
 Dim animTreshold As Double = 0.001
+
+Dim arrSource As Array[String]
+arrSource.Push("FIRST")
+arrSource.Push("PREV")
+arrSource.Push("NEXT")
+arrSource.Push("PATH")
+arrSource.Push("OTHER")
+Dim SOURCE_FIRST As Integer = 0
+Dim SOURCE_PREV As Integer = 1
+Dim SOURCE_NEXT As Integer = 2
+Dim SOURCE_PATH As Integer = 3
+Dim SOURCE_OTHER As Integer = 4
 
 Dim arrPauseAxis As Array[String]
 arrPauseAxis.Push("X")
@@ -75,8 +87,10 @@ Dim iPauseDownTicks As Integer
 
 sub OnInitParameters()
     RegisterInfoText(info)
-	RegisterParameterContainer("source","Source container:")
-	RegisterRadioButton("fonChangeMode","└ How to change bg size", 0, arrFonShangeMode)
+	RegisterRadioButton("source",             "Source", 2, arrSource)
+	RegisterParameterString("sourcePath",     "└ Source path", "", 100, 999, "")
+	RegisterParameterContainer("sourceOther", "└ Source container:")
+	RegisterRadioButton("fonChangeMode","How to change bg size", 0, arrFonShangeMode)
 	RegisterRadioButton("modeSize",     "Get size from: ", 0, arrGetSizeFrom)
 	RegisterRadioButton("maxSizeMode",  "└ max size by asix:", 0, arrAxis)
 	RegisterParameterInt("numChild",    "└ Child index (0=none)", 1, 0, 100)
@@ -88,15 +102,15 @@ sub OnInitParameters()
 	RegisterParameterDouble("zMulty",   "   └ Mult Z", 1.0, 0.0, 10000000.0)
 	RegisterParameterDouble("zPadding", "   └ Add Z", 0.0, -100000.0, 10000000.0)
 	
-	RegisterRadioButton("xMinMode",             "Min BG X-axis mode", 0, arrMinMode)
+	RegisterRadioButton("xMinMode",             "Min X size", 0, arrMinMode)
 	RegisterParameterDouble("xMin",             "└ Min X value", 0.0, 0.0, 10000000.0)
 	RegisterParameterContainer("xMinContainer", "└ Min X-axis container")
 	
-	RegisterRadioButton("yMinMode",             "Min BG Y-axis mode", 0, arrMinMode)
+	RegisterRadioButton("yMinMode",             "Min Y size", 0, arrMinMode)
 	RegisterParameterDouble("yMin",             "└ Min Y value", 0.0, 0.0, 10000000.0)
 	RegisterParameterContainer("yMinContainer", "└ Min Y-axis container")
 	
-	RegisterRadioButton("zMinMode",             "Min BG Z-axis mode", 0, arrMinMode)
+	RegisterRadioButton("zMinMode",             "Min Z size", 0, arrMinMode)
 	RegisterParameterDouble("zMin",             "└ Min Z value", 0.0, 0.0, 10000000.0)
 	RegisterParameterContainer("zMinContainer", "└ Min Z-axis container")
 	
@@ -111,7 +125,6 @@ sub OnInitParameters()
 	RegisterRadioButton("positionAlignY",     "└ Y Align", ALIGN_Y_CENTER, arrAlignY)
 	RegisterParameterDouble("positionShiftY", "└ Y shift", 0, -99999, 99999)
 	
-	
 	RegisterParameterDouble("inertion", "Animation inertion", 1.0, 1.0, 100.0)
 	RegisterRadioButton("pauseMode",    "└ Pause direction", 0, arrPauseMode)
 	RegisterRadioButton("pauseAxis",    "   └ Considering size axis", 0, arrPauseAxis)
@@ -120,11 +133,22 @@ sub OnInitParameters()
 end sub
 
 sub OnParameterChanged(parameterName As String)
-	cSource = GetParameterContainer("source")
 	maxSizeMode = GetParameterInt("maxSizeMode")
 end sub
  
 sub OnGuiStatus()
+	sourceMode =  GetParameterInt("source")
+	if sourceMode == SOURCE_OTHER then
+		SendGuiParameterShow("sourcePath", HIDE)
+		SendGuiParameterShow("sourceOther", SHOW)
+	elseif sourceMode == SOURCE_PATH then
+		SendGuiParameterShow("sourcePath", SHOW)
+		SendGuiParameterShow("sourceOther", HIDE)
+	else
+		SendGuiParameterShow("sourcePath", HIDE)
+		SendGuiParameterShow("sourceOther", HIDE)
+	end if
+
 	modeSize = GetParameterInt("modeSize")
 	If modeSize == 0 Then
 		SendGuiParameterShow("numChild",HIDE)
@@ -259,13 +283,58 @@ sub OnGuiStatus()
 	SendGuiParameterShow( "positionAlignX", CInt( GetParameterBool("positionX") ) )
 	SendGuiParameterShow( "positionAlignY", CInt( GetParameterBool("positionY") ) )
 end sub
+
+Sub GetSourceContainer()
+	sourceMode =  GetParameterInt("source")
+	if sourceMode == SOURCE_FIRST then
+		cSource = this.ParentContainer.FirstChildContainer
+	elseif sourceMode == SOURCE_PREV then
+		cSource = this.PreviousContainer 
+	elseif sourceMode == SOURCE_NEXT then
+		cSource = this.NextContainer
+	elseif sourceMode == SOURCE_PATH then
+		cSource = GetContainerByPath(GetParameterString("sourcePath"))
+	elseif sourceMode == SOURCE_OTHER then
+		cSource = GetParameterContainer("sourceOther")
+	else
+		cSource = null
+	end if
+End Sub
+
+Function GetContainerByPath(path As String) As Container
+	Dim arrPathSteps As Array[String]
+	path.substitute("\\", "/", true)
+	path.Split("/", arrPathSteps)
+	
+	Dim cResult As Container = this
+	Dim numberStep As Integer
+	for i=0 to arrPathSteps.ubound
+		arrPathSteps[i].Trim()
+		numberStep = Cint(arrPathSteps[i])
+		if numberStep > 0 then
+			cResult = cResult.GetChildContainerByIndex(numberStep)
+		elseif numberStep < 0 then
+			cResult = cResult.GetChildContainerByIndex(cResult.ChildContainerCount - numberStep)
+		elseif arrPathSteps[i] == "" then
+			cResult = scene.RootContainer
+		elseif arrPathSteps[i] == ".." then
+			cResult = cResult.ParentContainer
+		elseif i == 0 then
+			cResult = cResult.ParentContainer.FindSubContainer(arrPathSteps[i])
+		else
+			cResult = cResult.FindSubContainer(arrPathSteps[i])
+		end if
+	next
+	GetContainerByPath = cResult
+End Function
  
 sub OnExecPerField()
-	If cSource == null Then exit sub
-	
 	mode = GetParameterInt("mode")
 	sizeTreshold = GetParameterDouble("treshold")/100.0
 	fonChangeMode = GetParameterInt("fonChangeMode")
+	
+	GetSourceContainer()
+	If cSource == null Then exit sub
 	
 	GetSourceSize()
 	CalcMinSize()
@@ -449,9 +518,12 @@ Sub CalcPosition()
 		cExactSource.GetTransformedBoundingBox(vSource1, vSource2)
 		PreCalcFinishGabarits()
 		
+		vSource1 = cExactSource.parentContainer.LocalPosToWorldPos(vSource1)
+		vSource1 = cBg.WorldPosToLocalPos(vSource1)
+		vSource2 = cExactSource.parentContainer.LocalPosToWorldPos(vSource2)
+		vSource2 = cBg.WorldPosToLocalPos(vSource2)
+		
 		if GetParameterBool("positionX") then
-			vSource1 = cSource.LocalPosToWorldPos(vSource1)
-			vSource1 = cExactSource.parentContainer.WorldPosToLocalPos(vSource1)
 			if alignX == ALIGN_X_LEFT then
 				newPosition.x = vSource1.x + (cBg.position.x - v1.x)
 			elseif alignX == ALIGN_X_CENTER then
@@ -463,8 +535,6 @@ Sub CalcPosition()
 		end if
 		
 		if GetParameterBool("positionY") then
-			vSource2 = cSource.LocalPosToWorldPos(vSource2)
-			vSource2 = cExactSource.parentContainer.WorldPosToLocalPos(vSource2)
 			'newPosition.y = vSource2.y - (v2.y-cBg.position.y) + GetParameterDouble("positionShiftY")
 			if alignY == ALIGN_Y_TOP then
 				newPosition.y = vSource2.y + (cBg.position.y - v2.y)
