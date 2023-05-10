@@ -1,5 +1,11 @@
 ## BG takes size from "this" container and change size of another container with calculation
 
+
+#### Version 1.11.1 (5 May 2023)
+* improve working with inertia
+* add a workaround to fix the vizrt issue when the new object has wrong bounding box right after it's loaded
+* fix: target path with ".." (level up in hierarchy) 
+
 #### Version 1.11.0 (23 April 2023)
 * add comprehensive source container selector
 
