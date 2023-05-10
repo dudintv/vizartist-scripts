@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,11,0)
+RegisterPluginVersion(1,11,1)
 
 Dim info As String = "
 Developer: Dmitry Dudin, dudin.tv
@@ -14,6 +14,10 @@ Dim newSize, newPosition, v1, v2, vSource1, vSource2 As Vertex
 Dim newPosX, newPosY As Double
 Dim sizeTreshold, prevNewValue, newValue As Double
 Dim animTreshold As Double = 0.001
+
+Dim prevSourceId, curSourceId As Integer
+Dim changingSourceDelay As Integer = 2
+Dim changingSourceTick As Integer = changingSourceDelay
 
 Dim arrSource As Array[String]
 arrSource.Push("FIRST")
@@ -87,10 +91,10 @@ Dim iPauseDownTicks As Integer
 
 sub OnInitParameters()
     RegisterInfoText(info)
-	RegisterRadioButton("source",             "Source", 2, arrSource)
-	RegisterParameterString("sourcePath",     "└ Source path", "", 100, 999, "")
-	RegisterParameterContainer("sourceOther", "└ Source container:")
 	RegisterRadioButton("fonChangeMode","How to change bg size", 0, arrFonShangeMode)
+	RegisterRadioButton("source",             "Source", 2, arrSource)
+	RegisterParameterString("sourcePath",     "└ Source path (\\\"sibling/sub/name\\\")", "", 100, 999, "")
+	RegisterParameterContainer("sourceOther", "└ Source container:")
 	RegisterRadioButton("modeSize",     "Get size from: ", 0, arrGetSizeFrom)
 	RegisterRadioButton("maxSizeMode",  "└ max size by asix:", 0, arrAxis)
 	RegisterParameterInt("numChild",    "└ Child index (0=none)", 1, 0, 100)
@@ -125,7 +129,8 @@ sub OnInitParameters()
 	RegisterRadioButton("positionAlignY",     "└ Y Align", ALIGN_Y_CENTER, arrAlignY)
 	RegisterParameterDouble("positionShiftY", "└ Y shift", 0, -99999, 99999)
 	
-	RegisterParameterDouble("inertion", "Animation inertion", 1.0, 1.0, 100.0)
+	RegisterParameterBool("hasInertion", "Enable inertia", true)
+	RegisterParameterDouble("inertion", "Animation inertia", 1.0, 1.0, 100.0)
 	RegisterRadioButton("pauseMode",    "└ Pause direction", 0, arrPauseMode)
 	RegisterRadioButton("pauseAxis",    "   └ Considering size axis", 0, arrPauseAxis)
 	RegisterParameterInt("pauseLess",   "   └ Pause >< (frames)", 0, 0, 1000)
@@ -180,7 +185,8 @@ sub OnGuiStatus()
 	Dim showZMinC as Integer = HIDE
 	Dim showPauseAxis as Integer = HIDE
 	
-	SendGuiParameterShow("pauseMode", CInt( GetParameterDouble("inertion") > 1 ))	
+	SendGuiParameterShow("inertion", CInt( GetParameterBool("hasInertion") ))
+	SendGuiParameterShow("pauseMode", CInt( GetParameterBool("hasInertion") ))
 	mode = GetParameterInt("mode")
 	Select Case mode
 	Case MODE_X
@@ -212,7 +218,7 @@ sub OnGuiStatus()
 		showYMinMode = SHOW
 		showYMin = SHOW
 		showYMinC = SHOW
-		showPauseAxis = CInt( GetParameterDouble("inertion") > 1 AND GetParameterInt("pauseMode") > 0)
+		showPauseAxis = CInt( GetParameterBool("hasInertion") AND GetParameterInt("pauseMode") > 0)
 	End Select
 	
 	SendGuiParameterShow("xMulty", showXMulti)
@@ -232,8 +238,8 @@ sub OnGuiStatus()
 	SendGuiParameterShow("zMinContainer", showZMinC)
 	SendGuiParameterShow("pauseAxis", showPauseAxis)
 	
-	SendGuiParameterShow("pauseLess", CInt( (GetParameterInt("pauseMode") == PAUSE_MODE_LESS OR GetParameterInt("pauseMode") == PAUSE_MODE_BOTH) AND GetParameterDouble("inertion") > 1 )) 
-	SendGuiParameterShow("pauseMore", CInt( (GetParameterInt("pauseMode") == PAUSE_MODE_MORE OR GetParameterInt("pauseMode") == PAUSE_MODE_BOTH) AND GetParameterDouble("inertion") > 1 )) 
+	SendGuiParameterShow("pauseLess", CInt( (GetParameterInt("pauseMode") == PAUSE_MODE_LESS OR GetParameterInt("pauseMode") == PAUSE_MODE_BOTH) AND GetParameterBool("hasInertion") )) 
+	SendGuiParameterShow("pauseMore", CInt( (GetParameterInt("pauseMode") == PAUSE_MODE_MORE OR GetParameterInt("pauseMode") == PAUSE_MODE_BOTH) AND GetParameterBool("hasInertion") )) 
 	
 	If mode == MODE_X OR mode == MODE_XY Then
 		modeMinX = GetParameterInt("xMinMode")
@@ -293,7 +299,24 @@ Sub GetSourceContainer()
 	elseif sourceMode == SOURCE_NEXT then
 		cSource = this.NextContainer
 	elseif sourceMode == SOURCE_PATH then
-		cSource = GetContainerByPath(GetParameterString("sourcePath"))
+		if changingSourceTick > 0 then
+			changingSourceTick -= 1
+		else
+			Dim newSource = GetContainerByPath(GetParameterString("sourcePath"))
+			curSourceId = newSource.VizId
+			if prevSourceId <> curSourceId then
+				changingSourceTick = changingSourceDelay
+				prevSourceId = curSourceId
+				
+				println("changingSourceDelay = " & changingSourceDelay)
+			else
+				cSource = newSource
+				
+				Dim vvv1, vvv2 As Vertex
+				cSource.GetTransformedBoundingBox(vvv1, vvv2)
+				println("curSourceId = " & cSource.VizId & " v1 = " & vvv1.x & "|" & vvv1.y & " v2 = " &  vvv2.x & "|" & vvv2.y)
+			end if
+		end if
 	elseif sourceMode == SOURCE_OTHER then
 		cSource = GetParameterContainer("sourceOther")
 	else
@@ -318,13 +341,18 @@ Function GetContainerByPath(path As String) As Container
 		elseif arrPathSteps[i] == "" then
 			cResult = scene.RootContainer
 		elseif arrPathSteps[i] == ".." then
-			cResult = cResult.ParentContainer
+			if i == 0 then
+				cResult = cResult.ParentContainer.ParentContainer
+			else
+				cResult = cResult.ParentContainer
+			end if
 		elseif i == 0 then
 			cResult = cResult.ParentContainer.FindSubContainer(arrPathSteps[i])
 		else
 			cResult = cResult.FindSubContainer(arrPathSteps[i])
 		end if
 	next
+	
 	GetContainerByPath = cResult
 End Function
  
@@ -445,6 +473,7 @@ Sub GetSourceSize()
 	End If
 	
 	size = GetLocalSize (cExactSource, cBg)
+	println("size = " & size)
 End Sub
 
 Sub CalcMinSize()
@@ -497,16 +526,22 @@ Sub PreCalcFinishGabarits()
 	elseif fonChangeMode == 1 then
 		cBg.geometry.SetParameterDouble(  "width", 100.0*newSize.x )
 		cBg.geometry.SetParameterDouble(  "height", 100.0*newSize.y )
+		'cBg.geometry.SetChanged()
 	end if
 	cBg.RecomputeMatrix()
 	
 	' calculate the target bounding box like it's already finished
 	cBg.GetTransformedBoundingBox(v1, v2)
+	println("PRE-----------------v1 = " & v1.x & "|" & v1.y & " v2 = " & v2.x & "|" & v2.y)
 	
-	cBg.scaling.x = cachedScalingX
-	cBg.scaling.y = cachedScalingY
-	cBg.geometry.SetParameterDouble(  "width", cachedWidth )
-	cBg.geometry.SetParameterDouble(  "height", cachedHeight )
+	if fonChangeMode == 0 then
+		cBg.scaling.x = cachedScalingX
+		cBg.scaling.y = cachedScalingY
+	elseif fonChangeMode == 1 then
+		cBg.geometry.SetParameterDouble(  "width", cachedWidth )
+		cBg.geometry.SetParameterDouble(  "height", cachedHeight )
+		'cBg.geometry.SetChanged()
+	end if
 	cBg.RecomputeMatrix()
 End Sub
 
@@ -578,7 +613,7 @@ Function HasPause() as Boolean
 	end if
 	
 	if prevNewValue <> newValue then
-		If GetParameterInt("pauseMode") == PAUSE_MODE_NONE Then
+		If GetParameterInt("pauseMode") == PAUSE_MODE_NONE OR NOT GetParameterBool("hasInertion") Then
 			iPauseDownTicks = 0
 		Else
 			If (GetParameterInt("pauseMode") == PAUSE_MODE_MORE OR GetParameterInt("pauseMode") == PAUSE_MODE_BOTH) AND newValue > currentValue + animTreshold Then
@@ -635,6 +670,11 @@ Sub ApplyTransformationWithInertion()
 End Sub
 
 Function GetAnimatedValue(currentValue as Double, newValue as Double) As Double
+	if NOT GetParameterBool("hasInertion") then
+		GetAnimatedValue = newValue
+		exit function
+	end if
+
 	if newValue < (currentValue - animTreshold) OR newValue > (currentValue + animTreshold) Then
 		GetAnimatedValue = currentValue + (newValue - currentValue)/GetParameterDouble("inertion")
 	else
@@ -648,3 +688,4 @@ Function GetLocalSize(_c_gabarit as Container, _c as Container) As Vertex
 	v2 = _c.WorldPosToLocalPos(v2)
 	GetLocalSize = CVertex(v2.x-v1.x,v2.y-v1.y,v2.z-v1.z)
 End Function
+													
