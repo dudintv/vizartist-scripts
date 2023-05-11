@@ -1,5 +1,8 @@
 ## BG takes size from "this" container and change size of another container with calculation
 
+#### Version 1.12.0 (11 May 2023)
+* add an additional "Get size from" mode as "Child by index + subpath" to make possible get exact source container by schema "path + index + path"
+* fix coordinates for autofollow positions
 
 #### Version 1.11.1 (5 May 2023)
 * improve working with inertia
