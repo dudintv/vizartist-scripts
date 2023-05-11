@@ -1,22 +1,22 @@
-RegisterPluginVersion(1,11,1)
+RegisterPluginVersion(1,12,0)
 
 Dim info As String = "
 Developer: Dmitry Dudin, dudin.tv
 "
 
 Dim cBg As Container = this
-Dim cSource, cExactSource, child, cMinX, cMinY, cMinZ, cMaxChild As Container
+Dim cSource, cExactSource, child, cMinX, cMinY, cMinZ, cMaxChild, cByIndex As Container
 Dim modeSize, mode, modeMinX, modeMinY, modeMinZ, fonChangeMode, maxSizeMode, pauseAxis, alignX, alignY, sourceMode As Integer
 Dim x,y,z, xMulty, yMulty, zMulty, xPadding, yPadding, zPadding, xMin, yMin, zMin As Double
 Dim pos As Vertex
 Dim size, childSize, minSize As Vertex
-Dim newSize, newPosition, v1, v2, vSource1, vSource2 As Vertex
+Dim newSize, newPosition, v1, v2, vBg1, vBg2, vSource1, vSource2 As Vertex
 Dim newPosX, newPosY As Double
 Dim sizeTreshold, prevNewValue, newValue As Double
 Dim animTreshold As Double = 0.001
 
 Dim prevSourceId, curSourceId As Integer
-Dim changingSourceDelay As Integer = 2
+Dim changingSourceDelay As Integer = 1
 Dim changingSourceTick As Integer = changingSourceDelay
 
 Dim arrSource As Array[String]
@@ -55,6 +55,7 @@ Dim arrGetSizeFrom As Array[String]
 arrGetSizeFrom.Push("Source container size")
 arrGetSizeFrom.Push("Max of childs")
 arrGetSizeFrom.Push("Child by index")
+arrGetSizeFrom.Push("Child by index + subpath")
 Dim arrMinMode As Array[String]
 arrMinMode.Push("Off")
 arrMinMode.Push("Number")
@@ -90,7 +91,7 @@ Dim PAUSE_MODE_BOTH As Integer = 3
 Dim iPauseDownTicks As Integer
 
 sub OnInitParameters()
-    RegisterInfoText(info)
+		RegisterInfoText(info)
 	RegisterRadioButton("fonChangeMode","How to change bg size", 0, arrFonShangeMode)
 	RegisterRadioButton("source",             "Source", 2, arrSource)
 	RegisterParameterString("sourcePath",     "└ Source path (\\\"sibling/sub/name\\\")", "", 100, 999, "")
@@ -98,6 +99,7 @@ sub OnInitParameters()
 	RegisterRadioButton("modeSize",     "Get size from: ", 0, arrGetSizeFrom)
 	RegisterRadioButton("maxSizeMode",  "└ max size by asix:", 0, arrAxis)
 	RegisterParameterInt("numChild",    "└ Child index (0=none)", 1, 0, 100)
+	RegisterParameterString("numChildSubPath",     "   └ Sub path (\\\"sub/name\\\")", "", 100, 999, "")
 	RegisterRadioButton("mode",         "└ Axis to consider:", 0, arrConsideringAxis)
 	RegisterParameterDouble("xMulty",   "   └ Mult X", 1.0, 0.0, 10000000.0)
 	RegisterParameterDouble("xPadding", "   └ Add X", 0.0, -100000.0, 10000000.0)
@@ -161,10 +163,11 @@ sub OnGuiStatus()
 	ElseIf modeSize == 1 Then
 		SendGuiParameterShow("numChild",HIDE)
 		SendGuiParameterShow("maxSizeMode",SHOW)
-	ElseIf modeSize == 2 Then
+	ElseIf modeSize == 2 OR modeSize == 3 Then
 		SendGuiParameterShow("numChild",SHOW)
 		SendGuiParameterShow("maxSizeMode",HIDE)
 	End If
+	SendGuiParameterShow("numChildSubPath", CInt(modeSize == 3))
 	
 	SendGuiParameterShow( "treshold", CInt(GetParameterBool("hideByZero")) )
 	
@@ -302,19 +305,13 @@ Sub GetSourceContainer()
 		if changingSourceTick > 0 then
 			changingSourceTick -= 1
 		else
-			Dim newSource = GetContainerByPath(GetParameterString("sourcePath"))
+			Dim newSource = GetContainerByPath(this, GetParameterString("sourcePath"))
 			curSourceId = newSource.VizId
 			if prevSourceId <> curSourceId then
 				changingSourceTick = changingSourceDelay
 				prevSourceId = curSourceId
-				
-				println("changingSourceDelay = " & changingSourceDelay)
 			else
 				cSource = newSource
-				
-				Dim vvv1, vvv2 As Vertex
-				cSource.GetTransformedBoundingBox(vvv1, vvv2)
-				println("curSourceId = " & cSource.VizId & " v1 = " & vvv1.x & "|" & vvv1.y & " v2 = " &  vvv2.x & "|" & vvv2.y)
 			end if
 		end if
 	elseif sourceMode == SOURCE_OTHER then
@@ -324,22 +321,25 @@ Sub GetSourceContainer()
 	end if
 End Sub
 
-Function GetContainerByPath(path As String) As Container
+Function GetContainerByPath(cRoot As Container, path As String) As Container
 	Dim arrPathSteps As Array[String]
 	path.substitute("\\", "/", true)
 	path.Split("/", arrPathSteps)
 	
-	Dim cResult As Container = this
+	Dim cResult As Container = cRoot
 	Dim numberStep As Integer
 	for i=0 to arrPathSteps.ubound
 		arrPathSteps[i].Trim()
 		numberStep = Cint(arrPathSteps[i])
+		' we have to ignore the case "numberStep == 0" because it means "no numbers"
 		if numberStep > 0 then
-			cResult = cResult.GetChildContainerByIndex(numberStep)
+			cResult = cResult.GetChildContainerByIndex(numberStep-1)
 		elseif numberStep < 0 then
 			cResult = cResult.GetChildContainerByIndex(cResult.ChildContainerCount - numberStep)
 		elseif arrPathSteps[i] == "" then
 			cResult = scene.RootContainer
+		elseif arrPathSteps[i] == "." OR arrPathSteps[i] == "this" then
+			cResult = cResult ' to support pointing direct children
 		elseif arrPathSteps[i] == ".." then
 			if i == 0 then
 				cResult = cResult.ParentContainer.ParentContainer
@@ -362,9 +362,17 @@ sub OnExecPerField()
 	fonChangeMode = GetParameterInt("fonChangeMode")
 	
 	GetSourceContainer()
-	If cSource == null Then exit sub
+	If cSource == null Then
+		cBg.Active = false
+		exit sub
+	end if
 	
 	GetSourceSize()
+	If cExactSource == null Then
+		cBg.Active = false
+		exit sub
+	end if
+	
 	CalcMinSize()
 	
 	'-------------------------------------------------------------------------------------------------
@@ -469,11 +477,18 @@ Sub GetSourceSize()
 	ElseIf modeSize == 2 Then
 		'mode: "Child by index"
 		cExactSource = cSource.GetChildContainerByIndex(GetParameterInt("numChild") - 1)
-		cExactSource.RecomputeMatrix()
+	ElseIf modeSize == 3 Then
+		'mode: "Child by index + sub path"
+		cByIndex = cSource.GetChildContainerByIndex(GetParameterInt("numChild") - 1)
+		
+		if GetParameterString("numChildSubPath") == "" then
+			cExactSource = cByIndex
+		else
+			cExactSource = GetContainerByPath(cByIndex, "./" & GetParameterString("numChildSubPath"))
+		end if
 	End If
-	
-	size = GetLocalSize (cExactSource, cBg)
-	println("size = " & size)
+	cExactSource.RecomputeMatrix()
+	size = GetLocalSize(cExactSource, cBg)
 End Sub
 
 Sub CalcMinSize()
@@ -486,7 +501,7 @@ Sub CalcMinSize()
 		xMin = GetParameterDouble("xMin")
 	ElseIf modeMinX == 2 AND cMinX <> null Then
 		'Min size from container
-		minSize = GetLocalSize (cMinX, cBg)
+		minSize = GetLocalSize(cMinX, cBg)
 		If minSize.X > sizeTreshold AND minSize.Y > sizeTreshold Then
 			xMin = minSize.X/100.0
 		Else
@@ -501,7 +516,7 @@ Sub CalcMinSize()
 		yMin = GetParameterDouble("yMin")
 	ElseIF modeMinY == 2 AND cMinY <> null Then
 		'Min size from container
-		minSize = GetLocalSize (cMinY, cBg)
+		minSize = GetLocalSize(cMinY, cBg)
 		yMin = minSize.Y/100.0
 		If minSize.X > sizeTreshold AND minSize.Y > sizeTreshold Then
 			yMin = minSize.Y/100.0
@@ -526,13 +541,11 @@ Sub PreCalcFinishGabarits()
 	elseif fonChangeMode == 1 then
 		cBg.geometry.SetParameterDouble(  "width", 100.0*newSize.x )
 		cBg.geometry.SetParameterDouble(  "height", 100.0*newSize.y )
-		'cBg.geometry.SetChanged()
 	end if
 	cBg.RecomputeMatrix()
 	
 	' calculate the target bounding box like it's already finished
-	cBg.GetTransformedBoundingBox(v1, v2)
-	println("PRE-----------------v1 = " & v1.x & "|" & v1.y & " v2 = " & v2.x & "|" & v2.y)
+	cBg.GetTransformedBoundingBox(vBg1, vBg2)
 	
 	if fonChangeMode == 0 then
 		cBg.scaling.x = cachedScalingX
@@ -550,33 +563,36 @@ Sub CalcPosition()
 	alignY = GetParameterInt("positionAlignY")
 	
 	if GetParameterBool("positionX") OR GetParameterBool("positionY") then
-		cExactSource.GetTransformedBoundingBox(vSource1, vSource2)
+		'cExactSource.GetTransformedBoundingBox(vSource1, vSource2)
+		Dim arrExactSourceVertexes = GetLocalGabaritVertexes(cExactSource, cBg)
+		vSource1 = arrExactSourceVertexes[0]
+		vSource2 = arrExactSourceVertexes[1]
+		
 		PreCalcFinishGabarits()
 		
-		vSource1 = cExactSource.parentContainer.LocalPosToWorldPos(vSource1)
-		vSource1 = cBg.WorldPosToLocalPos(vSource1)
-		vSource2 = cExactSource.parentContainer.LocalPosToWorldPos(vSource2)
-		vSource2 = cBg.WorldPosToLocalPos(vSource2)
+		'vSource1 = cExactSource.parentContainer.LocalPosToWorldPos(vSource1)
+		'vSource1 = cBg.WorldPosToLocalPos(vSource1)
+		'vSource2 = cExactSource.parentContainer.LocalPosToWorldPos(vSource2)
+		'vSource2 = cBg.WorldPosToLocalPos(vSource2)
 		
 		if GetParameterBool("positionX") then
 			if alignX == ALIGN_X_LEFT then
-				newPosition.x = vSource1.x + (cBg.position.x - v1.x)
+				newPosition.x = vSource1.x + (cBg.position.x - vBg1.x)
 			elseif alignX == ALIGN_X_CENTER then
-				newPosition.x = (vSource1.x + vSource2.x)/2.0 + (cBg.position.x - (v1.x + v2.x)/2.0)
+				newPosition.x = (vSource1.x + vSource2.x)/2.0 + (cBg.position.x - (vBg1.x + vBg2.x)/2.0)
 			elseif alignX == ALIGN_X_RIGHT then
-				newPosition.x = vSource2.x + (cBg.position.x - v2.x)
+				newPosition.x = vSource2.x + (cBg.position.x - vBg2.x)
 			end if
 			newPosition.x += GetParameterDouble("positionShiftX")
 		end if
 		
 		if GetParameterBool("positionY") then
-			'newPosition.y = vSource2.y - (v2.y-cBg.position.y) + GetParameterDouble("positionShiftY")
 			if alignY == ALIGN_Y_TOP then
-				newPosition.y = vSource2.y + (cBg.position.y - v2.y)
+				newPosition.y = vSource2.y + (cBg.position.y - vBg2.y)
 			elseif alignY == ALIGN_Y_CENTER then
-				newPosition.y = (vSource1.y + vSource2.y)/2.0 + (cBg.position.y - (v1.y + v2.y)/2.0)
+				newPosition.y = (vSource1.y + vSource2.y)/2.0 + (cBg.position.y - (vBg1.y + vBg2.y)/2.0)
 			elseif alignY == ALIGN_Y_BOTTOM then
-				newPosition.y = vSource1.y + (cBg.position.y - v1.y)
+				newPosition.y = vSource1.y + (cBg.position.y - vBg1.y)
 			end if
 			newPosition.y += GetParameterDouble("positionShiftY")
 		end if
@@ -682,10 +698,19 @@ Function GetAnimatedValue(currentValue as Double, newValue as Double) As Double
 	end if
 End Function
 
+Function GetLocalGabaritVertexes(_c_gabarit as Container, _c as Container) As Array[Vertex]
+	_c_gabarit.GetTransformedBoundingBox(v1,v2)
+	v1 = _c.WorldPosToLocalPos(v1)
+	v2 = _c.WorldPosToLocalPos(v2)
+	Dim _arrResult As Array[Vertex]
+	_arrResult.Push(v1)
+	_arrResult.Push(v2)
+	GetLocalGabaritVertexes = _arrResult
+End Function
+
 Function GetLocalSize(_c_gabarit as Container, _c as Container) As Vertex
 	_c_gabarit.GetTransformedBoundingBox(v1,v2)
 	v1 = _c.WorldPosToLocalPos(v1)
 	v2 = _c.WorldPosToLocalPos(v2)
 	GetLocalSize = CVertex(v2.x-v1.x,v2.y-v1.y,v2.z-v1.z)
 End Function
-													
