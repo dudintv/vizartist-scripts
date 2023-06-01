@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,12,0)
+RegisterPluginVersion(1,13,0)
 
 Dim info As String = "
 Developer: Dmitry Dudin, dudin.tv
@@ -91,7 +91,7 @@ Dim PAUSE_MODE_BOTH As Integer = 3
 Dim iPauseDownTicks As Integer
 
 sub OnInitParameters()
-		RegisterInfoText(info)
+	RegisterInfoText(info)
 	RegisterRadioButton("fonChangeMode","How to change bg size", 0, arrFonShangeMode)
 	RegisterRadioButton("source",             "Source", 2, arrSource)
 	RegisterParameterString("sourcePath",     "└ Source path (\\\"sibling/sub/name\\\")", "", 100, 999, "")
@@ -99,7 +99,7 @@ sub OnInitParameters()
 	RegisterRadioButton("modeSize",     "Get size from: ", 0, arrGetSizeFrom)
 	RegisterRadioButton("maxSizeMode",  "└ max size by asix:", 0, arrAxis)
 	RegisterParameterInt("numChild",    "└ Child index (0=none)", 1, 0, 100)
-	RegisterParameterString("numChildSubPath",     "   └ Sub path (\\\"sub/name\\\")", "", 100, 999, "")
+	RegisterParameterString("numChildSubPath", "   └ Sub path (\\\"sub/name\\\")", "", 100, 999, "")
 	RegisterRadioButton("mode",         "└ Axis to consider:", 0, arrConsideringAxis)
 	RegisterParameterDouble("xMulty",   "   └ Mult X", 1.0, 0.0, 10000000.0)
 	RegisterParameterDouble("xPadding", "   └ Add X", 0.0, -100000.0, 10000000.0)
@@ -111,14 +111,17 @@ sub OnInitParameters()
 	RegisterRadioButton("xMinMode",             "Min X size", 0, arrMinMode)
 	RegisterParameterDouble("xMin",             "└ Min X value", 0.0, 0.0, 10000000.0)
 	RegisterParameterContainer("xMinContainer", "└ Min X-axis container")
+	RegisterParameterDouble("xMinAdd",          "└ Min X add", 0.0, -100000.0, 10000000.0)
 	
 	RegisterRadioButton("yMinMode",             "Min Y size", 0, arrMinMode)
 	RegisterParameterDouble("yMin",             "└ Min Y value", 0.0, 0.0, 10000000.0)
 	RegisterParameterContainer("yMinContainer", "└ Min Y-axis container")
+	RegisterParameterDouble("yMinAdd",          "└ Min Y add", 0.0, -100000.0, 10000000.0)
 	
 	RegisterRadioButton("zMinMode",             "Min Z size", 0, arrMinMode)
 	RegisterParameterDouble("zMin",             "└ Min Z value", 0.0, 0.0, 10000000.0)
 	RegisterParameterContainer("zMinContainer", "└ Min Z-axis container")
+	RegisterParameterDouble("zMinAdd",          "└ Min Z add", 0.0, -100000.0, 10000000.0)
 	
 	RegisterParameterBool("hideByZero", "Hide bg if size close to zero", TRUE)
 	RegisterParameterDouble("treshold", "└ Zero-size of source container", 0.1, 0.0, 1000.0)
@@ -231,60 +234,65 @@ sub OnGuiStatus()
 	SendGuiParameterShow("yPadding", showYPadding)
 	SendGuiParameterShow("zPadding", showZPadding)
 	SendGuiParameterShow("xMinMode", showXMinMode)
-	SendGuiParameterShow("xMin", showXMin)
-	SendGuiParameterShow("xMinContainer", showXMinC)
 	SendGuiParameterShow("yMinMode", showYMinMode)
-	SendGuiParameterShow("yMin", showYMin)
-	SendGuiParameterShow("yMinContainer", showYMinC)
 	SendGuiParameterShow("zMinMode", showZMinMode)
-	SendGuiParameterShow("zMin", showZMin)
-	SendGuiParameterShow("zMinContainer", showZMinC)
 	SendGuiParameterShow("pauseAxis", showPauseAxis)
-	
 	SendGuiParameterShow("pauseLess", CInt( (GetParameterInt("pauseMode") == PAUSE_MODE_LESS OR GetParameterInt("pauseMode") == PAUSE_MODE_BOTH) AND GetParameterBool("hasInertion") )) 
 	SendGuiParameterShow("pauseMore", CInt( (GetParameterInt("pauseMode") == PAUSE_MODE_MORE OR GetParameterInt("pauseMode") == PAUSE_MODE_BOTH) AND GetParameterBool("hasInertion") )) 
 	
 	If mode == MODE_X OR mode == MODE_XY Then
 		modeMinX = GetParameterInt("xMinMode")
 		If modeMinX == 0 Then
-			SendGuiParameterShow("xMin",HIDE)
-			SendGuiParameterShow("xMinContainer",HIDE)
+			showXMin = HIDE
+			showXMinC = HIDE
 		ElseIf modeMinX == 1 Then
-			SendGuiParameterShow("xMin",SHOW)
-			SendGuiParameterShow("xMinContainer",HIDE)
+			showXMin = SHOW
+			showXMinC = HIDE
 		ElseIf modeMinX == 2 Then
-			SendGuiParameterShow("xMin",HIDE)
-			SendGuiParameterShow("xMinContainer",SHOW)
+			showXMin = HIDE
+			showXMinC = SHOW
 		End If
 	End If
 	
 	If mode == MODE_Y OR mode == MODE_XY Then
 		modeMinY = GetParameterInt("yMinMode")
 		If modeMinY == 0 Then
-			SendGuiParameterShow("yMin",HIDE)
-			SendGuiParameterShow("yMinContainer",HIDE)
+			showYMin = HIDE
+			showYMinC = HIDE
 		ElseIf modeMinY == 1 Then
-			SendGuiParameterShow("yMin",SHOW)
-			SendGuiParameterShow("yMinContainer",HIDE)
-		ElseIf modeMinY == 1 Then
-			SendGuiParameterShow("yMin",HIDE)
-			SendGuiParameterShow("yMinContainer",SHOW)
+			showYMin = SHOW
+			showYMinC = HIDE
+		ElseIf modeMinY == 2 Then
+			showYMin = HIDE
+			showYMinC = SHOW
 		End If
 	End If
 	
 	If mode == MODE_Z Then
 		modeMinZ = GetParameterInt("zMinMode")
 		If modeMinZ == 0 Then
-			SendGuiParameterShow("zMin",HIDE)
-			SendGuiParameterShow("zMinContainer",HIDE)
+			showZMin = HIDE
+			showZMinC = HIDE
 		ElseIf modeMinZ == 1 Then
-			SendGuiParameterShow("zMin",SHOW)
-			SendGuiParameterShow("zMinContainer",HIDE)
+			showZMin = SHOW
+			showZMinC = HIDE
 		ElseIf modeMinZ == 2 Then
-			SendGuiParameterShow("zMin",HIDE)
-			SendGuiParameterShow("zMinContainer",SHOW)
+			showZMin = HIDE
+			showZMinC = SHOW
 		End If
 	End If
+	
+	SendGuiParameterShow("xMin",          showXMin)
+	SendGuiParameterShow("xMinContainer", showXMinC)
+	SendGuiParameterShow("xMinAdd",       showXMinC)
+	
+	SendGuiParameterShow("yMin",          showYMin)
+	SendGuiParameterShow("yMinContainer", showYMinC)
+	SendGuiParameterShow("yMinAdd",       showYMinC)
+	
+	SendGuiParameterShow("zMin",          showZMin)
+	SendGuiParameterShow("zMinContainer", showZMinC)
+	SendGuiParameterShow("zMinAdd",       showZMinC)
 	
 	SendGuiParameterShow( "positionShiftX", CInt( GetParameterBool("positionX") ) )
 	SendGuiParameterShow( "positionShiftY", CInt( GetParameterBool("positionY") ) )
@@ -503,7 +511,7 @@ Sub CalcMinSize()
 		'Min size from container
 		minSize = GetLocalSize(cMinX, cBg)
 		If minSize.X > sizeTreshold AND minSize.Y > sizeTreshold Then
-			xMin = minSize.X/100.0
+			xMin = minSize.X/100.0 + GetParameterDouble("xMinAdd")/100.0
 		Else
 			xMin = 0
 		End If
@@ -519,7 +527,7 @@ Sub CalcMinSize()
 		minSize = GetLocalSize(cMinY, cBg)
 		yMin = minSize.Y/100.0
 		If minSize.X > sizeTreshold AND minSize.Y > sizeTreshold Then
-			yMin = minSize.Y/100.0
+			yMin = minSize.Y/100.0  + GetParameterDouble("yMinAdd")/100.0
 		Else
 			yMin = 0
 		End If
