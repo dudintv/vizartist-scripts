@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,13,0)
+RegisterPluginVersion(1,14,0)
 
 Dim info As String = "
 Developer: Dmitry Dudin, dudin.tv
@@ -140,6 +140,11 @@ sub OnInitParameters()
 	RegisterRadioButton("pauseAxis",    "   └ Considering size axis", 0, arrPauseAxis)
 	RegisterParameterInt("pauseLess",   "   └ Pause >< (frames)", 0, 0, 1000)
 	RegisterParameterInt("pauseMore",   "   └ Pause <> (frames)", 0, 0, 1000)
+	
+	RegisterParameterBool("hasOffSize", "Enable off transition", FALSE)
+	RegisterParameterDouble("offWidth", "└ Off width", 0, -99999, 99999)
+	RegisterParameterDouble("offHeight", "└ Off height", 0, -99999, 99999)
+	RegisterParameterDouble("offTransition", "└ Off transition (0 - 100)", 0, 0.0, 100.0)
 end sub
 
 sub OnParameterChanged(parameterName As String)
@@ -294,11 +299,15 @@ sub OnGuiStatus()
 	SendGuiParameterShow("zMinContainer", showZMinC)
 	SendGuiParameterShow("zMinAdd",       showZMinC)
 	
-	SendGuiParameterShow( "positionShiftX", CInt( GetParameterBool("positionX") ) )
-	SendGuiParameterShow( "positionShiftY", CInt( GetParameterBool("positionY") ) )
+	SendGuiParameterShow("positionShiftX", CInt(GetParameterBool("positionX")))
+	SendGuiParameterShow("positionShiftY", CInt(GetParameterBool("positionY")))
 	
-	SendGuiParameterShow( "positionAlignX", CInt( GetParameterBool("positionX") ) )
-	SendGuiParameterShow( "positionAlignY", CInt( GetParameterBool("positionY") ) )
+	SendGuiParameterShow("positionAlignX", CInt(GetParameterBool("positionX")))
+	SendGuiParameterShow("positionAlignY", CInt(GetParameterBool("positionY")))
+	
+	SendGuiParameterShow("offWidth",  CInt(  GetParameterBool("hasOffSize") AND (mode == MODE_X OR mode == MODE_XY)  ))
+	SendGuiParameterShow("offHeight", CInt(  GetParameterBool("hasOffSize") AND (mode == MODE_Y OR mode == MODE_XY)  ))
+	SendGuiParameterShow("offTransition", CInt(  GetParameterBool("hasOffSize")  ))
 end sub
 
 Sub GetSourceContainer()
@@ -396,8 +405,8 @@ sub OnExecPerField()
 		newSize.x = cBg.scaling.x
 		newSize.y = cBg.scaling.y
 	elseif fonChangeMode == 1 then
-		newSize.x = cBg.geometry.GetParameterDouble(  "width" )/100.0
-		newSize.y = cBg.geometry.GetParameterDouble(  "height" )/100.0
+		newSize.x = cBg.geometry.GetParameterDouble("width")/100.0
+		newSize.y = cBg.geometry.GetParameterDouble("height")/100.0
 	end if
 	
 	'processing X
@@ -414,7 +423,7 @@ sub OnExecPerField()
 			cBg.Active = true
 			x = size.X/100.0 * xMulty + xPadding/10.0
 			If x < xMin Then x = xMin
-			newSize.x = x
+			newSize.x = GetSizeConsideringOffSize("offWidth", x)
 		End If
 	End If
 	
@@ -432,7 +441,7 @@ sub OnExecPerField()
 			cBg.Active = true
 			y = size.Y/100.0 * yMulty + yPadding/100.0
 			If y < yMin Then y = yMin
-			newSize.y = y
+			newSize.y = GetSizeConsideringOffSize("offHeight", y)
 		End If
 	End If
 	
@@ -561,7 +570,6 @@ Sub PreCalcFinishGabarits()
 	elseif fonChangeMode == 1 then
 		cBg.geometry.SetParameterDouble(  "width", cachedWidth )
 		cBg.geometry.SetParameterDouble(  "height", cachedHeight )
-		'cBg.geometry.SetChanged()
 	end if
 	cBg.RecomputeMatrix()
 End Sub
@@ -577,11 +585,6 @@ Sub CalcPosition()
 		vSource2 = arrExactSourceVertexes[1]
 		
 		PreCalcFinishGabarits()
-		
-		'vSource1 = cExactSource.parentContainer.LocalPosToWorldPos(vSource1)
-		'vSource1 = cBg.WorldPosToLocalPos(vSource1)
-		'vSource2 = cExactSource.parentContainer.LocalPosToWorldPos(vSource2)
-		'vSource2 = cBg.WorldPosToLocalPos(vSource2)
 		
 		if GetParameterBool("positionX") then
 			if alignX == ALIGN_X_LEFT then
@@ -722,3 +725,12 @@ Function GetLocalSize(_c_gabarit as Container, _c as Container) As Vertex
 	v2 = _c.WorldPosToLocalPos(v2)
 	GetLocalSize = CVertex(v2.x-v1.x,v2.y-v1.y,v2.z-v1.z)
 End Function
+
+Function GetSizeConsideringOffSize(offSizeName As String, onSize As Double) As Double
+	if NOT GetParameterBool("hasOffSize") OR (offSizeName == "offHeight" AND mode == MODE_X) OR (offSizeName == "offWidth" AND mode == MODE_Y) then
+		GetSizeConsideringOffSize = onSize
+		Exit Function
+	end if
+
+   GetSizeConsideringOffSize = onSize + (GetParameterDouble(offSizeName)/100.0 - onSize)*GetParameterDouble("offTransition")/100.0
+End function
