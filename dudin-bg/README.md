@@ -1,5 +1,8 @@
 ## BG takes size from "this" container and change size of another container with calculation
 
+#### Version 1.14.0 (7 June 2023)
+* feature: "off-size" with transition between static "off" size and dynamic "on"
+
 #### Version 1.13.0 (1 June 2023)
 * add margin for min-container sizes by X and Y axis
 
