@@ -1,5 +1,8 @@
 ## Text file reader
 
+#### Version 1.2 (10 August 2023)
+* update UI: make target more explicit
+
 #### Version 1.1 (13 September 2022)
 * added an output mode — to specific container with text geometry (with default as "this")
 * now you can disable removing empty lines
