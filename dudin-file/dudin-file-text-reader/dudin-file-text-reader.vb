@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,1,0)
+RegisterPluginVersion(1,2,0)
 Dim info As String = "Read and normalize a text file periodically. 
 Developer: Dmitry Dudin, http://dudin.tv"
 
@@ -11,19 +11,21 @@ Dim cTarget As Container
 
 ' INTERFACE
 Dim arrOutputModes As Array[String]
-arrOutputModes.Push("Text geom")
-arrOutputModes.Push("Global var")
-Dim OUTPUT_TO_GEOM As Integer = 0
-Dim OUTPUT_TO_VAR As Integer = 1
+arrOutputModes.Push("This")
+arrOutputModes.Push("Other")
+arrOutputModes.Push("SHM system")
+Dim OUTPUT_TO_THIS_GEOM As Integer = 0
+Dim OUTPUT_TO_OTHER_GEOM As Integer = 1
+Dim OUTPUT_TO_SYSTEM_VAR As Integer = 2
 
 sub OnInitParameters()
 	RegisterInfoText(info)
 	RegisterParameterString("filepath", "Text file fullpath", "", 100, 999, "")
 	RegisterParameterBool("is_removing_empty_lines", "Remove empty lines", false)
 	RegisterParameterDouble("interval", "Reading interval (sec)", 10.0, 1.0, 60.0)
-	RegisterRadioButton("output_mode", "Output to:", 0, arrOutputModes)
+	RegisterRadioButton("output_mode", "Output to:", OUTPUT_TO_THIS_GEOM, arrOutputModes)
 	RegisterParameterContainer("target", "└ Text container (or this)")
-	RegisterParameterString("varname", "└ Variable name", "", 100, 999, "")
+	RegisterParameterString("varname", "└ SHM system variable name", "", 100, 999, "")
 	RegisterPushButton("read", "Read the file now", 1)
 end sub
 
@@ -32,8 +34,11 @@ sub OnInit()
 	filepath.trim()
 	interval = GetParameterDouble("interval")
 	varname = GetParameterString("varname")
-	cTarget = GetParameterContainer("target")
-	if cTarget == null then cTarget = this
+
+	if GetParameterInt("output_mode") == OUTPUT_TO_OTHER_GEOM then
+		cTarget = GetParameterContainer("target")
+	end if
+
 	varname.trim()
 	tick = 0
 	ReadFile()
@@ -42,8 +47,8 @@ sub OnParameterChanged(parameterName As String)
 	OnInit()
 	ReadFile()
 	
-	SendGuiParameterShow("target", CInt(GetParameterInt("output_mode") == OUTPUT_TO_GEOM))
-	SendGuiParameterShow("varname", CInt(GetParameterInt("output_mode") == OUTPUT_TO_VAR))
+	SendGuiParameterShow("target", CInt(GetParameterInt("output_mode") == OUTPUT_TO_OTHER_GEOM))
+	SendGuiParameterShow("varname", CInt(GetParameterInt("output_mode") == OUTPUT_TO_SYSTEM_VAR))
 end sub
 
 sub OnExecPerField()
@@ -82,9 +87,11 @@ end sub
 
 sub Output(result as String)
 	Select Case GetParameterInt("output_mode")
-	Case OUTPUT_TO_GEOM
+	Case OUTPUT_TO_THIS_GEOM
+		this.geometry.text = result
+	Case OUTPUT_TO_OTHER_GEOM
 		cTarget.geometry.text = result
-	Case OUTPUT_TO_VAR
+	Case OUTPUT_TO_SYSTEM_VAR
 		System.Map[varname] = result
 	End Select
 end sub
