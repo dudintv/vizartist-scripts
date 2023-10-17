@@ -1,5 +1,8 @@
 ## Element (a lower third)
 
+#### Version 4.3.8 (18 Oktober 2023)
+* translate comments to English
+
 #### Version 4.3.7 (7 february 2022)
 * FIX: "out" command by fixing getting the end time of the main director
 
