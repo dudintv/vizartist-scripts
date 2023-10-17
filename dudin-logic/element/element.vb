@@ -1,151 +1,147 @@
-RegisterPluginVersion(4,3,7)
+RegisterPluginVersion(4,3,8)
 Dim info As String = "Developer: Dmitry Dudin
 http://dudin.tv/scripts/logic
 -------------------------------------------------------
-Укажи (через запятую, на пробелы пофиг) какие блоки титров
-будет уходить с экрана или наоборот показываться в случаях:
+Specify what elements leave the screen or vice versa be taken in.
+Elements should be separated by comma.
+All spaces are ignored.
 
-1строка: когда ВЫДАЕТСЯ ЭТОТ_титр в эфир - написать что делать с другими титрами?
-2строка: когда УБИРАЕТСЯ ЭТОТ_титр - что делать с другими?
-3строка: указать какие титры и при каком событии ВЫДАЮТ ЭТОТ_титр (+ при выдаче, - при убирании)
-4строка: указать какие титры и при каком событии УБИРАЮТ ЭТОТ_титр (+ при выдаче, - при убирании)
+1. When this appears: specify what to do when THIS ELEMENT IS ENTERED
+2. When this disappear: specify what to do when THIS ELEMENT IS EXIT
+3. When others appear: specify on what elements statuses THIS ELEMENT SHOULD ENTER
+4. When others disappear: specify on what elements statuses THIS ELEMENT SHOULD EXIT
 
-Знак \"-\" всегда заставляет блок убраться, а \"+\" появиться, 
-если не указан знак, по умолчанию, предполагается знак \"-\".
+You can specify elements names with sign. +(plus) stands for another element ENTER, -(minus) for EXIT.
+Example for 1 and 2 lines: +Logo, -Geo means to appear Logo element and disappear Geo.
+Example for 3 and 4 lines: +Logo, -Geo means to react wether when Logo is entered or when Geo is exit.
+If you do not specify the sign then -(minus) is used by default.
 
-Дополнительно можно указать условия срабатывания [в квадратных скобках]. По умолчанию берется свойство \"_status\", 
-но можно указывать другие свойства, например условие выдачи может быть наличие контента \"_fill\".
+Additionally, you can specify triggering conditions [in square brackets]. By default it considers \"_status\" property of elements.
+You can specify another property. As an example, you can react on the fill content — just specify \"_fill\", e.g. \"Geo_fill\"
 
-Примеры:
-+Comments[+Comments_fill]
--Comments,-Sinhron,  +OtherMarker
+Examples:
++Comments[+Comments_fill] — stands for appear Comments when this Comments element has the content to show.
+-Comments,-Title,  +WeatherMarker — remove Comments and Title but enter WeatherMarker. Spaces are ignored!
 
 ------------------------------------------------
-Директор титра дожен называться \"НазваниеТитра\"
-У главного директора должно быть 1-2 стопера.
+The element director should be call by exact its name. 
+This director can have only 1 or 2 stop-points.
 --------------------------------------------------
-Серийный режим позволяет выдвать титр по кусочкам (сериями) и зацикленно.
-Текст находящийся в переменной ИмяТитра_fill рубится согласну символам Разделителя
-и выдается последовательно через опредленную Паузу.
-Получается что-то типа \"бегущей строки\"... :)
+Serial mode enable the element work piece by piece. Reminds a flipping ticker.
+It takes the element content from the \"Element_fill\" variable and split the value by Delimeter.
+These pieces are taken one by one with the Pause.
+When the element wants to show the next piece it plays the change animation between first and second stop-points.
 ----------------------------------------------------
-Если \"Всегда начинать с первой\" в значении ВЫКЛ - значит:
-если титр получил тот же текст, что в последний раз 
-он начинает выдачу со следующей серии, после которой был убран!
-А если ВКЛ - то титр всегда будет начинать с первой серии.
+If you enable \"Always start from the first\"
+then: it always plays series from the very first item.
+else: it appears the next piece after that it was onair when it was exit.
 
-Если новый титр с другим fill — выдача пойдет с первой серии в любом случае!
+But, if the \"_fill\" content was changed (even one character)
+then: it always plays from the very first piece.
 "
  
  
 '--------------------------------------------------------------------------------------
-'определение локальных переменных
-
-'Разный префикс нужен для одновременной независимой работы двух титровальных систем
-'например для сцены "ньюсбара" и сцены "титров"
-'Он может быть произвольным. Главное чтобы совпадал с префиксом в элементных скриптах.
+' You can use the prefix to distinguish two Dudin Logic systems on one machine.
+' The prefix can be any. Keep in mind, it should be identical with the Global script of Dudin Logic.
 Dim prefix = ""
 Dim memory As SharedMemory = System.Map
 Dim local_memory As SharedMemory = Scene.Map
 
-Dim console As String           'сюда можно сливать текст для консоли
+Dim console As String           'place content for internal debug console in the script UI
  
-Dim titr_name As String         'имя титра
-Dim separator As String         'разделительный символ / символы
-Dim mode      As Integer        '0 - если обычный однотитровый, 1 - если серийный режим
-Dim testers   As Integer        '0 - кнопки тестирования НЕ видны, 1 - кнопки видны
-Dim firster   As Integer        '0 - начинать серии не обязательно с первой (см. start_by_previous), 1 - всегда начинать с первой
+Dim titr_name As String         'the element name
+Dim separator As String         'delimiter for the Serial Mode
+Dim mode      As Integer        '0 - means Single Mode, 1 - for Serial Mode
 	Dim MODE_SINGLE As Integer = 0
 	Dim MODE_SERIES As Integer = 1
+Dim testers   As Integer        '0 - hide testing button, 1 - show the buttons
+Dim firster   As Integer        '0 - it's allowed to start not from the first (see start_by_previous), 1 - always start from the first piece
 Dim take_by_fill As Boolean
-Dim d_OnOff   As Director       'основной директор анимации входа/смены/выхода
-Dim nav_OnOff As Channel        'в основном директоре action-канал с именем nav, от слова navigation
-Dim feelfill  As Boolean        'чувствительность на пустую строку fill. если  feelfill=true то нельзя будет выдать титр в котором нет текста для выдачи!
-Dim fill_arr  As Array[String]  'массив серий, туда попадают титры-серии после разбиения по разделительным символам
-Dim isCanChange, isCanINtoOUT As Boolean  'разрешения на однократное выполнение change и INtoOUT
+Dim d_OnOff   As Director       'the element director for all main animations: enter, change, exit
+Dim nav_OnOff As Channel        'action-channel with "nav" name, stands for "navigation"
+Dim feelfill  As Boolean        'should the elemend react on empty _fill. If feelfill=true then it's not possible to exter element with empty _fill
+Dim isCanChange, isCanINtoOUT As Boolean  'one-time permissions to make Change or jump from "In to Out"
 Dim is_needed_to_start_counter_for_taking_next_series As Boolean
 
-	'текстовые поля с соответсвующими значениями... :)
 Dim ctrl, fill, take, takeout, takethis, takeoutthis, cur As String
 	
-	'массивы обозначающие титры взаимодействующие с этим титром
+	'arrays keeping AutoTakeout logic rules
 Dim take_arr, takeout_arr, takethis_arr, takeoutthis_arr As Array[String]
 	
-	'стоперы и графницы главного директора
+	'stop-points and border of the element director
 Dim stoper_a, stoper_b As Double
 Dim start_time, end_time As Double
-	'переменные для функции вычисления включения стоперов в диапазон
+	'do stop-points are included in the range
 Dim startInclude, endInclude As Boolean
-	'плейхэд и его допуск
+	'animation playhead time and its sensitivity treshold
 Dim playhead As Double
 Dim playheadTreshold As Double = 0.1
 
-	'коренной контейнер
+	'the main(root) container of the element where it looks for dropzones for the element content
 Dim cRoot As Container
 
-	'директора дополнительных анимаций. Требуется для проигрывания анимаций в объектах DZ_TYPE_OBJECT
+	'additional animation directors. They are needed in case using objects DZ_TYPE_OBJECT with internal animations.
 Dim arr_dirObjects As Array[Director]
 
-	'anim keys of clipchannels in directors
+	'clipchannels keyframes
 Dim arr_clipKeys As Array[Keyframe]
  
 '-**********************************************************************************-'
-	'используется для хранения текущего индекса серии
+	'keep the current index for the Serial Mode
 Dim curSeries As Integer
 
-	'массив серий полученный из fill
+	'array to store _fill pieces in case of Serial Mode
 Dim arr_fill As Array[String]
 
-	'пауза между сериями, измеряется во фреймах (т.е. 50 в секунду)
+	'pause between pieces in Serial Mode (in frames, in PAL system 50 means one second)
 Dim pause As Integer
 
-	'используется как счетчик пройденного времени с момента вызова start_delay_series()
-	'значние -1 значит что считать не надо...
-	'инкреминируется до значения pause
+	'elapsed time counter after triggering start_delay_series()
+	'value "-1" means do not calculate
+	'incremented until the value in the "pause" variable
 Dim passed As Integer = -1
 
-	'начинать ли серию всегда с первой серии
+	'should is always start fro mthe first piece?
 Dim start_by_first As Boolean
 
-	'если НЕ начинать с первой то начинать либо с последней выданной либо со следующей серии
+	'if to not start from the first, than start from the last visible or from the next one?
 Dim start_by_previous As Boolean
 
-	'убирать ли титр если последняя серия отыграла
+	'should to exit if the last piece is finished
 Dim takeout_by_last As Boolean
 
-	'автоматически убирать по таймеру?
+	'auto-exit by timer?
 Dim auto_takeout As Boolean
-	'автоматически убирать, с указанием паузы сколько титр должен простоять
-	'стартовое значение для auto_takeout_from
+	'duration for auto-exit — the starting value for "auto_takeout_from"
 Dim auto_takeout_pause As Double
-	'переменная-таймер автоубирания (в филдах)
-	'декреминируется до нуля
+	'countdown until 0(zero)
 Dim auto_takeout_from As Integer
 
 
-	'условия автоматического убирания
+	'conditions for auto-exit
 Dim takeout_by_last_condis As String
-	'кол-во циклов до срабатывания автоматического убирания
+	'loops amout before auto-exit (works for Serial Mode)
 Dim takeout_by_last_countLoop As Integer
 Dim i_curLoop As Integer = 1
 '-***********************************************************************-'
 
-'ВРЕМЕННЫЕ ПЕРЕМЕННЫЕ
+'temporal varialbes (use with awarness)
 Dim s, nametype As String
 Dim i AS Integer
 
-'Пример fill:
-'Geo:text=Москва
-'Name=Дмитрий Дудин|Status=работаю на телеке
+'Examples of "_fill":
+'Geo:text=Amsterdam
+'Name=Dmitry Dudin|Status=working on that
 
 'LOG:
 Sub Log(message As String)
-	if System.Map["AUTOTAKEOUT_LOG"] == "1" then
+	if System.Map["DUDIN_LOGIC_LOG"] == "1" then
 		println(3, "DL::" & message)
 	end if
 End Sub
 
-'DROPZONES:
+'DROPZONES A/B SIDES:
 Dim DZ_SIDE_ONLY_ONE = 0
 Dim DZ_SIDE_FIRST = 1
 Dim DZ_SIDE_SECOND = 2
@@ -161,6 +157,7 @@ Function DZ_SIDE(input As String) As Integer
 	End Select
 End Function
 
+' Supported dropzones types:
 ' DZ_TYPE_ACTIVE
 ' DZ_TYPE_OMO
 ' DZ_TYPE_ALPHA
@@ -183,11 +180,11 @@ End Function
 ' DZ_TYPE_LOOK_AT
 
 Structure Dropzone	
-	c As Container   'изменяемый контейнер титра
-	order As Integer 'порядок (сверху вниз, в пределах поддерева титра)
-	side As Integer  'отношение к анимации изменения — либо титр имеет одну единственную dropzone, либо 1 и 2 для плавной смены DZ_MODE
-	name As String   'имя dropzon'ы
-	type As String   'тип данных dropzon'ы
+	c As Container   'changable container of the Dropzone
+	order As Integer 'ordered index, from top to bottom, only within the element-root sub-tree
+	side As Integer  'relation for the Change animation — wether the element has single dropsone or 1 and 2 for the smooth change DZ_MODE
+	name As String   'dropzone's name
+	type As String   'data type of the dropzone
 End Structure
 
 Dim arr_dropzones As Array[Dropzone]
@@ -206,8 +203,8 @@ Sub SetDropzones()
 		name_child = all_childs[i].name
 		name_child.Trim()
 		
-		'dropzon'ы обозначаются символом = в начале названия контейнера, 
-		'если его нет - значит это НЕ dropzon'а
+		'it searched dropzones by the following convention:
+		'dropzones containers names start from "=" sign
 		if name_child.left(1) <> "=" then
 			all_childs.Erase(i)
 			i -= 1
@@ -221,7 +218,7 @@ Sub SetDropzones()
 		
 		name_child = all_childs[i].name
 		
-		'Сохранить директора для дополнительной анимации объектов
+		'storing merged-object animations to play them accordingly
 		if name_child.Find("object") > 0 then
 			arr_dirObjects.Push(Stage.FindDirector(name_child))
 		end if
@@ -241,7 +238,7 @@ Sub SetDropzones()
 			end if
 			name_child.Erase(0,1)
 		else
-			dz.side = DZ_SIDE_ONLY_ONE '=0
+			dz.side = DZ_SIDE_ONLY_ONE
 			order1 += 1
 			dz.order = order1
 		end if
@@ -314,8 +311,8 @@ Sub SendFillToDropzones(fill As String, side As Integer)
 		
 		for y=0 to arr_dropzones.ubound
 			dz = arr_dropzones[y]
-			'если совпадает имя, тип и сторона типа
 			if side == dz.side OR dz.side == DZ_SIDE_ONLY_ONE then
+				'when the name, dropzone type and side are the same
 				if name == dz.name OR (name == "" AND order == dz.order) then
 					if type == "" then type="text"
 					if type == dz.type then
@@ -452,83 +449,71 @@ Sub SendFillToDropzones(fill As String, side As Integer)
 End Sub
 
 Function FindClipChannelKey(i As Integer) As Keyframe
-	'Need to find way fo find keyframe independently of key... Temporarly, I leave this:
+	'Need to discover a way fo find keyframes independently of key... Temporarly, I leave this:
 	FindClipChannelKey = Stage.FindDirector("Clip" & i).FindKeyframe("clip" & i)
 End Function
 
 Sub SetClipChannel(num As Integer, path As String)
-'	num -= 1
-'	s = system.GetClipChannel(num).GetClipName()
-'	if s <> path then
-'		system.GetClipChannel(num).FlushActive()
-'		system.GetClipChannel(num).SetClipName(path)
-'		system.GetClipChannel(num).FlushPending()
-'	end if
 	System.SendCommand("#" & arr_clipKeys[num].VizId & "*CLIPNAME SET " & path)
 End Sub
 
 Sub SetClipLoop(num As Integer, is_loop As Boolean)
-'	num -= 1
-'	system.GetClipChannel(num).LoopMode = is_loop
 	arr_clipKeys[num].channel.PostLoopActive = is_loop
 	System.SendCommand("#" & arr_clipKeys[num].channel.VizId & "*POST_LOOP_INFINITE SET " & CInt(is_loop))
 End Sub
  
 '-----------------------------------------------------------------------------------------------------------
-'используемые глобальные переменные:
-'(вместо "Titr" подставляется имя данного титра)
+'Shared Memory variables conventions:
+'(imagine your element name insteal of "Element")
 '
-'System.Map["Titr_control"]
-'возможнные значения:
-'-1 - безусловно убрать данный титр! Чтобы не сработала логика взаимоубирания
-'0 - убрать данный титр
-'1 - по возможности выдать данный титр
-'2 - выдать данный титр даже если он уже выдан, т.е. при необходимости проиграть анимацию смены
-'3 - выдать/убрать, т.е. если убрано - выдать и если выдано - убрать...
-'4 - превью титра, т.е. мнгновенно выдать! Фактически show(take_b)+continue
-'5 - сброс переменной, чтобы скрипт отрегагировал на изменение в следующий раз
+'System.Map["Element_control"]
+'considerables values:
+'-1 - unconditionaly exit this element. Disables all AutoTakeout logic.
+'0 - exit this element
+'1 - enter this element if possible
+'2 - do Change, if it's exit then enter the lement
+'3 - switch the element, from on to off, from off to on
+'4 - preview the element, it means show the element immediately. Technically it does show(take_b)+continue
+'5 - for the variable resetting allows to react on the variable changing
 '
-'System.Map["Titr_status"]
-'то же что и 'System.Map["Titr_control"]
-'только гарантированно хранит текущее состояние 0..1
+'System.Map["Element_status"]
+'almost similar 'System.Map["Element_control"]
+'but it guaranties to keep only one of two values: 0 or 1
 '
-'System.Map["Titr_fill"]
-'в эту переменную помещается текст титра для последующей выдачи с помошью Titr_control
-'так же это может быть серия титров разделенных символом Разделителем, по умолчанию |
+'System.Map["Element_fill"]
+'this variable stores the content for the Element,
+'for the Serial Mode it can contains data pieces separated by the Delimiter.
 '
-'System.Map["Titr_value"]
-'это конкретное значение выданного в данный момент титра
-'когда титр убран это значение равно пустой строке!
+'System.Map["Element_value"]
+'it contains specific value of the current moment.
+'it contains ""(empty string) when the element is exit
 '
-'System.Map["Titr_previous"]
-'это значения титра в предыдущий раз, такая переменная необходима 
-'для определения логики выдачи серии титров:
-'когда выдается серия ровно такая же как в предыдущий раз
-'и установлен параметер "всегда начинать с первой" в Off
-'титр продолжает выдачу со следующей серии!
+'System.Map["Element_previous"]
+'is contains the elment fill of the previous _fill value
+'it's useful to define Serial Mode logic
 '
-'System.Map["Titr_curSeries"]
-'это индекс текущей серии в серийном режиме
+'System.Map["Element_curSeries"]
+'the inder of the current piece in Serial Mode
 '
 '
-'...вместо "Titr" подставляется имя данного титра!
+'...instead of "Element" insert the Element name!
 '----------------------------------------------------------
  
 Sub OnInitParameters()	
 	RegisterParameterString("Name", "Name:", "", 30, 256, "")
 	RegisterParameterBool("Mode", "Serial mode", false)
-	RegisterParameterString("Separator", "└ Delimeter:", "\\n", 10, 32, "")
-	RegisterParameterDouble("Pause", "└ Pause(sec):", 5, 0, 10000)
-	RegisterParameterBool("Start_by_first", "└ Always begin from first", false)
-	RegisterParameterBool("Start_by_previous", "    └ from previous", false)
-	RegisterParameterBool("Takeout_by_last", "└ Takeout on the last", false)
-	RegisterParameterString("Takeout_by_last_condis", "    └ Conditions 1&2", "", 40, 256, "")
-	RegisterParameterInt("Takeout_by_last_countLoop", "    └ Cicle Count", 1, 1, 10000)
-	RegisterParameterBool("LogicAutoTakeout", "Logic auto-takeout", false)
-	RegisterParameterString("Take", "└ When it take        1,2(3&4)", "", 65, 256, "")
-	RegisterParameterString("Takeout", "└ When it takeout     1,2(3&4)", "", 65, 256, "")
-	RegisterParameterString("TakeThis", "└ When anothers take 1,2(3&4)", "", 65, 256, "")
-	RegisterParameterString("TakeoutThis", "└ When anothets takeout    1,2(3&4)", "", 65, 256, "")
+	RegisterParameterString("Separator", "        └ Delimeter (newline is \\\\n):", "\\n", 10, 32, "")
+	RegisterParameterDouble("Pause", "        └ Pause (sec):", 5, 0, 10000)
+	RegisterParameterBool("Start_by_first", "└ Always start from the first", false)
+	RegisterParameterBool("Start_by_previous", "    └─ from the last onee", false)
+	RegisterParameterBool("Takeout_by_last", "└ Takeout after the last", false)
+	RegisterParameterString("Takeout_by_last_condis", "            └─ Conditions a&b", "", 40, 256, "")
+	RegisterParameterInt("Takeout_by_last_countLoop", "            └─ Cicle Count", 1, 1, 10000)
+	RegisterParameterBool("LogicAutoTakeout", "AutoTakeout logic", false)
+	RegisterParameterString("Take", "└ When it take        a,b(c&d)", "", 65, 256, "")
+	RegisterParameterString("Takeout", "└ When it takeout     a,b(c&d)", "", 65, 256, "")
+	RegisterParameterString("TakeThis", "└ When anothers take a,b(c&d)", "", 65, 256, "")
+	RegisterParameterString("TakeoutThis", "└ When anothets takeout    a,b(c&d)", "", 65, 256, "")
 	RegisterParameterBool("FeelFill", "Takeout if fill is empty", false)
 	RegisterParameterBool("TakeByFill", "Take by changing of fill", false)
 	RegisterParameterBool("AUTOTAKEOUT", "Timer of auto-takeout", false)
@@ -536,9 +521,9 @@ Sub OnInitParameters()
 	RegisterParameterContainer("root", "Root of element:")
 	RegisterPushButton("rebuild", "Initialize", 1)
 	RegisterInfoText(info)
-	RegisterParameterText("console", "После изменения параметров следует
-нажать Initialize чтобы они применились сразу.
-При загрузки сцены это происходит автоматически!", 450, 50)
+	RegisterParameterText("console", "After changing the parameters, click [Initialize] 
+so that they are applied immediately.
+It happens also when the scene is loaded.", 450, 50)
 	RegisterParameterBool("TestFunctions", "Show test features", false)
 	RegisterPushButton("TestTake","Take",11)
 	RegisterPushButton("TestTakeout","Takeout",10)
@@ -551,13 +536,13 @@ End sub
 '----------------------------------------------------------
  
 sub OnInit()
-	'опредлеям имя титра!
+	'define the Element name
 	titr_name = GetParameterString("Name")
 	titr_name.trim()
 	If titr_name = "" Then
-		'Если в поле "имя титра" не вписано ничего, то попытаемся получить его исходя из имени контейнера [из квадратных скобок]
+		'if the Name field is empty, then let's try to get it from the container name
 		If this.name.find("|") > 1 Then
-			'Ура! Видимо тут раньше было имя и контейнер оформлен правильно — берем имя и логику из имени своего контейнера
+			'smart-name is detected — let's take the name and AutoTakeout logic from the container name
 			Dim arrNames As Array[String]
 			titr_name = this.name
 			titr_name.Trim()
@@ -571,28 +556,28 @@ sub OnInit()
 			this.ScriptPluginInstance.SetParameterString("TakeoutThis",arrNames[4])
 			SendGuiRefresh()
 		Else
-			'если нельзя получить имя титра - нафиг надо его вычислять?! =)
-			console &= "> Отсутвует имя титра! :(" & "\nБез него не буду ничего вычислять!\n"
+			'if it's not possible to detect the name
+			console &= "> There is no element name! :(" & "\nI can't work without the name!\n"
 			exit sub
 		End If
 	End If
 	If titr_name.Find("_") <> -1 Then
-		console &= "> Внимание! Символ_подчеркивания не гарантирует грамотную работу.\n"
+		console &= "> Attention! Underscore does not guarantie stable work.\n"
 	End If
 	'------------------
-	'cброс fill
+	'reset _fill
 	memory[titr_name & "_fill"] = ""
 	local_memory[titr_name & "_fill"] = ""
-	'будем реагировать на изменение этих двух переменных:
+	'let's react on these variables
 	memory.RegisterChangedCallback(titr_name & "_control")
 	memory.RegisterChangedCallback(titr_name & "_fill")
-	'дополнительно смотрим на локальные переменные
+	'additionally checks these variables
 	local_memory.RegisterChangedCallback(titr_name & "_control")
 	local_memory.RegisterChangedCallback(titr_name & "_fill")
-	'и на глобальное обновление базы автобубирания
+	'and watch the global variable
 	memory.RegisterChangedCallback(prefix & "AUTOTAKEOUT_ALL_RECALCULATE")
  
-	'вычисляем директор с его каналами и ключами
+	'enable director with its channes and keyframes
 	CalculateDirector()
 	'------------------
 	take = GetParameterString("Take")
@@ -610,7 +595,7 @@ sub OnInit()
 	separator.Trim()
 	separator.MakeLower()
 	If separator == "vbnewline" OR separator == "\\n" Then
-		'если разделитель - обычный перенос строки
+		'cosider newline delimiter
 		separator = "\n"
 	End If
 	start_by_first = GetParameterBool("Start_by_first")
@@ -620,18 +605,18 @@ sub OnInit()
 	takeout_by_last_condis = GetParameterString("Takeout_by_last_condis")
 	takeout_by_last_countLoop = GetParameterInt("Takeout_by_last_countLoop")
  
-'---параметры автоубирания через паузу
+'---parameters of AutoTakeout after pause
 	auto_takeout = GetParameterBool("AUTOTAKEOUT")
 	auto_takeout_pause = GetParameterDouble("AUTOTAKEOUTPause")
 	auto_takeout_from = 0
  
-'---создание массивов имен блоков для реакции
+'---create arrays of elements names for reactions
 	take.Split(",",take_arr)
 	takeout.Split(",",takeout_arr)
 	takethis.Split(",",takethis_arr)
 	takeoutthis.Split(",",takeoutthis_arr)
  
-'---оформляю текущий контейнер (имя + цвет)
+'---apply the element container name and UI color
 	titr_name.trim()
 	If titr_name = "" Then
 		this.name = "_none_"
@@ -649,19 +634,19 @@ sub OnInit()
 	Stage.SetChanged()
 	Scene.UpdateSceneTree()
 
-	'отправляем массивы условий в глобальную часть
+	'send the AutoTakeout to the Dudin Logic global script
 	SendConditionsToGlobal()
 	
-	'сбрасываем стартовые значения в локальной памяти
+	'reset starting values in the local variables
 	local_memory[titr_name & "_value"] = ""
 	local_memory[titr_name & "_control"] = 5
 	local_memory[titr_name & "_status"] = 0
-	'выключаем таймер
+	'disable the timer
 	passed = -1
 	is_needed_to_start_counter_for_taking_next_series = false
 	
  
-	'ставим директор в нулевую позицию
+	'reset the animation
 	d_OnOff.Show(0)
 	
 	'set ClipChannel keys
@@ -671,17 +656,18 @@ sub OnInit()
 		arr_clipKeys.Push(FindClipChannelKey(i))
 	next
 	
-	'устанавливаем все dropzon'ы
+	'setup all dropzons
 	SetDropzones()
-'---инициализация завершена!
+'---initialization is finished
 end sub
 
 Sub SendConditionsToGlobal()
-	'---заполняем массивы автоубирания/автопоявления
+	'---fill arrays for AutoTakeout logic
 	Dim AUTOTAKEOUTonTAKE As Array[Array[String]]
 	Dim AUTOTAKEOUTonTAKEOUT As Array[Array[String]]
 	Dim cur_arr As Array[String]
-	'-------Для Take
+	
+	'-------for ENTER
 	cur_arr.Clear()
 	If take_arr.UBound > -1 Then
 		cur_arr.Push(titr_name)
@@ -692,7 +678,8 @@ Sub SendConditionsToGlobal()
 			AUTOTAKEOUTonTAKE.Push(cur_arr)
 		End If
 	End If
-	'-------Для TakeOut
+	
+	'-------for EXIT
 	cur_arr.Clear()
 	If takeout_arr.UBound > -1 Then
 		cur_arr.Push(titr_name)
@@ -703,7 +690,8 @@ Sub SendConditionsToGlobal()
 			AUTOTAKEOUTonTAKEOUT.Push(cur_arr)
 		End If
 	End If
-	'-------Для TakeThis 
+	
+	'-------for ENTER THIS
 	For i=0 to takethis_arr.UBound
 		cur_arr.Clear()
 		cur = takethis_arr[i]
@@ -724,7 +712,8 @@ Sub SendConditionsToGlobal()
 			AUTOTAKEOUTonTAKE.Push(cur_arr)
 		End If
 	Next
-	'-------Для TakeOutThis
+	
+	'-------for EXIT THIS
 	For i=0 to takeoutthis_arr.UBound
 		cur_arr.Clear()
 		cur = takeoutthis_arr[i]
@@ -746,8 +735,7 @@ Sub SendConditionsToGlobal()
 		End If
 	Next
 	
-	'созданные массивы авто-управления и подмены
-	'отправляем запись в общий скрипт для занесения в общий список взаимодействия
+	'sent the arrays to the global DL script
 	local_memory[prefix & "AddTo_AUTOTAKEOUTonTAKE"] = null
 	local_memory[prefix & "AddTo_AUTOTAKEOUTonTAKEOUT"] = null
 	
@@ -759,18 +747,18 @@ End Sub
 '----------------------------------------------------------
  
 Sub OnExecAction(buttonId As Integer)
-	'при нажатии на "Initialize"
 	If buttonId = 1 Then
+		'press "Initialize"
 		console = ""
-		'выполняем стандартные процедуры инициализации
+		'run standard initializations
 		OnInitParameters()
 		OnInit()
-		'и заставляем пересчитать всю логику АВТОУБИРАНИЯ (взаимодействия титров)
+		're-calculate all the Autotakeout logic
 		memory[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = ""
 		memory[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = titr_name
  
-		'выводим отчет о проделанной работе
-		'если не было зафиксировано ошибок то OK
+		'print out the result of the work
+		'in case if everything is fine then prnt "OK"
 		If console = "" Then console = "OK"
 		this.ScriptPluginInstance.SetParameterString("console",console)
 		SendGuiRefresh()
@@ -787,7 +775,7 @@ End Sub
 '----------------------------------------------------------
 sub OnGuiStatus()
 	mode = CInt(GetParameterBool("Mode"))
-	'отслеживаем выбор серийного режима (SINGLE или SERIES)
+	'follow selection of SINGLE or SERIES mode
 	If mode == 1 Then
 		SendGuiParameterShow("Separator", SHOW)
 		SendGuiParameterShow("Pause", SHOW)
@@ -848,6 +836,7 @@ sub OnGuiStatus()
 		SendGuiParameterShow("TestOnOff", SHOW)
 		SendGuiParameterShow("TestFill", SHOW)
 		SendGuiParameterShow("TestMakeFill", SHOW)
+		SendGuiParameterShow("FastPreview", SHOW)
 	Else
 		SendGuiParameterShow("TestTake", HIDE)
 		SendGuiParameterShow("TestTakeout", HIDE)
@@ -855,6 +844,7 @@ sub OnGuiStatus()
 		SendGuiParameterShow("TestOnOff", HIDE)
 		SendGuiParameterShow("TestFill", HIDE)
 		SendGuiParameterShow("TestMakeFill", HIDE)
+		SendGuiParameterShow("FastPreview", HIDE)
 	End If
 end sub
 '----------------------------------------------------------
@@ -862,26 +852,25 @@ end sub
 Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 	Dim test_point As Vertex = Scene.ScreenPosToWorldPos(99987,99987)
 	if test_point.x == 0 AND test_point.y == 0 AND test_point.z == 0 then
-		'если сцена не в рендере — то никак не реагировать
-		Log("Scene is not in layer. Only in scene pool.")
+		Log("Scene is not in render layer. It's stored in the scene pool.")
 		exit sub
 	end if
 	
 	Log(CStr(map))
 	' CONTROL
 	If mapKey = titr_name & "_control" Then
-		'реакция на управляющую переменную
+		'triggers by the _control variable
 		ctrl = map[titr_name & "_control"]
 		Log(titr_name & "_control = " & ctrl)
 		
-		'сбрасываем через 2 кадра значение, чтобы реакция оставалась даже на одно и то же значение
+		'auto-reset control after two frames in order to keep opportunity to react on the same value
 		if ctrl <> "5" Then
 			reset_control_with_delay()
 		end if
 		
 		If ctrl = "1" Then
 			'TAKE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			'Проверка - выдаем если только титр убран
+			'check if we really can enter the element
 			Log("TRY TAKE")
 			
 			If PlayheadIsNear(0) OR PlayheadIsMore(stoper_b) Then
@@ -897,22 +886,21 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 					Log("FAIL TAKE")
 					exit sub
 				End If
-				'-------
-				'выдаем уж точно:
+				'enter for sure:
 				Log("DO TAKE")
 				d_OnOff.Show(0)
 				d_OnOff.ContinueAnimation()
 				take()
 			End If
-			'объявляем текущее состояние
+			'reflect in the status
 			local_memory[titr_name & "_status"] = 1
-			'запускаем клипы
+			'run ClipChannels
 			StartClips()
-			'запускаем анимацию геометрий
+			'run merged geometries animations
 			StartAnimGeoms()
 		ElseIf ctrl = "0" OR ctrl = "-1" Then
 			'TAKEOUT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			'Проверка - Если ползунок времени находится в пределах выданного состояния, то убираем
+			'Check if the playhead in the "in" range then exit
 			isCanChange = false
 			isCanINtoOUT = false
 			'если реагируем на fill, то обнуляем fill
@@ -926,13 +914,13 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 				d_OnOff.ContinueAnimation()
 				takeout_change()
 			End If
-			'объявляем текущее состояние
+			'reflect in the status
 			local_memory[titr_name & "_status"] = 0
 			
 			
 		ElseIf ctrl = "2" Then
 			'CHANGE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			'Проверка - если выдан, то проигрываем блок анимации loop(в котором меняется значение)
+			'Check if the Element is entered then play Change animation
 			fill = map[titr_name & "_fill"]
 			fill.trim()
 			If PlayheadBetweenAndIncludeLastStoper(0,stoper_b) Then
@@ -942,27 +930,27 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 				End If
 				
 				If stoper_a == stoper_b Then
-					'если блок loop отсутствует
+					'if there is no Change animation
 					d_OnOff.Show(0)
 					local_memory[titr_name & "_control"] = 1
 				Else
 					'если есть блок loop
+					'if there is Change animation
 					if fill <> local_memory[titr_name & "_value"] then
 						d_OnOff.Show(stoper_a)
 						change()
 						d_OnOff.ContinueAnimation()
 					end if
 				End If
-				'сохраняеям текущее состояние
+				'reflect in the status
 				local_memory[titr_name & "_status"] = 1
 			ElseIf PlayheadIsNear(0) OR PlayheadIsMore(stoper_b) Then
-				'если не выдан, надо просто выдать
+				'in case the Element is exit then enter it
 				If FillIsExist() OR NOT feelfill then
 					local_memory[titr_name & "_control"] = 1
 					exit sub
 				End if
 			End If
-			'объявляем текущее состояние
 			StartClips()
 		ElseIf ctrl = "3" Then
 			'ON/OFF !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -972,7 +960,7 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 				local_memory[titr_name & "_control"] = 1
 			End If
 		ElseIf ctrl = "4" Then
-			'PREVIEW титра - быстро показать выданный момент титра
+			'PREVIEW - quickly show entered Element, without animation
 			isCanChange = false
 			isCanINtoOUT = false
 			d_OnOff.Show(stoper_a-0.04)
@@ -1009,14 +997,14 @@ End Sub
 '----------------------------------------------------------
 
 Sub CalculateDirector()
-	'найти основной директор, его ключи...
+	'find the Element director and its keyframes
  
 	d_OnOff = Stage.FindDirector (titr_name)
 	If d_OnOff = null Then
-		'если основной директор НЕ найден :(
+		'if it's not possible to find :(
 		console &= "> Не смог найти основной директор!\n" & "Он должен быть назван \"" & titr_name & "\"\n"
 	Else
-		'если основной директор НАЙДЕН!
+		'it's found!
 		if d_OnOff.EventChannel.KeyframeCount < 1 then
 			console &= "> В основном директоре нет стоперов!\n" & "Надо добавить минимум один стопер.\n"
 			exit sub
@@ -1032,27 +1020,25 @@ Sub CalculateDirector()
 		end_time   = CDbl(  System.SendCommand("#" & Scene.VizId & "*STAGE*#" & d_OnOff.VizID & "*END_TIME GET"  )  )
 	End If
 End Sub
+
 '----------------------------------------------------------
- 
-'процедура реакции на выдачу титра
+
 Sub take()
 	If mode == MODE_SERIES Then
 		If start_by_first == TRUE Then
-			'если надо полюбому стартовать с первой
+			'if we have to start from the very first piece
 			local_memory[titr_name & "_curSeries"] = 0
 		Else
-			'если стартовать надо по ситуации 
+			'start by situation
 			If local_memory[titr_name & "_value"] == local_memory[titr_name & "_previous"] Then
-				'если ситуация сложилась (т.е. нововыданный титр идентичный предыдущему) и надо понять как действовать
+				'if the current _fill is equal to the previous
 				If start_by_previous == TRUE Then
-					'если надо продолжать с выданной в предуыдущий раз серии
-					'в этой ситуации ничего не надо трогать
+					'don't do anything
 				Else
-					'если надо продолжать со следующей серии относительно выданный в предыдущий раз
 					local_memory[titr_name & "_curSeries"] = local_memory[titr_name & "_curSeries"] + 1
 				End If
 			Else
-				'если ситуация не сложилась, т.е. новый набор титров отличается от предыдущего
+				'in case the current is different to the previous
 				local_memory[titr_name & "_curSeries"] = 0
 			End If
 		End If
@@ -1071,7 +1057,7 @@ Sub take()
 		SendFillToDropzones(fill,DZ_SIDE_SECOND)
 	End If
  
-	'включаем таймер автоубирания, если надо
+	'enable the auto-exit timer, if needed
 	auto_takeout = GetParameterBool("AUTOTAKEOUT")
 	If auto_takeout == TRUE Then
 		auto_takeout_pause = GetParameterDouble("AUTOTAKEOUTPause")
@@ -1080,10 +1066,9 @@ Sub take()
 	
 	StartObjectDirectors()
 End Sub
+
 '----------------------------------------------------------
  
-'процедура реакции на прееход с одного на другое значение
-'выполняется в ключе loop_c
 Sub change()
 	If cRoot = null Then Exit Sub
 	isCanINtoOUT = true
@@ -1101,10 +1086,11 @@ Sub change()
 	
 	StartObjectDirectors()
 End Sub
+
 '----------------------------------------------------------
  
-'процедура выравнивания текста на обоих контейнерах
-'выполняется в ключе loop_d
+'procedure for sinchronization of Change animation keyframes
+'it runs in the "loop_d" keyframe
 Sub INtoOUT()
 	If cRoot = null Then Exit Sub
 	isCanINtoOUT = false
@@ -1112,24 +1098,24 @@ Sub INtoOUT()
 	fill.trim()
 	SendFillToDropzones(fill,DZ_SIDE_FIRST)
 End Sub
+
 '----------------------------------------------------------
  
-'процедура реакции на убирание титра
 Sub takeout_change()
-	'по-любому вырубаем таймер
+	'disable timer in any case
 	stop_delay_series()
  
-	'устанавливаем предыдущее значение
+	'set the previous value
 	fill = CStr(local_memory[titr_name & "_fill"])
 	fill.Trim()
 	local_memory[titr_name & "_previous"] = fill
  
-	'а текущее значение в ничто
+	'empty the current value
 	local_memory[titr_name & "_value"] = ""
 End Sub
+
 '----------------------------------------------------------
 
-'запуск дополнительных анимаций объектов
 Sub StartObjectDirectors()
 	for i=0 to arr_dirObjects.UBound
 		arr_dirObjects[i].StartAnimation()
@@ -1137,12 +1123,11 @@ Sub StartObjectDirectors()
 	
 End Sub
 
-'запуск ClipChannel-видео
+'start ClipChannels
 Sub StartClips()
 	for y=0 to arr_dropzones.ubound
 		if arr_dropzones[y].type.length == 5 AND arr_dropzones[y].type.left(4) == "clip" then
 			i = CInt(arr_dropzones[y].type.right(1))
-			'system.GetClipChannel(i-1).Play(0)
 			arr_clipKeys[i].channel.director.StartAnimation()
 		end if
 	next
@@ -1168,11 +1153,10 @@ End Sub
 '-*****************************************************************************************-'
 '-*****************************************************************************************-'
 '-*****************************************************************************************-'
-' РАБОТА С СЕРИЯМИ...
+' WORK WITH SERIES...
 function take_cur_series() as String
-	if MODE_SERIES == mode then
-		'значит если СЕРИЙНЫЙ режим
-		'надо понять какая серия была выдана и вернуть следующую
+	if mode == MODE_SERIES then
+		'let's calculate which piece is shown and return the next one
 		if local_memory.ContainsKey(titr_name & "_curSeries") then
 			curSeries = CInt(local_memory[titr_name & "_curSeries"])
 			if curSeries < 0 Then curSeries = 0
@@ -1190,7 +1174,7 @@ function take_cur_series() as String
 		fill.split(separator, arr_fill)
 		
 		if arr_fill.size > 0 then
-			'если есть хоть одна серия:
+			'if there is at least one piece:
 			for i = 0 to arr_fill.UBound
 				s = arr_fill[i]
 				s.Trim()
@@ -1201,7 +1185,7 @@ function take_cur_series() as String
 				arr_fill.push("")
 				curSeries = 0
 			else
-				'если текущая серия больше чем доступных серий, то сбросить
+				'if the current piece index is more then reset
 				if curSeries > arr_fill.UBound then
 					curSeries = 0
 					local_memory[titr_name & "_curSeries"] = 0
@@ -1215,28 +1199,25 @@ function take_cur_series() as String
 				take_cur_series = nametype & "=" & arr_fill[curSeries]
 			end if
 		else
-			'если нет ни одной серии
+			'if there is no pieces
 			local_memory[titr_name & "_curSeries"] = 0
 			take_cur_series = ""
 		end if
 	else
-		'в НЕсерийном режиме отдает пустую строку
+		'in case non-series mode (Single mode)
 		take_cur_series = ""
 	end if
 end function
  
-'функция подачи следующей серии комманды с задеркой
+'take the next piece with a delay
 sub take_next_series()
-	'если таймер выключен - ничего не делать!
-	'if passed < 0 Then Exit Sub
 	is_needed_to_start_counter_for_taking_next_series = true
 	Log("SET is_needed_to_start_counter_for_taking_next_series = true")
 	
-	if MODE_SERIES == mode then
-		'значит если серийный режим
-		'надо понять какая серия была выдана и выдать следующую
+	if mode == MODE_SERIES then
+		'figure out what piece is extered and enter the next one
 		curSeries = CInt(local_memory[titr_name & "_curSeries"])
-		'нулевая серия — первый элемент
+		'zero index means the first piece
 		if curSeries < 0 Then curSeries = 0
  
 		fill = memory[titr_name & "_fill"]
@@ -1245,7 +1226,7 @@ sub take_next_series()
 		
 		if arr_fill.Size > 0 Then
 			for i = 0 to arr_fill.UBound
-				'удаляем пустые серии ;)
+				'remove empty pieces
 				s = arr_fill[i]
 				s.Trim()
 				If s == "" Then arr_fill.Erase(i)
@@ -1254,14 +1235,14 @@ sub take_next_series()
  		
 		If arr_fill.UBound == 0 Then
 			If arr_fill[0] == local_memory[titr_name & "_value"] Then
-				'если серия одна и идентична той что в переменной - то анимация смены НЕ нужна
+				'in case the piece is only one and identical to the previous — no Change animation
 				exit sub
 			Else
-				'если серия одна, но она отлична от содержимого серии - то НАДО проиграть смену титров
+				'if there is only one piece and it's different — play the Change animation
 			End If
 		End If
  
-		'условия автоубирания:
+		'Takeout conditions:
 		takeout_by_last = GetParameterBool("Takeout_by_last")
 		takeout_by_last_condis = GetParameterString("Takeout_by_last_condis")
 		takeout_by_last_condis.Trim()
@@ -1310,14 +1291,14 @@ Function CheckCondis(s_conditions As String) As Boolean
  
  
 		If s_condisItem.Find("_fill") > 0 Then
-			'начало обработки FILL
+			'start FILL
  
 			If s_condisItem.Left(1) = "+" Then
 				s_condisItem = s_condisItem.Right(s_condisItem.Length - 1)
 				s_condisFill = CStr(memory[s_condisItem])
 				s_condisFill.Trim()
 				If s_condisFill == "" Then
-					'условие не соблюдено! ыыы...
+					'condition not met 
 					CheckCondis = FALSE
 					Exit Function
 				End If
@@ -1325,30 +1306,30 @@ Function CheckCondis(s_conditions As String) As Boolean
 				If s_condisItem.Left(1) = "-" Then s_condisItem = s_condisItem.Right(s_condisItem.Length - 1)
 				s_condisFill = CStr(memory[s_condisItem])
 				If s_condisFill <> "" Then
-					'условие не соблюдено! ыыы...
+					'condition not met 
 					CheckCondis = FALSE
 					Exit Function
 				End If
 			End If
-			'конец обработки FILL
+			'end FILL
 		Else
-			'начало обработки STATUS
+			'start STATUS
 			If s_condisItem.Left(1) = "+" Then
 				s_condisItem = s_condisItem.Right(s_condisItem.Length - 1)
 				If CInt(local_memory[s_condisItem & "_status"]) <> 1 Then
-					'условие не соблюдено! ыыы...
+					'condition not met 
 					CheckCondis = FALSE
 					Exit Function
 				End If
 			Else
 				If s_condisItem.Left(1) = "-" Then s_condisItem = s_condisItem.Right(s_condisItem.Length - 1)
 				If CInt(local_memory[s_condisItem & "_status"]) <> 0 Then
-					'условие не соблюдено! ыыы...
+					'condition not met 
 					CheckCondis = FALSE
 					Exit Function
 				End If
 			End If
-			'конец обработки STATUS
+			'end STATUS
 		End If
 	Next
  
@@ -1377,7 +1358,7 @@ sub stop_delay_series()
 	is_needed_to_start_counter_for_taking_next_series = false
 end sub
 
-' ...РАБОТА С СЕРИЯМИ
+' ...END WORKING WITH SERIES
 '-*****************************************************************************************-'
 '-*****************************************************************************************-'
 '-*****************************************************************************************-'
@@ -1442,7 +1423,7 @@ end function
 
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''
-'обеспечение однокадровой паузы перед обнулением _control-переменной
+'provide one-frame pause before resetting of _control variable
 
 dim reset_control_delay as integer = -1
 
@@ -1457,31 +1438,27 @@ end Sub
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''
 
- 
 sub OnExecPerField()
- 
-	'считаем серийный счетчик:
 	if MODE_SERIES == mode AND passed >= 0 then
-		'значит если серийный режим
-		'инкременируем счетчик
+		'increment the counter in case Series Mode
 		passed += 1
 		If passed == pause then
-			'если счетчик досчтилал - выполнить:
+			'when the counter reach the pause value
 			take_next_series()
 		end if
 	end if
 	
-	'если авто-убирание включено и действует отсчет:
 	if auto_takeout == TRUE AND auto_takeout_from >= 0 then
+		'if AutoTakeout is enabled and counter is working
 		auto_takeout_from -= 1
 		if auto_takeout_from <= 0 then
 			local_memory[titr_name & "_control"] = 0
 		end if
 	end if
 	
-	'Ежекадровое понимание состояния директора
+	'every frame consider the director
 	if d_OnOff <> null then
-		'определение в каком месте плейхед у d_OnOff
+		'find the playhead
 		playhead = d_OnOff.Time
 		
 		'if isCanChange then
@@ -1500,7 +1477,7 @@ sub OnExecPerField()
 		end if
 	end if
 	
-	'отслеживание однокадровой паузы перед обнулением _control переменной
+	'consider one-frame pause for resetting _control variable
 	if reset_control_delay == 0 then
 		reset_control_delay = -1
 		reset_control()
