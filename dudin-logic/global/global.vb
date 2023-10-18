@@ -1,24 +1,22 @@
-Dim Info As String = "Разработчик: Дудин Дмитрий
-Версия 4.0.1 (5 июля 2018)
--------------------------------------------------------
-Это основной скрипт для работы системы автоубирания - 
-он должен находится в дереве выше титровальных скриптов.
- 
-Еще тут можно посмотреть содержимое основных массивов. Жми print.
-"
- 
-'Просто перенос строки - этой стандратной переменной мне так часто не хватает...
-Dim vbNewLine = "\n"
+RegisterPluginVersion(4,0,2)
+Dim Info As String = "Developer: Dmitry Dudin
+http://dudin.tv/scripts/logic
 
-'Разный префикс нужен для одновременной независимой работы двух титровальных систем
-'например для сцены "ньюсбара" и сцены "титров"
-'Он может быть произвольным. Главное чтобы совпадал с префиксом в элементных скриптах.
+This is the Global Script for the Dudin Logic.
+It should be placed ABOVE all the Element Scripts.
+
+It is a vital part of AutoTakeout logic. 
+If you do not need this interaction across Elements — you can use only Element Scripts, without this Global.
+
+Also, you can check the content main arrays. Press "PRINT" button.
+"
+
+' You can use the prefix to distinguish two Dudin Logic systems on one machine.
+' The prefix can be any. Keep in mind, that it should be identical to the corresponding Element Scripts.
 Dim prefix = ""
- 
-'при инициализации скрипта всегда сначала вызывается OnInitParameters() и только потом OnInit()
+
 sub OnInitParameters()
-	'изначально два основных массива пустые
-	'и переменные для добавления новых элементов тоже очищаются
+	'by default these main arrays should be empty
 	System.Map[prefix & "AUTOTAKEOUTonTAKE"] = ""
 	System.Map[prefix & "AUTOTAKEOUTonTAKEOUT"] = ""
 	System.Map[prefix & "AddTo_AUTOTAKEOUTonTAKE"] = ""
@@ -29,9 +27,6 @@ sub OnInitParameters()
 	Scene.Map[prefix & "AddTo_AUTOTAKEOUTonTAKE"] = ""
 	Scene.Map[prefix & "AddTo_AUTOTAKEOUTonTAKEOUT"] = ""	
 	
- 
-	'----------------------------------------------
-	'создаем кнопку для печати содержимого двух массивов в текстовую область "console"
 	RegisterPushButton("print","print",1)
 	RegisterPushButton("printdeep","deeper",2)
 	RegisterParameterText("console", "", 600, 300)
@@ -40,15 +35,14 @@ sub OnInitParameters()
 end sub
  
 Sub OnInit()
-	'будем преехватывать ВСЕ переменные,
-	'потому что это скрипт должен уметь реагировать на любой возможный элемент
+	'let's capture ALL SharedMemory variables by using ""(empty string)
+	'because this script should be able to react to any variable
 	System.Map.RegisterChangedCallback("")
 	Scene.Map.RegisterChangedCallback("")
  
-	'при инициализации этого скрипта заставляем проинициализироваться вниз по списку
-	'все скрипты относящиеся к системе автоубирания
+	'force to reinitialize all Element Scripts below in the scene
 	Scene.Map[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = ""
-	Scene.Map[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = "GLOBAL SCRIPT START RELOAD ALL ELEMENTS"
+	Scene.Map[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = "GLOBAL SCRIPT START RELOAD ALL ELEMENTS" ' just a random string to trigger the variable
  
 	this.ScriptPluginInstance.SetParameterString("console", Info)
 End Sub
@@ -56,14 +50,14 @@ End Sub
 '--------------------------------------------------------------------------------
 Sub OnExecAction(buttonId As Integer)
 	If buttonId == 1 OR buttonId == 2 Then
-		'выводим в текстовую console обе переменнные массивов автоубирания:
-		'{{на_что_реагировать} {реакция_1элемента} {реакция_2элемента(условие1,условие2)} } {} {} ...
+		'print out both main arrays in the format:
+		'{{action event} {first-element-reaction} {second-element-reaction(first-condtion,second-condition)} } {} {} ...
 		Dim console As String = ""
 		Dim printArray As Array[Array[String]]
 
-		'печатаем текущий префикс
+		'print the prefix out
 		console &= "prefix = " & prefix & "\n----------------------\n"
-		'печатаем ПЕРВЫЙ-TAKE массив автоубирания
+		'print the first main "TAKE" array
 		printArray = (Array[Array[String]])(Scene.Map[prefix & "AUTOTAKEOUTonTAKE"])
 		console &= "AUTOTAKEOUTonTAKE\n----------------------\n"
 		For i = 0 to printArray.UBound
@@ -71,7 +65,7 @@ Sub OnExecAction(buttonId As Integer)
 			For k = 1 to printArray[i].UBound
 				console &= "  └ " & printArray[i][k] & "\n"
 				If buttonId == 2 Then
-					'если нужно распечатать взаимодействия глубже на уровень
+					'if we want to print out more nested dependency
 					Dim arrDo As Array[String] = GetArrDoByName(printArray[i][k])
 					For t = 0 to arrDo.UBound
 						console &= "      └ " & arrDo[t] & "\n"
@@ -82,7 +76,7 @@ Sub OnExecAction(buttonId As Integer)
 		Next
 		console &= "\n\n"
 
-		'печатаем ВТОРОЙ-TAKEOUT массив автоубирания
+		'print out the second main "TAKEOUT" array
 		printArray = (Array[Array[String]])(Scene.Map[prefix & "AUTOTAKEOUTonTAKEOUT"])
 		console &= "AUTOTAKEOUTonTAKEOUT\n----------------------\n"
 		For i = 0 to printArray.UBound
@@ -90,7 +84,7 @@ Sub OnExecAction(buttonId As Integer)
 			For k = 1 to printArray[i].UBound
 				console &= "  └ " & printArray[i][k] & "\n"
 				If buttonId == 2 Then
-					'если нужно распечатать взаимодействия глубже на уровень
+					'if we want to print out more nested dependency
 					Dim arrDo As Array[String] = GetArrDoByName(printArray[i][k])
 					For t = 0 to arrDo.UBound
 						console &= "      └ " & arrDo[t] & "\n"
@@ -106,14 +100,9 @@ End Sub
 
 '--------------------------------------------------------------------------------
 '--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'ДАЛЕЕ пошли вспомогателные функции, для основного алгоритма...
+'BELOW there are helper functions
  
- 
-'функция нахождения вхождения названия элемента в первый элемент основного массива
+'the function of finding the occurrence index of the Element name in the first main array
 Function FindIndexInclusion (ARR_ARR As Array[Array[String]], ELEMENT_NAME As String) As Integer
 	Dim arr_cur2 As Array[String]
 	Dim ii AS Integer
@@ -129,7 +118,7 @@ Function FindIndexInclusion (ARR_ARR As Array[Array[String]], ELEMENT_NAME As St
 End Function
 '--------------------------------------------------------------------------------
  
-'удаляет повторяющиеся элементы (а зачем раздувать массив и вводить путанницу? :)
+'remove duplicated Elements to avoid increasing the array
 Sub RemoveSubDublicate (ARR As Array[String])
 	Dim s_curY,s_curZ As String
 	For y = 1 to ARR.UBound
@@ -153,15 +142,15 @@ Sub RemoveSubDublicate (ARR As Array[String])
 End Sub
 '--------------------------------------------------------------------------------
  
-'просто добавляет новый элемент в основной массив
-Sub AddingNewElements (ARR_ARR As Array[Array[String]], ADD_ARR As Array[String])
-	'прежде чем добавлять, упростим добавляемый массив:
-	RemoveSubDublicate(ADD_ARR)
-	ARR_ARR.Push(ADD_ARR)
+'add new Elements in one of the main arrays
+Sub AddingNewElements (_mainArray As Array[Array[String]], _addArray As Array[String])
+	'remove duplicates before adding
+	RemoveSubDublicate(_addArray)
+	_mainArray.Push(_addArray)
 End Sub
 '----------------------------------------------------------------------------------
- 
-'эта функция занимается добавлением подъелементов, т.е. того что будет реагировать на первый элемент
+
+'add sub-Elements for the reaction on the firs Element
 Sub AddingNewSubelements (ByRef ARR_ARR As Array[Array[String]], cur_element As Integer, ADD_ARR As Array[String])
 	Dim arr_cur As Array[String]
 	Dim s_curName3 As String
@@ -173,7 +162,7 @@ Sub AddingNewSubelements (ByRef ARR_ARR As Array[Array[String]], cur_element As 
 			For i_cur = 1 to arr_cur.UBound
 				If arr_cur[i_cur] = s_curName3 Then Exit For
 			Next
-			'если такого элемента не нашлось - надо добавить
+			'add the Element if it is not found
 			If i_cur > arr_cur.UBound Then
 				arr_cur.Push(s_curName3)
 			End If
@@ -183,30 +172,25 @@ Sub AddingNewSubelements (ByRef ARR_ARR As Array[Array[String]], cur_element As 
 End Sub
 '--------------------------------------------------------------------------------
  
-'добавляет целый новый элемент
+'add new Elements
 Sub AddElements (ARR_ARR As Array[Array[String]], ADD_ARR As Array[Array[String]])
-	'println("AddElements | ADD_ARR = " & CStr(ADD_ARR))
 	Dim arr_cur As Array[String]
 	Dim s_curName As String
 	Dim i_curElement1 As Integer
-	'---добавляю елементы из временного массива в основной
+	'add Elements from the temporal array to the main
 	For i_add_element = 0 to ADD_ARR.UBound
-		'println("ADD_ARR[i_add_element] = " & CStr(ADD_ARR[i_add_element]))
 		s_curName = ADD_ARR[i_add_element][0]
 		s_curName.trim()
 		If s_curName <> "" Then
 			
 			
 			If s_curName.Left(1) == "(" Then
-				'если нет названия титра, на который надо реагировать
-				'то надо реагировать на перечисления условий...
+				'if there is no Element name than let's react on the conditions
 				Dim arr_curNames As Array[String]
 				Dim s_curNames = s_curName.GetSubstring(1, s_curName.Length-2)
 				s_curNames.Split("&",arr_curNames)
 				For i_name = 0 to arr_curNames.UBound
 					arr_curNames[i_name].Trim()
-					'println("arr_curNames[i_name] = " & arr_curNames[i_name])
-					'ADD_ARR[i_add_element] = {Logo_the} {-Marker_the}
 					If arr_curNames[i_name].right(5) == "_fill" then
 						arr_curNames[i_name] = arr_curNames[i_name].Left(arr_curNames[i_name].Length-5)
 					End If
@@ -221,22 +205,18 @@ Sub AddElements (ARR_ARR As Array[Array[String]], ADD_ARR As Array[Array[String]
 						Scene.Map[prefix & "AddTo_AUTOTAKEOUTonTAKEOUT"] = arrarr_new
 					else
 						if arr_curNames[i_name].left(1)=="+" then arrarr_new[0][0] = arrarr_new[0][0].right(arrarr_new[0][0].Length-1)
-						'println("")
-						'println("+arrarr_new[0][0] and [1] = " & arrarr_new[0][0] & " | " & arrarr_new[0][1])
 						Scene.Map[prefix & "AddTo_AUTOTAKEOUTonTAKE"] = arrarr_new
 					end if
 				Next
 			Else
-				'если есть имя титра...
-				'ищем этот титр в финальном массиве
+				'if there is the Element name
+				'find this Element in the final array
 				i_curElement1 = FindIndexInclusion(ARR_ARR,s_curName)
-				'println("- just add  ADD_ARR[i_add_element] = " & CStr(ADD_ARR[i_add_element]))
 				If i_curElement1 < 0 Then
-					'если надо добавить новый элемент
+					'if it's needed to add a new Element
 					AddingNewElements(ARR_ARR,ADD_ARR[i_add_element])
 				Else
-					'если элемент уже есть в основном массиве
-					'т.е. добавляем (при необходимости) новые подэлементы
+					'if the Element already exists then add any new sub-Elements
 					AddingNewSubelements(ARR_ARR,i_curElement1,ADD_ARR[i_add_element])
 				End If
 			End If
@@ -248,37 +228,36 @@ End Sub
  
 '--------------------------------------------------------------------------------
  
-'а вот функция автоубирания, согласно поданному массиву значений
+'the main function for AutoTakeout according to the main arrays
 Sub Do_AUTOTAKEOUT (arr_DO As Array[String])
 	Dim y_index As Integer
 	Dim fullName As String
 	Dim condis_permission As Boolean
 	If arr_DO.UBound < 1 Then exit sub
- 
- 	'игнорируем нулевой элемент, потому что там причина действия, а не следствие
+	
+	'ignore "0" index becasuse it has the reason, not a consequence 
 	For y_index = 1 to arr_DO.UBound
 		fullName = arr_DO[y_index]
 		fullName.trim()
 		
-		'смотрим, если ли УСЛОВИЯ этого действия, т.е. написано ли что-нибудь (в скобочках) после имени
+		'check is there are conditions
 		condis_permission = TRUE
 		If fullName.Find("(") > 0 AND fullName.Find(")") > 0 Then
 			Dim s_condis As String = fullName.GetSubstring(fullName.Find("(")+1,fullName.Find(")") - fullName.Find("(") - 1)
 			If CheckCondis(s_condis) == FALSE Then condis_permission = FALSE
  
-			'очищаем имя от скобочек и их внутреностей
+			'cleanup the name from parentesis and conditions
 			fullName = fullName.Left (fullName.Find("("))
 			fullName.Trim()
 		End If
  
 		If condis_permission Then
 			If fullName.Left(1) = "+" Then
-				'счищаем уже ненужный плюс
+				'remove useless plus sign
 				fullName = fullName.Right(fullName.Length - 1)
 				
 				If CInt(Scene.Map[fullName & "_status"]) <> 1 Then
-					'заранее статус у выдачи менять НЕЛЬЗЯ - потому что не всегда титр точно выдасться
-					'так ли это?????
+					'it's not possible to change the status because it's not entering for sure... need to check...
 					Scene.Map[fullName & "_status"] = 1
 					Scene.Map[fullName & "_control"] = 5
 					Scene.Map[fullName & "_control"] = 1
@@ -288,14 +267,13 @@ Sub Do_AUTOTAKEOUT (arr_DO As Array[String])
 				If fullName.Left(1) = "-" Then fullName = fullName.Right(fullName.Length - 1)
 	 
 				If CInt(Scene.Map[fullName & "_status"]) <> 0 Then
-					'а вот сменить статус на убираение МОЖНО - потому что титр ВСЕГДА убирается наверняка
+					'but, it's possible to change on "Takeout" because the Element ALWAYS exit
 					Scene.Map[fullName & "_status"] = 0
 					Scene.Map[fullName & "_control"] = 5
 					Scene.Map[fullName & "_control"] = 0
 				End If
 			End If
 		End If
-		'println("Status "&fullName&" = " & System.Map[fullName & "_status"])
 	Next
 End Sub
  
@@ -311,7 +289,7 @@ Function CheckCondis(s_conditions As String) As Boolean
  
  
 		If s_condisItem.Find("_fill") > 0 Then
-			'начало обработки fill
+			'processing of the _fill
 			's_condisItem = s_condisItem.Left(s_condisItem.Length - 5)
  
 			If s_condisItem.Left(1) = "+" Then
@@ -319,11 +297,11 @@ Function CheckCondis(s_conditions As String) As Boolean
 				s_condisFill = CStr(System.Map[s_condisItem])
 				s_condisFill.Trim()
 				If s_condisFill == "" Then
-					'условие не соблюдено! ыыы...
+					'condition not met
 					CheckCondis = FALSE
 					Exit Function
 				ElseIf s_condisItem.Right(5) <> "_fill" AND s_condisFill == "0" Then
-					'условие не соблюдено! ыыы...
+					'condition not met
 					CheckCondis = FALSE
 					Exit Function
 				End If
@@ -332,34 +310,34 @@ Function CheckCondis(s_conditions As String) As Boolean
 				s_condisFill = CStr(System.Map[s_condisItem])
 				s_condisFill.Trim()
 				If s_condisItem.Right(5) <> "_fill" AND s_condisFill <> "0" Then
-					'условие не соблюдено! ыыы...
+					'condition not met
 					CheckCondis = FALSE
 					Exit Function
 				ElseIf s_condisFill <> "" Then
-					'условие не соблюдено! ыыы...
+					'condition not met
 					CheckCondis = FALSE
 					Exit Function
 				End If
 			End If
-			'конец обработки FILL
+			'end of processing of _fill
 		Else
-			'начало обработки STATUS
+			'processing of _status
 			If s_condisItem.Left(1) = "+" Then
 				s_condisItem = s_condisItem.Right(s_condisItem.Length - 1)
 				If CInt(Scene.Map[s_condisItem & "_status"]) <> 1 Then
-					'условие не соблюдено! ыыы...
+					'condition not met
 					CheckCondis = FALSE
 					Exit Function
 				End If
 			Else
 				If s_condisItem.Left(1) = "-" Then s_condisItem = s_condisItem.Right(s_condisItem.Length - 1)
 				If CInt(Scene.Map[s_condisItem & "_status"]) <> 0 Then
-					'условие не соблюдено! ыыы...
+					'condition not met
 					CheckCondis = FALSE
 					Exit Function
 				End If
 			End If
-			'конец обработки STATUS
+			'end of processing of _status
 		End If
 	Next
  
@@ -368,8 +346,6 @@ End Function
 
 Function GetArrDoByName(curName As String) As Array[String]
 	Dim arrDo As Array[String]
-	
-		'println("GetArrDoByName. curName = " & curName)
 	Dim arrArrDo As Array[Array[String]]
 	If curName.Left(1) == "+" Then 
 		arrArrDo = (Array[Array[String]]) Scene.Map[prefix & "AUTOTAKEOUTonTAKE"]
@@ -386,12 +362,11 @@ Function GetArrDoByName(curName As String) As Array[String]
 	For i = 0 to arrArrDo.UBound
 		nameFromArray = (arrArrDo[i])[0]
 
-		'Обрезаем лишние тут скобочные условия
+		'cut extra parentesis
 		If nameFromArray.Find("(") > 0 Then nameFromArray = nameFromArray.Left (nameFromArray.Find("("))
 		nameFromArray.Trim()
 			
-		'если это искомый титр:
-		'println("nameFromArray = "&nameFromArray & "   curName = " & curName)
+		'if this is the desired Element
 		If nameFromArray == curName Then
 			For k = 1 to arrArrDo[i].UBound
 				arrDo.Push(arrArrDo[i][k])
@@ -412,7 +387,7 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 	Dim AddTo_AUTOTAKEOUTonTAKEOUT As Array[Array[String]]
 	
 	if mapKey.left(7) == "SHMCLIP" then
-		'игнорировать переменные связанные с ClipChannel'ами
+		'ignore variables belonging to ClipChannels
 		exit sub
 	end if
  
@@ -433,20 +408,21 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 	
  
 	If mapKey = prefix & "AddTo_AUTOTAKEOUTonTAKE" Then
-	'---очищаю рабочие временые массивы
+		'cleanup arrays
 		AUTOTAKEOUTonTAKE.Clear()
 		AddTo_AUTOTAKEOUTonTAKE.Clear()
-	'---если во временном массиве ничего не пришло - считать вызов фейковым
+						
+		'if the array is empty then consider it as a fake
 		If Scene.Map[prefix & "AddTo_AUTOTAKEOUTonTAKE"] = "" Then
 			Exit Sub
 		End If
-	'---проверяю на наличие глобального массива
-	'---если надо создаю его
+
+		'check exising the array, create if it's needed
 		If Scene.Map.ContainsKey(prefix & "AUTOTAKEOUTonTAKE") = false Then
 			Scene.Map[prefix & "AUTOTAKEOUTonTAKE"] = AUTOTAKEOUTonTAKE
 		End If
-	'---получаю существующий рабочий массив
-	'---и временно-добавочный
+
+		'get existing arrays
 		AUTOTAKEOUTonTAKE = (Array[Array[String]]) Scene.Map[prefix & "AUTOTAKEOUTonTAKE"]
 		AddTo_AUTOTAKEOUTonTAKE = (Array[Array[String]]) Scene.Map[prefix & "AddTo_AUTOTAKEOUTonTAKE"]
 
@@ -458,18 +434,19 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 		
 		
 	ElseIf mapKey = prefix & "AddTo_AUTOTAKEOUTonTAKEOUT" Then
-	'---очищаю рабочие временые массивы
+		'cleanup arrays
 		AUTOTAKEOUTonTAKEOUT.Clear()
 		AddTo_AUTOTAKEOUTonTAKEOUT.Clear()
-	'---если во временном массиве ничего не пришло - считать вызов фейковым
+							
+		'if the array is empty then consider it as a fake
 		If Scene.Map[prefix & "AddTo_AUTOTAKEOUTonTAKEOUT"] = "" Then Exit Sub
-	'---проверяю на наличие глобального массива
-	'---если надо создаю его
+
+		'check exising the array, create if it's needed
 		If Scene.Map.ContainsKey(prefix & "AUTOTAKEOUTonTAKEOUT") = false Then
 			Scene.Map[prefix & "AUTOTAKEOUTonTAKEOUT"] = AUTOTAKEOUTonTAKEOUT
 		End If
-	'---получаю существующий рабочий массив
-	'---и временно-добавочный
+									
+		'get existing arrays
 		AUTOTAKEOUTonTAKEOUT = (Array[Array[String]]) Scene.Map[prefix & "AUTOTAKEOUTonTAKEOUT"]
 		AddTo_AUTOTAKEOUTonTAKEOUT = (Array[Array[String]]) Scene.Map[prefix & "AddTo_AUTOTAKEOUTonTAKEOUT"]
 
@@ -492,15 +469,14 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 		Dim s_condis As String
 		Dim curStatus As Integer
  
- 		'реагируем лишь на чьё-либо действие
+		'react on a control event
 		If curChangedName.Right(8) == "_control" Then
-			'5 всегда игнорируем
-			'-1 (безусловное убирание) тоже игнорируем
+			'5 (reset) is always ignored
+			'-1 (unconditional exit) is always ignored
 			If map[mapKey] == 5 Then exit sub
 			If map[mapKey] == -1 Then exit sub
 			
 			curChangedName = curChangedName.Left(curChangedName.Length - 8)
-			'println("curChangedName = " & curChangedName)
 			If map[mapKey] == "1" Then
 				'-----------------------------------------------------------------------------------------------	
 				AUTOTAKEOUTonTAKE = (Array[Array[String]]) Scene.Map[prefix & "AUTOTAKEOUTonTAKE"]
@@ -508,22 +484,21 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 					nameFromArray = (AUTOTAKEOUTonTAKE[i_i])[0]
 					fullName 	  = (AUTOTAKEOUTonTAKE[i_i])[0]
 
-					'Обрезаем лишние тут скобочные условия
+					'cut conditions
 					If nameFromArray.Find("(") > 0 Then nameFromArray = nameFromArray.Left (nameFromArray.Find("("))
 					nameFromArray.Trim()
  					
- 					'если это искомый титр:
+ 					'if it's wanted Element:
 					If nameFromArray == curChangedName Then
-						'println("curChangedName control --- 1 nameFromArray == curChangedName")
-						'сначала-заранее меняем статус, но на всякий случай сохраняем текущий
+						'first, change the _status in advance, save the current just in case
 						curStatus = CInt(System.Map[curChangedName & "_status"])
 						Scene.Map[curChangedName & "_status"] = 1
 						
-						'смотрим, есть ли УСЛОВИЯ этого события, т.е. написано ли что-нибудь (в скобочках) после имени
+						'check conditions
 						If fullName.Find("(") > 0 AND fullName.Find(")") > 0 Then
 							s_condis = fullName.GetSubstring(fullName.Find("(")+1,fullName.Find(")") - fullName.Find("(") - 1)
 							If CheckCondis(s_condis) == FALSE Then
-								'по условиям не прошло, значит надо вернуть текущий статус и нафиг выйти.
+								'if the condition is not met — return the current _status
 								Scene.Map[curChangedName & "_status"] = curStatus
 								exit sub
 							End If
@@ -534,28 +509,27 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 				Next
 
 			ElseIf map[mapKey] = "0" Then
-				'println("curChangedName control --- 0")
 				'-----------------------------------------------------------------------------------------------	
 				AUTOTAKEOUTonTAKEOUT = (Array[Array[String]]) Scene.Map[prefix & "AUTOTAKEOUTonTAKEOUT"]
 				For i_i = 0 to AUTOTAKEOUTonTAKEOUT.UBound
 					nameFromArray = (AUTOTAKEOUTonTAKEOUT[i_i])[0]
 					fullName 	  = (AUTOTAKEOUTonTAKEOUT[i_i])[0]
 
-					'Обрезаем лишние тут скобочные условия
+					'cut conditions
 					If nameFromArray.Find("(") > 0 Then nameFromArray = nameFromArray.Left (nameFromArray.Find("("))
 					nameFromArray.Trim()
  					
- 					'если это искомый титр:
+ 					'if it's wanted Element:
 					If nameFromArray == curChangedName Then
-						'сначала-заранее меняем статус, но на всякий случай сохраняем текущий
+						'first, change the _status in advance, save the current just in case
 						curStatus = CInt(Scene.Map[curChangedName & "_status"])
 						map[curChangedName & "_status"] = 0
 						
-						'смотрим, есть ли УСЛОВИЯ этого события, т.е. написано ли что-нибудь (в скобочках) после имени
+						'check conditions
 						If fullName.Find("(") > 0 AND fullName.Find(")") > 0 Then
 							s_condis = fullName.GetSubstring(fullName.Find("(")+1,fullName.Find(")") - fullName.Find("(") - 1)
 							If CheckCondis(s_condis) == FALSE Then
-								'по условиям не прошло, значит надо вернуть текущий статус и нафиг выйти.
+								'if the condition is not met — return the current _status
 								Scene.Map[curChangedName & "_status"] = curStatus
 								exit sub
 							End If
