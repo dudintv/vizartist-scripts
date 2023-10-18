@@ -2,7 +2,7 @@
 
 Always place this script ABOVE of all Element Scripts.
 
-#### Версия 4.0.2 (18 Oktober 2023)
+#### Version 4.0.2 (18 Oktober 2023)
 * translate comments into English
 
 #### Версия 4.0.1 (5 июля 2018)
