@@ -8,7 +8,7 @@ It should be placed ABOVE all the Element Scripts.
 It is a vital part of AutoTakeout logic. 
 If you do not need this interaction across Elements — you can use only Element Scripts, without this Global.
 
-Also, you can check the content main arrays. Press "PRINT" button.
+Also, you can check the content main arrays. Press \"PRINT\" button.
 "
 
 ' You can use the prefix to distinguish two Dudin Logic systems on one machine.
