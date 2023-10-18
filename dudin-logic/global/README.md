@@ -1,8 +1,9 @@
-## Обще-глобальная часть
-#### (располагать выше элементных)
+## Global Script for Dudin Logic
+
+Always place this script ABOVE of all Element Scripts.
 
 #### Версия 4.0.2 (18 Oktober 2023)
-* translate comments to English
+* translate comments into English
 
 #### Версия 4.0.1 (5 июля 2018)
 * Немного изменил реагирование на переменную AUTOTAKEOUT_ALL_RECALCULATE, чтобы реагировал на любую строку, кроме пустой. Пустая строка - как сброс для регистрирования изменений.
