@@ -903,7 +903,7 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 			'Check if the playhead in the "in" range then exit
 			isCanChange = false
 			isCanINtoOUT = false
-			'если реагируем на fill, то обнуляем fill
+			'if we reach on "_fill" then reset it
 			if take_by_fill then
 				memory[titr_name & "_fill"] = ""
 				local_memory[titr_name & "_fill"] = ""
@@ -934,9 +934,9 @@ Sub OnSharedMemoryVariableChanged (map As SharedMemory, mapKey As String)
 					d_OnOff.Show(0)
 					local_memory[titr_name & "_control"] = 1
 				Else
-					'если есть блок loop
-					'if there is Change animation
+					'if there is a "loop" section
 					if fill <> local_memory[titr_name & "_value"] then
+						'if there is Change animation
 						d_OnOff.Show(stoper_a)
 						change()
 						d_OnOff.ContinueAnimation()
@@ -1002,14 +1002,14 @@ Sub CalculateDirector()
 	d_OnOff = Stage.FindDirector (titr_name)
 	If d_OnOff = null Then
 		'if it's not possible to find :(
-		console &= "> Не смог найти основной директор!\n" & "Он должен быть назван \"" & titr_name & "\"\n"
+		console &= "> Can't find the element director!\n" & "It has to be named as: \"" & titr_name & "\"\n"
 	Else
 		'it's found!
 		if d_OnOff.EventChannel.KeyframeCount < 1 then
-			console &= "> В основном директоре нет стоперов!\n" & "Надо добавить минимум один стопер.\n"
+			console &= "> The element director has no stop-points!\n" & "Add at elast on stop-point.\n"
 			exit sub
 		elseif d_OnOff.EventChannel.KeyframeCount > 2 then
-			console &= "> В основном директоре многовато стоперов!\n" & "Надо сократить до 2-х!\n"
+			console &= "> There are too many stop-points in the element director.\n" & "Please, reduce them to 2.\n" & "This logic supports only 1 or 2.\n"
 			exit sub
 		end if
 		
