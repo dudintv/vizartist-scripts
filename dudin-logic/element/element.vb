@@ -1006,7 +1006,7 @@ Sub CalculateDirector()
 	Else
 		'it's found!
 		if d_OnOff.EventChannel.KeyframeCount < 1 then
-			console &= "> The element director has no stop-points!\n" & "Add at elast on stop-point.\n"
+			console &= "> The element director has no stop-points!\n" & "Add at least one stop-point.\n"
 			exit sub
 		elseif d_OnOff.EventChannel.KeyframeCount > 2 then
 			console &= "> There are too many stop-points in the element director.\n" & "Please, reduce them to 2.\n" & "This logic supports only 1 or 2.\n"
