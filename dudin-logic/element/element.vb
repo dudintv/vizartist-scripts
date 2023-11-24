@@ -1,4 +1,4 @@
-RegisterPluginVersion(4,3,8)
+RegisterPluginVersion(4,4,0)
 Dim info As String = "Developer: Dmitry Dudin
 http://dudin.tv/scripts/logic
 -------------------------------------------------------
@@ -264,6 +264,11 @@ Sub SetDropzones()
 			dz.type = "text"
 			arr_dropzones.Push(dz)
 		end if
+	next
+	
+	console &= "\nFIELDS:\n"
+	for i=0 to arr_dropzones.ubound
+		console &= arr_dropzones[i].name & ":" & arr_dropzones[i].type & "[" & arr_dropzones[i].side & "]" & "\n"
 	next
 End Sub
 
@@ -757,9 +762,6 @@ Sub OnExecAction(buttonId As Integer)
 		memory[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = ""
 		memory[prefix & "AUTOTAKEOUT_ALL_RECALCULATE"] = titr_name
  
-		'print out the result of the work
-		'in case if everything is fine then prnt "OK"
-		If console = "" Then console = "OK"
 		this.ScriptPluginInstance.SetParameterString("console",console)
 		SendGuiRefresh()
 	ElseIf buttonId >= 10 AND buttonId < 20 Then
@@ -1019,6 +1021,8 @@ Sub CalculateDirector()
 		start_time = CDbl(  System.SendCommand("#" & Scene.VizId & "*STAGE*#" & d_OnOff.VizID & "*START_TIME GET")  )
 		end_time   = CDbl(  System.SendCommand("#" & Scene.VizId & "*STAGE*#" & d_OnOff.VizID & "*END_TIME GET"  )  )
 	End If
+	
+	If console = "" Then console = "OK\n"
 End Sub
 
 '----------------------------------------------------------
@@ -1167,22 +1171,18 @@ function take_cur_series() as String
 		
 		fill = local_memory[titr_name & "_fill"]
 		fill.trim()
-		if fill.find("=") > 0 then
-			nametype = fill.left(fill.find("="))
-			fill = fill.right(fill.length - fill.find("=") - 1)
-		end if
 		fill.split(separator, arr_fill)
 		
 		if arr_fill.size > 0 then
 			'if there is at least one piece:
-			for i = 0 to arr_fill.UBound
+			for i = 0 to arr_fill.ubound
 				s = arr_fill[i]
 				s.Trim()
 				If s == "" Then arr_fill.Erase(i)
 			next
 			
-			if arr_fill.Size <= 1 then
-				arr_fill.push("")
+			if arr_fill.size <= 1 then
+				arr_fill.Push("")
 				curSeries = 0
 			else
 				'if the current piece index is more then reset
@@ -1192,11 +1192,17 @@ function take_cur_series() as String
 				end if
 			end if
 			
+			Dim cur_fill = arr_fill[curSeries]
+			if cur_fill.find("=") > 0 then
+				nametype = cur_fill.left(fill.find("="))
+				cur_fill = cur_fill.right(cur_fill.length - cur_fill.find("=") - 1)
+			end if
+			
 			nametype.Trim()
 			if nametype == "" then
-				take_cur_series = arr_fill[curSeries]
+				take_cur_series = cur_fill
 			else
-				take_cur_series = nametype & "=" & arr_fill[curSeries]
+				take_cur_series = nametype & "=" & cur_fill
 			end if
 		else
 			'if there is no pieces
@@ -1207,6 +1213,7 @@ function take_cur_series() as String
 		'in case non-series mode (Single mode)
 		take_cur_series = ""
 	end if
+	println("take_cur_series = " & take_cur_series)
 end function
  
 'take the next piece with a delay
