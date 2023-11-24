@@ -1,5 +1,9 @@
 ## Element (a lower third)
 
+#### Version 4.4.0 (24 November 2023)
+* fix named fields in serial mode
+* print out all found fields in the inner console
+
 #### Version 4.3.8 (18 Oktober 2023)
 * translate comments to English
 
