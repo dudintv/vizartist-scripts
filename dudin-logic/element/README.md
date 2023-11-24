@@ -1,6 +1,6 @@
 ## Element (a lower third)
 
-#### Version 4.4.0 (24 November 2023)
+#### Version 5.0.0 (24 November 2023)
 * fix named fields in serial mode
 * print out all found fields in the inner console
 
