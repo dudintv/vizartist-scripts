@@ -1,4 +1,4 @@
-RegisterPluginVersion(4,4,0)
+RegisterPluginVersion(5,0,0)
 Dim info As String = "Developer: Dmitry Dudin
 http://dudin.tv/scripts/logic
 -------------------------------------------------------
