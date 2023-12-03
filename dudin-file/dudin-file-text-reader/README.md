@@ -1,5 +1,11 @@
 ## Text file reader
 
+#### Version 1.3 (03 December 2023)
+* add setting to ignore the first line (it can be a "table header")
+* support "Front Matter" splitting by "---" line
+* the "Front Matter" can be output in many ways: this container, other container (or containers by name), to SHM variable (or variables by name)
+* each "Front Matter" line should has `name` and `value` separated by ":", for example: "title: election data"
+
 #### Version 1.2 (10 August 2023)
 * update UI: make target more explicit
 
