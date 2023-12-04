@@ -39,7 +39,21 @@ end sub
 sub OnInit()
 	cinput = GetParameterContainer("input_container")
 	cOutput = GetParameterContainer("output_container")
-	cinput.Geometry.RegisterTextChangedCallback()
+	
+	inputVarName = GetParameterString("input_var")
+	inputVarName.Trim()
+	outputVarName = GetParameterString("output_var")
+	outputVarName.Trim()
+	
+	Select Case GetParameterInt("input_type")
+	Case TYPE_CONTAINER
+		if inputVarName <> "" then System.Map.UnregisterChangedCallback(inputVarName)
+		cinput.Geometry.RegisterTextChangedCallback()
+	Case TYPE_SHM
+		cinput.Geometry.UnregisterChangedCallback()
+		if inputVarName <> "" then System.Map.RegisterChangedCallback(inputVarName)
+	End Select
+	
 	
 	Select Case GetParameterInt("sortable_type")
 	Case SORTABLE_TYPE_STRING
@@ -74,8 +88,6 @@ Sub Sort()
 		if cInput == null then exit sub
 		inputText = cInput.Geometry.Text
 	elseif GetParameterInt("input_type") == TYPE_SHM Then
-		inputVarName = GetParameterString("input_var")
-		inputVarName.Trim()
 		if inputVarName <> "" then inputText = System.Map[inputVarName]
 	end if
 	
@@ -85,8 +97,6 @@ Sub Sort()
 		if cOutput == null then exit sub
 		cOutput.geometry.text = resultText
 	elseif GetParameterInt("output_type") == TYPE_SHM Then
-		outputVarName = GetParameterString("output_var")
-		outputVarName.Trim()
 		if outputVarName <> "" then System.Map[outputVarName] = resultText
 	end if
 End Sub
