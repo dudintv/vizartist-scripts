@@ -1,10 +1,10 @@
 # Dudin Logic
 
-Авторская альтернатива стандартной системе Transition Logic от Vizrt.
+An alternative to the standard Transition Logic system from Vizrt.
 
-## Запчасти
+## Parts
 
-* _Buffer_ - запоминает состояния нескольких элементов и восстанавливает.
-* _Control_ - делает сцену с титрами управляемой для предпросмотра в VCP.
-* _Element_ — логика работы одного элемента. В большинстве случаев, если не нужна логика взаимо-убирания - достаточно одного этого скрипта.
-* _Global_ - следит за логикой взаимо-убирания.
+* _Buffer_ - remembers the states of several elements and restores.
+* _Control_ - makes the scene with lowerthirds manageable for preview in VCP.
+* _Element_ — the main script! The logic of the operation of a single element.
+* _Global_ - monitors and executes the logic of cross-elements logic.
