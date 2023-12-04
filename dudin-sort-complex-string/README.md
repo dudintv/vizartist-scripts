@@ -1,4 +1,9 @@
-## Сортировка строк по указанной части строки
+## Sorting multiline text by specific field in the rows
 
-#### Версия 1.0
-* Первая рабочая версия. Для использования функции достаточно скопировать функцию "SortArrayLines" себе. В полном листинге есть живой пример сортировки и десяток авто-тестов.
+#### Version 1.1 (3 December 2023)
+* exposed all possible parameters in the UI
+* you can choose the input and output as either container or SHM variable
+* added autosorting when the input was changed
+
+#### Version 1.0
+* The first working version with tested function
