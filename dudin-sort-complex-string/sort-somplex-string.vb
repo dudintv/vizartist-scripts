@@ -1,16 +1,99 @@
-Dim info As String = "Функция для сортировки сложных строк, которые упорядочиваются согласно указанной части строки.
-Разработчик: Дудин Дмитрий. Версия 1.0 (18 сентября 2018)
-"
+RegisterPluginVersion(1,1,0)
+Dim info As String = "Sorting multiline text according specific value in each line
+Developer: Dmitry Dudin, http://dudin.tv"
+
+Dim cinput, cOutput As Container
+Dim inputText, resultText, inputVarName, outputVarName, sortableType As String
+
+Dim arrTypes As Array[String]
+arrTypes.Push("Container")
+arrTypes.Push("SHM")
+Dim TYPE_CONTAINER = 0
+Dim TYPE_SHM = 1
+
+Dim arrSortableType As Array[String]
+arrSortableType.Push("string")
+arrSortableType.Push("integer")
+arrSortableType.Push("float")
+Dim SORTABLE_TYPE_STRING = 0
+Dim SORTABLE_TYPE_INTEGER = 1
+Dim SORTABLE_TYPE_FLOAT = 2
 
 sub OnInitParameters()
+	RegisterParameterString("lines_separator", "Lines separator", "\\n", 999, 999, "")
+	RegisterParameterString("fields_separator", "Felds separator", "|", 999, 999, "")
+	RegisterParameterInt("sortable_field", "Sort by field #",1, -999, 999)
+	RegisterRadioButton("sortable_type", "Sort as", SORTABLE_TYPE_FLOAT, arrSortableType)
+	RegisterRadioButton("input_type", "Input from", TYPE_CONTAINER, arrTypes)
+	RegisterParameterContainer("input_container", " └ Input container")
+	RegisterParameterString("input_var", " └ Input SHM system name", "", 999, 999, "")
+	RegisterRadioButton("output_type", "Output to", TYPE_CONTAINER, arrTypes)
+	RegisterParameterContainer("output_container", " └ Output container")
+	RegisterParameterString("output_var", " └ Output SHM system name", "", 999, 999, "")
+	RegisterParameterBool("direction", "Direction A-Z", false)
+	RegisterParameterBool("auto_sort", "Auto sorting (when input is changing)", false)
 	RegisterPushButton("go", "Sort it!", 1)
 	RegisterPushButton("test", "Run tests", 2)
-	RegisterParameterBool("direction", "Direction A-Z", false)
 end sub
+
+sub OnInit()
+	cinput = GetParameterContainer("input_container")
+	cOutput = GetParameterContainer("output_container")
+	cinput.Geometry.RegisterTextChangedCallback()
+	
+	Select Case GetParameterInt("sortable_type")
+	Case SORTABLE_TYPE_STRING
+		sortableType = "string"
+	Case SORTABLE_TYPE_INTEGER
+		sortableType = "integer"
+	Case SORTABLE_TYPE_FLOAT
+		sortableType = "float"
+	End Select
+	
+	if GetParameterBool("auto_sort") then
+		Sort()
+	end if
+end sub
+sub OnParameterChanged(parameterName As String)
+	OnInit()
+	
+	SendGuiParameterShow("input_container", CInt(GetParameterInt("input_type") == TYPE_CONTAINER))
+	SendGuiParameterShow("input_var", CInt(GetParameterInt("input_type") == TYPE_SHM))
+	SendGuiParameterShow("output_container", CInt(GetParameterInt("output_type") == TYPE_CONTAINER))
+	SendGuiParameterShow("output_var", CInt(GetParameterInt("output_type") == TYPE_SHM))
+end sub
+
+sub OnGeometryChanged(geom As Geometry)
+	if GetParameterBool("auto_sort") then
+		Sort()
+	end if
+end sub
+
+Sub Sort()
+	if GetParameterInt("input_type") == TYPE_CONTAINER Then
+		if cInput == null then exit sub
+		inputText = cInput.Geometry.Text
+	elseif GetParameterInt("input_type") == TYPE_SHM Then
+		inputVarName = GetParameterString("input_var")
+		inputVarName.Trim()
+		if inputVarName <> "" then inputText = System.Map[inputVarName]
+	end if
+	
+	resultText = SortArrayLines(inputText, GetParameterString("lines_separator"), GetParameterString("fields_separator"), GetParameterInt("sortable_field"), GetParameterBool("direction"), sortableType)
+	
+	if GetParameterInt("output_type") == TYPE_CONTAINER Then
+		if cOutput == null then exit sub
+		cOutput.geometry.text = resultText
+	elseif GetParameterInt("output_type") == TYPE_SHM Then
+		outputVarName = GetParameterString("output_var")
+		outputVarName.Trim()
+		if outputVarName <> "" then System.Map[outputVarName] = resultText
+	end if
+End Sub
 
 sub OnExecAction(buttonId As Integer)
 	if buttonId == 1 then
-		this.LastChildContainer.Geometry.Text = SortArrayLines(this.FirstChildContainer.Geometry.Text, "\n", "|", 3, GetParameterBool("direction"), "string")
+		Sort()
 	elseif buttonId == 2 then
 		Test1()
 		Test2()
@@ -33,19 +116,33 @@ Function SortArrayLines(input_string As String, line_separator As String, data_s
 	Dim temp_string, temp_value, temp_i, temp_j As String
 	Dim result_compare As Boolean
 	
+	if line_separator == "\\n" then line_separator = "\n"
 	input_string.Trim()
 	input_string.Split(line_separator, arr_input_string)
+	
+	if element_to_sort == 0 Then
+		SortArrayLines = input_string
+		exit function
+	end if
 	
 	arr_output_string.Clear()
 	arr_sorter_data.Clear()
 	for i=0 to arr_input_string.ubound
 		arr_output_string.push(arr_input_string[i])
-		if data_separator <> "" then	
-			'если есть разделитель данных в строке - вычленяем данные для сортировки
+		if data_separator <> "" then
+			'if there is the separator — extract data for sroting
 			arr_input_string[i].Split(data_separator, arr_line_string)
-			arr_sorter_data.Push(arr_line_string[element_to_sort-1])
+			if element_to_sort > arr_line_string.ubound then
+				arr_sorter_data.Push(arr_line_string[arr_line_string.ubound])
+			elseif element_to_sort < -arr_line_string.ubound then
+				arr_sorter_data.Push(arr_line_string[0])
+			elseif element_to_sort < 0 Then
+				arr_sorter_data.Push(arr_line_string[arr_line_string.size + element_to_sort])
+			else
+				arr_sorter_data.Push(arr_line_string[element_to_sort-1])
+			end if
 		else
-			'если разделителя нет — в сортируемый массив кладем строку полностью
+			'if no separation — put the whole string in the sortable array
 			arr_sorter_data.Push(arr_input_string[i])
 		end if
 	next
@@ -69,6 +166,14 @@ Function SortArrayLines(input_string As String, line_separator As String, data_s
 					result_compare = CInt(temp_i) > CInt(temp_j)
 				else
 					result_compare = CInt(temp_i) < CInt(temp_j)
+				end if
+			elseif datatype == "float" or datatype == "f" then
+				temp_i.Substitute(",", ".", true)
+				temp_j.Substitute(",", ".", true)
+				if direction then
+					result_compare = CDbl(temp_i) > CDbl(temp_j)
+				else
+					result_compare = CDbl(temp_i) < CDbl(temp_j)
 				end if
 			end if
 			
@@ -182,4 +287,3 @@ Sub Test10()
 	Dim expect_output As String = "-5,-50,0,1,15"
 	TestIt(test_input, expect_output, SortArrayLines(test_input, ",", "", 1, true, "string"), "#10 (as string)")
 End Sub
-
