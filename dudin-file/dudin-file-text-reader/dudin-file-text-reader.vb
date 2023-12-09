@@ -1,5 +1,5 @@
-RegisterPluginVersion(1,3,0)
-Dim info As String = "Read and normalize a text file periodically. 
+RegisterPluginVersion(1,4,0)
+Dim info As String = "Read and normalize a text file periodically.
 Developer: Dmitry Dudin, http://dudin.tv"
 
 Structure FrontMatterField
@@ -9,7 +9,7 @@ End Structure
 Dim field As FrontMatterField
 Dim frontMatterFields As Array[FrontMatterField]
 
-Dim filepath, originalFullText, trimmedFullText, dataText, frontMatterText, shmDataVarName, shmFrontMatterVarName, frontMatterPrefix, s As String
+Dim fullFilePath, originalFullText, trimmedFullText, dataText, frontMatterText, shmDataVarName, shmFrontMatterVarName, frontMatterPrefix, s, console As String
 Dim arrOriginalLines, arrFrontMatterLines, arrDataLines As Array[String]
 Dim interval As Double
 Dim tick, frontMatterLineIndex As Integer
@@ -39,7 +39,12 @@ Dim OUTPUT_FM_TO_SHMS As Integer = 4
 
 sub OnInitParameters()
 	RegisterInfoText(info)
-	RegisterParameterString("filepath", "Text file fullpath", "", 100, 999, "")
+	RegisterParameterString("full_file_path", "Text file fullpath", "", 100, 999, "")
+	RegisterParameterBool("split_filepath", "Split to path and finename?", false)
+	RegisterParameterString("file_path", " └ Path to the file, prefix [*required]", "", 100, 999, "")
+	RegisterParameterString("file_name", " └ Filename [*required]", "", 100, 999, "")
+	RegisterParameterString("file_ext", " └ File extention, suffix", "", 100, 999, "")
+
 	RegisterParameterBool("is_removing_empty_lines", "Remove empty lines", false)
 	RegisterParameterBool("ignore_first_data_line", "Ignore first data line (can be a header)", false)
 
@@ -48,25 +53,33 @@ sub OnInitParameters()
 	RegisterParameterString("front_matter_prefix", "     └ Prefix for SHM variables names", "", 100, 999, "")
 	RegisterParameterString("front_matter_shm_var_name", "     └ SHM system variable name", "", 100, 999, "")
 	RegisterParameterContainer("front_matter_target", "     └ Container with text")
-	
+
 	RegisterParameterDouble("interval", "Reading interval (sec)", 10.0, 1.0, 60.0)
 	RegisterRadioButton("data_output_mode", "Output data to:", OUTPUT_DATA_TO_THIS_GEOM, arrDataOutputModes)
 	RegisterParameterContainer("target", " └ Container with text (or this)")
 	RegisterParameterString("shm_data_var_name", " └ SHM system variable name", "", 100, 999, "")
 	RegisterPushButton("read", "Read the file now", 1)
+	RegisterParameterText("console", "", 999, 999)
+end sub
+
+sub OnGuiStatus()
+	SendGuiParameterShow("full_file_path", CInt(NOT GetParameterBool("split_filepath")))
+	SendGuiParameterShow("file_path", CInt(GetParameterBool("split_filepath")))
+	SendGuiParameterShow("file_name", CInt(GetParameterBool("split_filepath")))
+	SendGuiParameterShow("file_ext", CInt(GetParameterBool("split_filepath")))
 end sub
 
 sub OnInit()
-	filepath = GetParameterString("filepath")
-	filepath.trim()
+	fullFilePath = GetParameterString("full_file_path")
+	fullFilePath.trim()
 	shmDataVarName = GetParameterString("shm_data_var_name")
 	shmDataVarName.trim()
 	shmFrontMatterVarName = GetParameterString("front_matter_shm_var_name")
 	shmFrontMatterVarName.trim()
 	frontMatterPrefix = GetParameterString("front_matter_prefix")
 	frontMatterPrefix.trim()
-	
-	interval = GetParameterDouble("interval")
+
+	interval = 0.1 'set a very small delay for the very first try
 	hasFrontMatter = GetParameterBool("has_front_matter")
 
 	if GetParameterInt("front_matter_data_output_mode") == OUTPUT_FM_TO_OTHER then
@@ -76,16 +89,17 @@ sub OnInit()
 		cDataTarget = GetParameterContainer("target")
 	end if
 
-	tick = 0
 	ReadFile()
 end sub
 sub OnParameterChanged(parameterName As String)
+	if parameterName == "console" then exit sub
+
 	OnInit()
 	ReadFile()
-	
+
 	SendGuiParameterShow("target", CInt(GetParameterInt("data_output_mode") == OUTPUT_DATA_TO_OTHER_GEOM))
 	SendGuiParameterShow("shm_data_var_name", CInt(GetParameterInt("data_output_mode") == OUTPUT_DATA_TO_SYSTEM_VAR))
-	
+
 	Dim hasFrontMatterPrefix = (GetParameterInt("front_matter_data_output_mode") == OUTPUT_FM_TO_CONTAINERS) OR (GetParameterInt("front_matter_data_output_mode") == OUTPUT_FM_TO_SHMS)
 	SendGuiParameterShow("front_matter_data_output_mode", CInt(  hasFrontMatter  ))
 	SendGuiParameterShow("front_matter_prefix", CInt(  hasFrontMatter AND hasFrontMatterPrefix  ))
@@ -96,25 +110,46 @@ end sub
 sub OnExecPerField()
 	tick += 1
 	if tick > interval/System.CurrentRefreshRate then
-		tick = 0
 		ReadFile()
+		interval = GetParameterDouble("interval")
 	end if
 end sub
 
 sub ReadFile()
-	if filepath == "" then
-		println("filepath is empty")
-		exit sub
+	tick = 0
+	console = ""
+
+	if GetParameterBool("split_filepath") then
+		if GetParameterString("file_path") == "" then
+			println(4, "FILE READER ERROR: file path is empty")
+			exit sub
+		end if
+		if GetParameterString("file_name") == "" then
+			println(4, "FILE READER ERROR: file name is empty")
+			exit sub
+		end if
+		Dim path = GetParameterString("file_path")
+		path.trim()
+		if path.right(1) <> "\\" then path &= "\\"
+		fullFilePath =path & GetParameterString("file_name") & GetParameterString("file_ext")
+	else
+		if fullFilePath == "" then
+			println("FILE READER ERROR: the filepath is empty")
+			exit sub
+		end if
 	end if
-	
-	isLoaded = System.LoadTextFile(filepath, originalFullText)
+
+	isLoaded = System.LoadTextFile(fullFilePath, originalFullText)
 	if Not isLoaded then
-		println("Can not load the file: " & filepath)
+		Dim errorMessage = "Can not load the file: " & fullFilePath
+		println(4, "FILE READER ERROR: " & errorMessage)
+		console &= errorMessage & "\n\n"
+		Report()
 		exit sub
 	end if
-	
+
 	TrimOriginalTextLines() ' to prepare arrOriginalLines
-	
+
 	if GetParameterBool("has_front_matter") then
 		FindFrontMatterLine() ' to prepare frontMatterLineIndex
 		if frontMatterLineIndex >= 0 then
@@ -132,12 +167,13 @@ sub ReadFile()
 		trimmedFullText.join(arrOriginalLines, "\n")
 		dataText = trimmedFullText
 	end if
-	
+
 	OutputFrontMatter()
 	OutputData()
+	Report()
 end sub
 
-sub TrimOriginalTextLines() 
+sub TrimOriginalTextLines()
 	originalFullText.split("\n", arrOriginalLines)
 	for i=0 to arrOriginalLines.ubound
 		s = arrOriginalLines[i]
@@ -149,7 +185,7 @@ sub TrimOriginalTextLines()
 	next
 End sub
 
-sub FindFrontMatterLine() 
+sub FindFrontMatterLine()
 	frontMatterLineIndex = -1
 	for i=0 to arrOriginalLines.ubound
 		if arrOriginalLines[i].Match("^-{3,}$") then
@@ -229,6 +265,21 @@ end sub
 sub OnExecAction(buttonId As Integer)
 	if buttonId == 1 Then
 		ReadFile()
-		tick = 0
 	end if
 end sub
+
+Sub Report()
+	if console == "" then
+		console = "OK\n\nFILE PATH:\n" & fullFilePath & "\n\n"
+	end if
+
+	if frontMatterText <> "" then console &= "FRONTMATTER DATA:\n" & frontMatterText & "\n\n"
+	if dataText <> "" then
+		console &= "FILE DATA:\n" & dataText
+	else
+		console &= "NO DATA :("
+	end if
+
+	this.ScriptPluginInstance.SetParameterString("console",console)
+	SendGuiRefresh()
+End Sub

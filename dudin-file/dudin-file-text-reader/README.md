@@ -1,5 +1,12 @@
 ## Text file reader
 
+#### Version 1.4 (9 December 2023)
+* add internal console for debug information
+* add splitting of the file path to make easier to control only the file name independently from the root path
+
+#### Version 1.3.1 (9 December 2023)
+* fix reading the fine within initialization (set a very small interval fro the very first try)
+
 #### Version 1.3 (03 December 2023)
 * add setting to ignore the first line (it can be a "table header")
 * support "Front Matter" splitting by "---" line
