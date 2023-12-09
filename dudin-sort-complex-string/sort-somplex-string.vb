@@ -1,9 +1,10 @@
-RegisterPluginVersion(1,1,0)
-Dim info As String = "Sorting multiline text according specific value in each line
+RegisterPluginVersion(1,2,0)
+Dim info As String = "Table-like text sorting
+Sorting multiline text according specific value in each line
 Developer: Dmitry Dudin, http://dudin.tv"
 
 Dim cinput, cOutput As Container
-Dim inputText, resultText, inputVarName, outputVarName, sortableType As String
+Dim inputText, resultText, inputVarName, outputVarName, sortableType, console As String
 
 Dim arrTypes As Array[String]
 arrTypes.Push("Container")
@@ -21,7 +22,7 @@ Dim SORTABLE_TYPE_FLOAT = 2
 
 sub OnInitParameters()
 	RegisterParameterString("lines_separator", "Lines separator", "\\n", 999, 999, "")
-	RegisterParameterString("fields_separator", "Felds separator", "|", 999, 999, "")
+	RegisterParameterString("fields_separator", "Fields separator", "|", 999, 999, "")
 	RegisterParameterInt("sortable_field", "Sort by field #",1, -999, 999)
 	RegisterRadioButton("sortable_type", "Sort as", SORTABLE_TYPE_FLOAT, arrSortableType)
 	RegisterRadioButton("input_type", "Input from", TYPE_CONTAINER, arrTypes)
@@ -30,21 +31,22 @@ sub OnInitParameters()
 	RegisterRadioButton("output_type", "Output to", TYPE_CONTAINER, arrTypes)
 	RegisterParameterContainer("output_container", " └ Output container")
 	RegisterParameterString("output_var", " └ Output SHM system name", "", 999, 999, "")
-	RegisterParameterBool("direction", "Direction A-Z", false)
+	RegisterParameterBool("direction", "Direction A->Z (1->9)", false)
 	RegisterParameterBool("auto_sort", "Auto sorting (when input is changing)", false)
 	RegisterPushButton("go", "Sort it!", 1)
 	RegisterPushButton("test", "Run tests", 2)
+	RegisterParameterText("console", "", 999, 999)
 end sub
 
 sub OnInit()
 	cinput = GetParameterContainer("input_container")
 	cOutput = GetParameterContainer("output_container")
-	
+
 	inputVarName = GetParameterString("input_var")
 	inputVarName.Trim()
 	outputVarName = GetParameterString("output_var")
 	outputVarName.Trim()
-	
+
 	Select Case GetParameterInt("input_type")
 	Case TYPE_CONTAINER
 		if inputVarName <> "" then System.Map.UnregisterChangedCallback(inputVarName)
@@ -53,8 +55,7 @@ sub OnInit()
 		cinput.Geometry.UnregisterChangedCallback()
 		if inputVarName <> "" then System.Map.RegisterChangedCallback(inputVarName)
 	End Select
-	
-	
+
 	Select Case GetParameterInt("sortable_type")
 	Case SORTABLE_TYPE_STRING
 		sortableType = "string"
@@ -63,14 +64,15 @@ sub OnInit()
 	Case SORTABLE_TYPE_FLOAT
 		sortableType = "float"
 	End Select
-	
+
 	if GetParameterBool("auto_sort") then
 		Sort()
 	end if
 end sub
 sub OnParameterChanged(parameterName As String)
+	if parameterName == "console" then exit sub
 	OnInit()
-	
+
 	SendGuiParameterShow("input_container", CInt(GetParameterInt("input_type") == TYPE_CONTAINER))
 	SendGuiParameterShow("input_var", CInt(GetParameterInt("input_type") == TYPE_SHM))
 	SendGuiParameterShow("output_container", CInt(GetParameterInt("output_type") == TYPE_CONTAINER))
@@ -84,21 +86,53 @@ sub OnGeometryChanged(geom As Geometry)
 end sub
 
 Sub Sort()
+	console = ""
 	if GetParameterInt("input_type") == TYPE_CONTAINER Then
-		if cInput == null then exit sub
-		inputText = cInput.Geometry.Text
+		if cInput <> null then
+			inputText = cInput.Geometry.Text
+		else
+			Dim errrorMessage = "SORTING ERROR: input container is empty :("
+			console &= errrorMessage & "\n\n"
+			println(4, errrorMessage)
+			Report()
+			exit sub
+		end if
 	elseif GetParameterInt("input_type") == TYPE_SHM Then
 		if inputVarName <> "" then inputText = System.Map[inputVarName]
 	end if
-	
+
 	resultText = SortArrayLines(inputText, GetParameterString("lines_separator"), GetParameterString("fields_separator"), GetParameterInt("sortable_field"), GetParameterBool("direction"), sortableType)
-	
+
 	if GetParameterInt("output_type") == TYPE_CONTAINER Then
-		if cOutput == null then exit sub
-		cOutput.geometry.text = resultText
+		if cOutput <> null then
+			cOutput.geometry.text = resultText
+		else
+			Dim errrorMessage = "SORTING ERROR: output container is empty :("
+			console &= errrorMessage & "\n\n"
+			println(4, errrorMessage)
+			Report()
+			exit sub
+		end if
+
 	elseif GetParameterInt("output_type") == TYPE_SHM Then
 		if outputVarName <> "" then System.Map[outputVarName] = resultText
 	end if
+	Report()
+End Sub
+
+Sub Report()
+	if console == "" then
+		console = "OK\n\n"
+	end if
+
+	if resultText <> "" then
+		console &= "SORTED DATA:\n" & resultText
+	else
+		console &= "NO DATA :("
+	end if
+
+	this.ScriptPluginInstance.SetParameterString("console",console)
+	SendGuiRefresh()
 End Sub
 
 sub OnExecAction(buttonId As Integer)
@@ -125,16 +159,16 @@ Function SortArrayLines(input_string As String, line_separator As String, data_s
 	Dim arr_sorter_data As Array[String]
 	Dim temp_string, temp_value, temp_i, temp_j As String
 	Dim result_compare As Boolean
-	
+
 	if line_separator == "\\n" then line_separator = "\n"
 	input_string.Trim()
 	input_string.Split(line_separator, arr_input_string)
-	
+
 	if element_to_sort == 0 Then
 		SortArrayLines = input_string
 		exit function
 	end if
-	
+
 	arr_output_string.Clear()
 	arr_sorter_data.Clear()
 	for i=0 to arr_input_string.ubound
@@ -156,14 +190,14 @@ Function SortArrayLines(input_string As String, line_separator As String, data_s
 			arr_sorter_data.Push(arr_input_string[i])
 		end if
 	next
-	
+
 	for i=0 to arr_sorter_data.ubound
 		for j=i+1 to arr_sorter_data.ubound
 			temp_i = arr_sorter_data[i]
 			temp_j = arr_sorter_data[j]
 			temp_i.Trim()
 			temp_j.Trim()
-			
+
 			datatype.MakeLower()
 			if datatype == "string" or datatype == "str" or datatype == "s" then
 				if direction then
@@ -186,19 +220,19 @@ Function SortArrayLines(input_string As String, line_separator As String, data_s
 					result_compare = CDbl(temp_i) < CDbl(temp_j)
 				end if
 			end if
-			
+
 			if result_compare then
 				temp_string = arr_sorter_data[i]
 				arr_sorter_data[i] = arr_sorter_data[j]
 				arr_sorter_data[j] = temp_string
-				
+
 				temp_value = arr_output_string[i]
 				arr_output_string[i] = arr_output_string[j]
 				arr_output_string[j] = temp_value
 			end if
 		next
 	next
-	
+
 	SortArrayLines.Join(arr_output_string, line_separator)
 End Function
 
