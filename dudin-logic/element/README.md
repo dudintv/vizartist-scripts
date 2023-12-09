@@ -1,10 +1,14 @@
 ## Element (a lower third)
 
+#### Version 5.1.0 (7 December 2023)
+* support grouping for the Normal and Ticker mode
+* support mapping by data fields order in the fill
+
 #### Version 5.0.0 (24 November 2023)
 * changed the workflow with named fields in serial mode
 * print out all found fields in the inner console
 
-#### Version 4.3.8 (18 Oktober 2023)
+#### Version 4.3.8 (18 October 2023)
 * translate comments to English
 
 #### Version 4.3.7 (7 february 2022)
