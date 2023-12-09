@@ -1,4 +1,8 @@
-## Debug variables in SharedMemory 
+## Debug variables in SharedMemory
+
+#### Version 1.3
+* fix the output to this string
+* show that the variable is not existing
 
 #### Version 1.2
 * Print all variables at the one string.
