@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,4,0)
+RegisterPluginVersion(1,4,1)
 Dim info As String = "Read and normalize a text file periodically.
 Developer: Dmitry Dudin, http://dudin.tv"
 
@@ -26,16 +26,18 @@ Dim OUTPUT_DATA_TO_OTHER_GEOM As Integer = 1
 Dim OUTPUT_DATA_TO_SYSTEM_VAR As Integer = 2
 
 Dim arrFrontMatterModes As Array[String]
+arrFrontMatterModes.Push("Nothing (ignore)")
 arrFrontMatterModes.Push("This text")
 arrFrontMatterModes.Push("Other text")
 arrFrontMatterModes.Push("Containers (by fields names)")
 arrFrontMatterModes.Push("One SHM variable")
 arrFrontMatterModes.Push("Distribute to SHM variables")
-Dim OUTPUT_FM_TO_THIS As Integer = 0
-Dim OUTPUT_FM_TO_OTHER As Integer = 1
-Dim OUTPUT_FM_TO_CONTAINERS As Integer = 2
-Dim OUTPUT_FM_TO_SHM As Integer = 3
-Dim OUTPUT_FM_TO_SHMS As Integer = 4
+Dim OUTPUT_FM_TO_VOID As Integer = 0
+Dim OUTPUT_FM_TO_THIS As Integer = 1
+Dim OUTPUT_FM_TO_OTHER As Integer = 2
+Dim OUTPUT_FM_TO_CONTAINERS As Integer = 3
+Dim OUTPUT_FM_TO_SHM As Integer = 4
+Dim OUTPUT_FM_TO_SHMS As Integer = 5
 
 sub OnInitParameters()
 	RegisterInfoText(info)
@@ -46,7 +48,7 @@ sub OnInitParameters()
 	RegisterParameterString("file_ext", " └ File extention, suffix", "", 100, 999, "")
 
 	RegisterParameterBool("is_removing_empty_lines", "Remove empty lines", false)
-	RegisterParameterBool("ignore_first_data_line", "Ignore first data line (can be a header)", false)
+	RegisterParameterBool("ignore_first_data_line", "Remove first line in data (can be a header)", false)
 
 	RegisterParameterBool("has_front_matter", "Enable Front Matter (---)", false)
 	RegisterRadioButton("front_matter_data_output_mode", " └ Output to:", OUTPUT_FM_TO_SHM, arrFrontMatterModes)
@@ -54,7 +56,7 @@ sub OnInitParameters()
 	RegisterParameterString("front_matter_shm_var_name", "     └ SHM system variable name", "", 100, 999, "")
 	RegisterParameterContainer("front_matter_target", "     └ Container with text")
 
-	RegisterParameterDouble("interval", "Reading interval (sec)", 10.0, 1.0, 60.0)
+	RegisterParameterDouble("interval", "Reading interval (sec)", 5.0, 1.0, 60.0)
 	RegisterRadioButton("data_output_mode", "Output data to:", OUTPUT_DATA_TO_THIS_GEOM, arrDataOutputModes)
 	RegisterParameterContainer("target", " └ Container with text (or this)")
 	RegisterParameterString("shm_data_var_name", " └ SHM system variable name", "", 100, 999, "")
@@ -219,6 +221,9 @@ End Sub
 
 sub OutputFrontMatter()
 	Select Case GetParameterInt("front_matter_data_output_mode")
+	Case OUTPUT_FM_TO_VOID
+		'ignore the frontmatter data
+		exit sub
 	Case OUTPUT_FM_TO_THIS
 		if GetParameterInt("data_output_mode") <> OUTPUT_DATA_TO_THIS_GEOM then
 			this.geometry.text = frontMatterText

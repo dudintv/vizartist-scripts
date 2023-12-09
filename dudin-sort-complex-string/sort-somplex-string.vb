@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,2,0)
+RegisterPluginVersion(1,2,1)
 Dim info As String = "Table-like text sorting
 Sorting multiline text according specific value in each line
 Developer: Dmitry Dudin, http://dudin.tv"
@@ -29,7 +29,7 @@ sub OnInitParameters()
 	RegisterParameterContainer("input_container", " └ Input container")
 	RegisterParameterString("input_var", " └ Input SHM system name", "", 999, 999, "")
 	RegisterRadioButton("output_type", "Output to", TYPE_CONTAINER, arrTypes)
-	RegisterParameterContainer("output_container", " └ Output container")
+	RegisterParameterContainer("output_container", " └ Output container (or this)")
 	RegisterParameterString("output_var", " └ Output SHM system name", "", 999, 999, "")
 	RegisterParameterBool("direction", "Direction A->Z (1->9)", false)
 	RegisterParameterBool("auto_sort", "Auto sorting (when input is changing)", false)
@@ -41,6 +41,7 @@ end sub
 sub OnInit()
 	cinput = GetParameterContainer("input_container")
 	cOutput = GetParameterContainer("output_container")
+	if cOutput == null then cOutput = this
 
 	inputVarName = GetParameterString("input_var")
 	inputVarName.Trim()
