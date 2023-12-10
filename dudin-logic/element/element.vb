@@ -1,4 +1,4 @@
-RegisterPluginVersion(5,1,2)
+RegisterPluginVersion(5,1,4)
 Dim info As String = "Developer: Dmitry Dudin
 http://dudin.tv/scripts/logic
 -------------------------------------------------------
@@ -181,7 +181,7 @@ End Structure
 Dim arr_dropzones As Array[Dropzone]
 Dim arr_dropzoneContainers, arr_dropzoneGroups As Array[Container]
 Dim arr_dataSets As Array[DataSet]
-Dim arr_dz_mappings As Array[FieldMapping]
+Dim arr_dz_mappings As Array[Array[FieldMapping]]
 
 Function GetDataSetByName(dataSetName As String) As Container
 	for ds=0 to arr_dataSets.ubound
@@ -214,8 +214,16 @@ Sub SetOrderedMapping()
 		if mapping.type == "image" then mapping.type = "texture"
 		if mapping.type == "color" then mapping.type = "material"
 
-		arr_dz_mappings.size = Max(arr_dz_mappings.size, Cint(arr_s_mappring_line[0]))
-		arr_dz_mappings.insert(Cint(arr_s_mappring_line[0]), mapping)
+		Dim cur_col_index = CInt(arr_s_mappring_line[0])
+		arr_dz_mappings.size = Max(arr_dz_mappings.size, cur_col_index+1)
+
+		if arr_dz_mappings[cur_col_index].size == 0 then
+			Dim _mappings As Array[FieldMapping]
+			_mappings.Push(mapping)
+			arr_dz_mappings.insert(cur_col_index, _mappings)
+		else
+			arr_dz_mappings[cur_col_index].Push(mapping)
+		end if
 	next
 End Sub
 
@@ -439,22 +447,29 @@ Sub SendSingleFillToDropzones(fill As String, side As Integer, group As Integer)
 			dz = arr_dropzones[y]
 
 			Dim isGroupOk = group == dz.group
-			Dim isDropzoneOk = name == dz.name OR (name == "" AND dataFieldOrder == dz.order)
+			Dim isDropzoneOk = false
 			if GetParameterBool("use_mapping") then
-				isDropzoneOk = arr_dz_mappings[dataFieldOrder].name == dz.name
+				for i_dz_map=0 to arr_dz_mappings[dataFieldOrder].ubound
+					if arr_dz_mappings[dataFieldOrder][i_dz_map].name == dz.name then
+						isDropzoneOk = True
+					end if
+				next
+			else
+				isDropzoneOk = name == dz.name OR (name == "" AND dataFieldOrder == dz.order)
 			end if
 			Dim isSideOk = side == dz.side OR dz.side == DZ_SIDE_ONLY_ONE
 			Dim isTypeOk = type == dz.type
 			if GetParameterBool("use_mapping") then
-				isTypeOk = arr_dz_mappings[dataFieldOrder].type == dz.type
+				for i_dz_map=0 to arr_dz_mappings[dataFieldOrder].ubound
+					if arr_dz_mappings[dataFieldOrder][i_dz_map].type == dz.type then
+						isTypeOk = True
+					end if
+				next
 			end if
 			if isGroupOk AND isDropzoneOk AND isSideOk AND isTypeOk then
-				println("---> name = " & dz.name & " | type = " & dz.type & " | prop = " & dz.prop & " | propType = " & dz.propType)
-				Dim typeToSelect = type
-				if GetParameterBool("use_mapping") then
-					type = arr_dz_mappings[dataFieldOrder].type
-				end if
-				Select Case type
+				'println("---> name = " & dz.name & " | type = " & dz.type & " | prop = " & dz.prop & " | propType = " & dz.propType)
+				'println("data = " & data)
+				Select Case dz.type
 				Case "active"
 					dz.c.Active = CBool(data)
 				Case "omo"
