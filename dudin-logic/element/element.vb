@@ -1,4 +1,4 @@
-RegisterPluginVersion(5,1,2)
+RegisterPluginVersion(5,1,5)
 Dim info As String = "Developer: Dmitry Dudin
 http://dudin.tv/scripts/logic
 -------------------------------------------------------
@@ -25,7 +25,7 @@ Examples:
 
 ------------------------------------------------
 The element director should be call by exact its name.
-This director can have only 1 or 2 stop-points.
+This director must have only 1 or 2 stop-points.
 --------------------------------------------------
 Serial mode enable the element work piece by piece. Reminds a flipping ticker.
 It takes the element content from the \"Element_fill\" variable and split the value by Delimeter.
@@ -167,6 +167,13 @@ Structure DataSet
 	name As String
 End Structure
 
+Structure DropzoneGroup
+	c As Container
+	name As String
+	order As Integer
+	side As Integer
+End Structure
+
 Structure Dropzone
 	c As Container   'changable container of the Dropzone
 	group As Integer 'ordered group number for multi-Ticker
@@ -179,9 +186,48 @@ Structure Dropzone
 End Structure
 
 Dim arr_dropzones As Array[Dropzone]
-Dim arr_dropzoneContainers, arr_dropzoneGroups As Array[Container]
+'Dim arr_dropzoneContainers, arr_dropzoneGroups As Array[Container]
+Dim arr_dropzoneGroups As Array[DropzoneGroup]
 Dim arr_dataSets As Array[DataSet]
-Dim arr_dz_mappings As Array[FieldMapping]
+Dim arr_dz_mappings As Array[Array[FieldMapping]]
+
+Function GetDropzoneGroupByOrderAndSide(dzgOrder As Integer, side As Integer) As DropzoneGroup
+	for dzg=0 to arr_dropzoneGroups.ubound
+		if arr_dropzoneGroups[dzg].order == dzgOrder AND arr_dropzoneGroups[dzg].side == side then
+			GetDropzoneGroupByOrderAndSide = arr_dropzoneGroups[dzg]
+			exit Function
+		end if
+	next
+End Function
+Function IsDropzoneGroupExistByOrder(dzgOrder As Integer) As Boolean
+	for dzg=0 to arr_dropzoneGroups.ubound
+		if arr_dropzoneGroups[dzg].order == dzgOrder then
+			IsDropzoneGroupExistByOrder = true
+			exit Function
+		end if
+	next
+	IsDropzoneGroupExistByOrder = false
+End Function
+Function IsDropzoneGroupExistByName(dzName As String) As Boolean
+	for dzg=0 to arr_dropzoneGroups.ubound
+		if arr_dropzoneGroups[dzg].name == dzName then
+			IsDropzoneGroupExistByName = true
+			exit Function
+		end if
+	next
+	IsDropzoneGroupExistByName = false
+End Function
+Function GetDropzoneGroupByName(dzName As String) As DropzoneGroup
+	for dzg=0 to arr_dropzoneGroups.ubound
+		if arr_dropzoneGroups[dzg].name == dzName then
+			GetDropzoneGroupByName = arr_dropzoneGroups[dzg]
+			exit Function
+		end if
+	next
+End Function
+Function GetCurrentDropzoneGroupsOrder() As Integer
+	GetCurrentDropzoneGroupsOrder = arr_dropzoneGroups[arr_dropzoneGroups.ubound].order
+End Function
 
 Function GetDataSetByName(dataSetName As String) As Container
 	for ds=0 to arr_dataSets.ubound
@@ -214,28 +260,39 @@ Sub SetOrderedMapping()
 		if mapping.type == "image" then mapping.type = "texture"
 		if mapping.type == "color" then mapping.type = "material"
 
-		arr_dz_mappings.size = Max(arr_dz_mappings.size, Cint(arr_s_mappring_line[0]))
-		arr_dz_mappings.insert(Cint(arr_s_mappring_line[0]), mapping)
+		Dim cur_col_index = CInt(arr_s_mappring_line[0])
+		arr_dz_mappings.size = Max(arr_dz_mappings.size, cur_col_index+1)
+
+		if arr_dz_mappings[cur_col_index].size == 0 then
+			Dim _mappings As Array[FieldMapping]
+			_mappings.Push(mapping)
+			arr_dz_mappings.insert(cur_col_index, _mappings)
+		else
+			arr_dz_mappings[cur_col_index].Push(mapping)
+		end if
 	next
 End Sub
 
 Sub SetDropzones()
 	arr_dropzoneGroups.Clear()
-	arr_dropzoneGroups.Push(null)
+	Dim defaultGroup As DropzoneGroup
+	arr_dropzoneGroups.Push(defaultGroup)
 	arr_dataSets.Clear()
 	arr_dropzones.Clear()
 	arr_dirObjects.Clear()
 	Dim all_childs As Array[Container]
 	Dim name_child, types, type, prop, propType As String
 	Dim arr_types As Array[String]
-	Dim order1, order2 As Integer
+	Dim order1, order2, groupOrder As Integer
 	cRoot.GetContainerAndSubContainers(all_childs, false)
 	for i = 0 to all_childs.ubound
 		name_child = all_childs[i].name
 		name_child.Trim()
 
 		'it searched dropzones by the following convention:
-		'dropzones containers names start from "=" sign
+		'  sets containers names start with "set="
+		'  dropzones containers names start with one "=" sign
+		'  dropzone groups conatiners names start with "=="
 
 		Dim isDataSet = name_child.left(4) == "set="
 		if isDataSet then
@@ -252,7 +309,27 @@ Sub SetDropzones()
 
 		Dim isChildDropzoneGroup = name_child.left(2) == "=="
 		if isChildDropzoneGroup then
-			arr_dropzoneGroups.push(all_childs[i])
+			name_child.Erase(0, 2)
+			Dim dropzoneGroup As DropzoneGroup
+			dropzoneGroup.c = all_childs[i]
+
+			if name_child.StartsWith("1") OR name_child.StartsWith("2") then
+				dropzoneGroup.side = CInt(name_child.left(1))
+				name_child.Erase(0, 1)
+			else
+				dropzoneGroup.side = DZ_SIDE_ONLY_ONE
+			end if
+			dropzoneGroup.name = name_child
+			if IsDropzoneGroupExistByName(name_child) then
+				dropzoneGroup.order = GetDropzoneGroupByName(name_child).order
+			else
+				groupOrder += 1
+				dropzoneGroup.order = groupOrder
+			end if
+
+			arr_dropzoneGroups.push(dropzoneGroup)
+
+			'reset orders for dropzones
 			order1 = 0
 			order2 = 0
 		end if
@@ -261,7 +338,7 @@ Sub SetDropzones()
 		if isChildDropzone then
 			Dim dz As Dropzone
 			dz.c = all_childs[i]
-			dz.group = arr_dropzoneGroups.ubound
+			dz.group = GetCurrentDropzoneGroupsOrder()
 
 			name_child = all_childs[i].name
 
@@ -380,9 +457,23 @@ Sub FillDropzones(fill As String, side As Integer)
 	if GetParameterBool("use_groups") then
 		Dim arr_grouped_fills As Array[String]
 		fill.split(separator, arr_grouped_fills)
-		arr_grouped_fills.size = arr_dropzoneGroups.size
+
+		arr_grouped_fills.size = Max(arr_grouped_fills.size, GetCurrentDropzoneGroupsOrder())
+
 		for group_index=0 to arr_grouped_fills.ubound
-			SendSingleFillToDropzones(arr_grouped_fills[group_index], side, group_index + 1) '"i+1" because defined groups starts from "1"
+			Dim group = group_index + 1 '"i+1" because defined groups starts from "1"
+			Dim currDropzoneGroup = GetDropzoneGroupByOrderAndSide(group, side)
+			Dim isGroupSideOk = currDropzoneGroup.side == side OR currDropzoneGroup.side == DZ_SIDE_ONLY_ONE
+			if isGroupSideOk then
+				Dim p_groupOmo As PLuginInstance = currDropzoneGroup.c.GetFunctionPluginInstance("Omo")
+				if p_groupOmo <> null then
+					p_groupOmo.SetParameterInt("vis_con", CInt(arr_grouped_fills[group_index] <> ""))
+				else
+					GetDropzoneGroupByOrderAndSide(group_index, side).c.active = fill <> ""
+				end if
+			end if
+
+			SendSingleFillToDropzones(arr_grouped_fills[group_index], side, group)
 		next
 	else
 		SendSingleFillToDropzones(fill, side, 0) '"0" is for undefined (default) group
@@ -395,16 +486,6 @@ Sub SendSingleFillToDropzones(fill As String, side As Integer, group As Integer)
 	Dim dz As Dropzone
 	Dim arr_xyz As Array[String]
 	Dim dataFieldOrder, precision As Integer
-
-	if GetParameterBool("use_groups") then
-		'to carry out possible empty groups
-		Dim p_groupOmo As PLuginInstance = arr_dropzoneGroups[group].GetFunctionPluginInstance("Omo")
-		if p_groupOmo <> null then
-			p_groupOmo.SetParameterInt("vis_con", CInt(fill <> ""))
-		else
-			arr_dropzoneGroups[group].active = fill <> ""
-		end if
-	end if
 
 	fill.split("|", arr_data)
 	dataFieldOrder = 1
@@ -438,23 +519,31 @@ Sub SendSingleFillToDropzones(fill As String, side As Integer, group As Integer)
 		for y=0 to arr_dropzones.ubound
 			dz = arr_dropzones[y]
 
+			'println(":::: group = " & group & " =?= dz.group = " & dz.group)
 			Dim isGroupOk = group == dz.group
-			Dim isDropzoneOk = name == dz.name OR (name == "" AND dataFieldOrder == dz.order)
+			Dim isDropzoneOk = false
 			if GetParameterBool("use_mapping") then
-				isDropzoneOk = arr_dz_mappings[dataFieldOrder].name == dz.name
+				for i_dz_map=0 to arr_dz_mappings[dataFieldOrder].ubound
+					if arr_dz_mappings[dataFieldOrder][i_dz_map].name == dz.name then
+						isDropzoneOk = True
+					end if
+				next
+			else
+				isDropzoneOk = name == dz.name OR (name == "" AND dataFieldOrder == dz.order)
 			end if
 			Dim isSideOk = side == dz.side OR dz.side == DZ_SIDE_ONLY_ONE
 			Dim isTypeOk = type == dz.type
 			if GetParameterBool("use_mapping") then
-				isTypeOk = arr_dz_mappings[dataFieldOrder].type == dz.type
+				for i_dz_map=0 to arr_dz_mappings[dataFieldOrder].ubound
+					if arr_dz_mappings[dataFieldOrder][i_dz_map].type == dz.type then
+						isTypeOk = True
+					end if
+				next
 			end if
 			if isGroupOk AND isDropzoneOk AND isSideOk AND isTypeOk then
-				println("---> name = " & dz.name & " | type = " & dz.type & " | prop = " & dz.prop & " | propType = " & dz.propType)
-				Dim typeToSelect = type
-				if GetParameterBool("use_mapping") then
-					type = arr_dz_mappings[dataFieldOrder].type
-				end if
-				Select Case type
+				'println("---> name = " & dz.side & dz.name & " | type = " & dz.type & " | prop = " & dz.prop & " | propType = " & dz.propType)
+				'println("data = " & data)
+				Select Case dz.type
 				Case "active"
 					dz.c.Active = CBool(data)
 				Case "omo"
@@ -687,7 +776,7 @@ Sub OnInitParameters()
 	RegisterParameterBool("Mode", "Ticker mode", false)
 	RegisterParameterString("series_separator", "        └ Delimeter (newline is \\\\n):", "\\n", 10, 32, "")
 	RegisterParameterDouble("Pause", "        └ Pause (sec):", 5, 0, 10000)
-	RegisterParameterBool("group_fill_tail", "└ Fill empty tail (not allow empty groups)", false)
+	RegisterParameterBool("group_fill_tail", "└ Fill empty tail (avoid empty groups)", false)
 	RegisterParameterBool("Start_by_first", "└ Always start from the first", false)
 	RegisterParameterBool("Start_by_previous", "    └─ from the last onee", false)
 	RegisterParameterBool("Takeout_by_last", "└ Takeout after the last", false)
@@ -1181,9 +1270,9 @@ End Sub
 
 Sub ChangeCurrentSeriesIndex()
 	if GetParameterBool("use_groups") then
-			local_memory[titr_name & "_curSeries"] = local_memory[titr_name & "_curSeries"] + arr_dropzoneGroups.size - 1
-		if GetParameterBool("group_fill_tail") AND local_memory[titr_name & "_curSeries"] > arr_dropzoneGroups.size then
-			local_memory[titr_name & "_curSeries"] = local_memory[titr_name & "_curSeries"] Mod arr_dropzoneGroups.size
+			local_memory[titr_name & "_curSeries"] = local_memory[titr_name & "_curSeries"] + GetCurrentDropzoneGroupsOrder()
+		if GetParameterBool("group_fill_tail") AND local_memory[titr_name & "_curSeries"] > GetCurrentDropzoneGroupsOrder() then
+			local_memory[titr_name & "_curSeries"] = local_memory[titr_name & "_curSeries"] Mod GetCurrentDropzoneGroupsOrder()
 		end if
 	else
 		local_memory[titr_name & "_curSeries"] = local_memory[titr_name & "_curSeries"] + 1
@@ -1366,7 +1455,7 @@ function take_cur_series() as String
 
 	Dim cur_grouped_fills As Array[String]
 	if GetParameterBool("use_groups") then
-		for i=1 to arr_dropzoneGroups.ubound
+		for i=1 to GetCurrentDropzoneGroupsOrder()
 			Dim curSeriesIndex = curSeries + i - 1
 			if curSeriesIndex <= arr_fill.ubound then
 				cur_grouped_fills.Push(arr_fill[curSeriesIndex])
@@ -1439,7 +1528,7 @@ sub take_next_series()
 			If start_by_previous Then curSeries = 0
 
 			if GetParameterBool("use_groups") then
-				i_curLoop += arr_dropzoneGroups.size
+				i_curLoop += GetCurrentDropzoneGroupsOrder()
 			else
 				i_curLoop += 1
 			end if
