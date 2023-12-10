@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,0,0)
+RegisterPluginVersion(1,0,1)
 Dim info As String = "Parlamant Colorizer
 Developer: Dmitry Dudin
 http://dudin.tv"
@@ -104,7 +104,8 @@ Sub Colorize()
 
 	'fill up the rest
 	Dim restSeats = totalSeatsNumber - coloredSeatsNumber
-	pColorize.SetParameterInt("size" & arrColorPoints.size+1 & "_b", restSeats)
+	pColorize.SetParameterInt("size" & arrColorPoints.size + 1 & "_b", restSeats)
+	pColorize.SetParameterColor("color" & arrColorPoints.size + 1 & "_b", defaultColor)
 
 	if restSeats < 0 then
 		Dim warningMessage = "PARLAMENT COLORIZE WARNING: the sum of colored seats ("&coloredSeatsNumber&") is more than " & totalSeatsNumber
