@@ -1,4 +1,4 @@
-RegisterPluginVersion(5,1,5)
+RegisterPluginVersion(5,1,6)
 Dim info As String = "Developer: Dmitry Dudin
 http://dudin.tv/scripts/logic
 -------------------------------------------------------
@@ -193,7 +193,8 @@ Dim arr_dz_mappings As Array[Array[FieldMapping]]
 
 Function GetDropzoneGroupByOrderAndSide(dzgOrder As Integer, side As Integer) As DropzoneGroup
 	for dzg=0 to arr_dropzoneGroups.ubound
-		if arr_dropzoneGroups[dzg].order == dzgOrder AND arr_dropzoneGroups[dzg].side == side then
+		Dim isSideOk = arr_dropzoneGroups[dzg].side == side OR (side == 1 AND arr_dropzoneGroups[dzg].side == 0)
+		if arr_dropzoneGroups[dzg].order == dzgOrder AND isSideOk then
 			GetDropzoneGroupByOrderAndSide = arr_dropzoneGroups[dzg]
 			exit Function
 		end if
@@ -469,7 +470,7 @@ Sub FillDropzones(fill As String, side As Integer)
 				if p_groupOmo <> null then
 					p_groupOmo.SetParameterInt("vis_con", CInt(arr_grouped_fills[group_index] <> ""))
 				else
-					GetDropzoneGroupByOrderAndSide(group_index, side).c.active = fill <> ""
+					GetDropzoneGroupByOrderAndSide(group, side).c.active = arr_grouped_fills[group_index] <> ""
 				end if
 			end if
 
