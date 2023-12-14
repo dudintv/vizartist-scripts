@@ -1,4 +1,4 @@
-RegisterPluginVersion(5,1,6)
+RegisterPluginVersion(5,1,7)
 Dim info As String = "Developer: Dmitry Dudin
 http://dudin.tv/scripts/logic
 -------------------------------------------------------
@@ -262,7 +262,7 @@ Sub SetOrderedMapping()
 		if mapping.type == "color" then mapping.type = "material"
 
 		Dim cur_col_index = CInt(arr_s_mappring_line[0])
-		arr_dz_mappings.size = Max(arr_dz_mappings.size, cur_col_index+1)
+		arr_dz_mappings.size = Max(arr_dz_mappings.size, cur_col_index)
 
 		if arr_dz_mappings[cur_col_index].size == 0 then
 			Dim _mappings As Array[FieldMapping]
@@ -582,12 +582,12 @@ Sub SendSingleFillToDropzones(fill As String, side As Integer, group As Integer)
 					dz.c.Geometry.Text = s
 				Case "float"
 					data.Substitute(",", ".", true)
+					data.Substitute("\\\%", "", true)
 					if dz.prop <> "" then
 						precision = CInt(dz.prop)
 					else
 						precision = 2 'fallback default precision
 					end if
-					if data.FindLastOf(".") >= 0 then precision = data.length - data.FindLastOf(".") - 1
 					s = DoubleToString(  CDbl(data), precision  )
 					s.Substitute("\\.", ",", true)
 					dz.c.Geometry.Text = s
@@ -1763,3 +1763,4 @@ sub OnExecPerField()
 		reset_control_delay -= 1
 	end if
 end sub
+																																		
