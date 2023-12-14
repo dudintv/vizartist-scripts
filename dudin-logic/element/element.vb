@@ -1,4 +1,4 @@
-RegisterPluginVersion(5,1,7)
+RegisterPluginVersion(5,1,8)
 Dim info As String = "Developer: Dmitry Dudin
 http://dudin.tv/scripts/logic
 -------------------------------------------------------
@@ -261,15 +261,15 @@ Sub SetOrderedMapping()
 		if mapping.type == "image" then mapping.type = "texture"
 		if mapping.type == "color" then mapping.type = "material"
 
-		Dim cur_col_index = CInt(arr_s_mappring_line[0])
-		arr_dz_mappings.size = Max(arr_dz_mappings.size, cur_col_index)
+		Dim cur_column = CInt(arr_s_mappring_line[0])
+		arr_dz_mappings.size = Max(arr_dz_mappings.size, cur_column+1)
 
-		if arr_dz_mappings[cur_col_index].size == 0 then
+		if arr_dz_mappings[cur_column].size == 0 then
 			Dim _mappings As Array[FieldMapping]
 			_mappings.Push(mapping)
-			arr_dz_mappings.insert(cur_col_index, _mappings)
+			arr_dz_mappings[cur_column] = _mappings
 		else
-			arr_dz_mappings[cur_col_index].Push(mapping)
+			arr_dz_mappings[cur_column].Push(mapping)
 		end if
 	next
 End Sub
@@ -595,7 +595,12 @@ Sub SendSingleFillToDropzones(fill As String, side As Integer, group As Integer)
 					if dz.prop == "" then
 						dz.c.CreateTexture(data)
 					elseif dz.prop == "set" AND dz.propType <> "" then
-						dz.c.Texture = GetDataSetByName(dz.propType).GetChildContainerByIndex(CInt(data)).Texture
+						Dim cWithSetTexture = GetDataSetByName(dz.propType).GetChildContainerByIndex(CInt(data))
+						if cWithSetTexture <> null then
+							dz.c.Texture = cWithSetTexture.Texture
+						else
+							dz.c.Texture = GetDataSetByName(dz.propType).GetChildContainerByIndex(0).Texture
+						end if
 					end if
 					dz.c.Update()
 				Case "material"
@@ -1763,4 +1768,3 @@ sub OnExecPerField()
 		reset_control_delay -= 1
 	end if
 end sub
-																																		
