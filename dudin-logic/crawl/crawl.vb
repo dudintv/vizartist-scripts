@@ -1,7 +1,7 @@
 RegisterPluginVersion(1,1,0)
 Dim info As String = "Crawl
 Developer: Dmitry Dudin
-http://dudin.tv/scripts/logic"
+http://dudin.tv"
 
 Dim cTemplates, cProduction, cArea As Container
 Dim animationStatus, intentionStatus, delimiter, console As String
