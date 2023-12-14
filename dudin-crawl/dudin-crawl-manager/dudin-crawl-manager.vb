@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,0,1)
+RegisterPluginVersion(1,1,0)
 Dim info As String = "Crawl manager
 Developer: Dmitry Dudin
 http://dudin.tv"
@@ -26,13 +26,14 @@ sub OnInitParameters()
 	RegisterParameterText("source_text", " └ Source text", 100, 100)
 	RegisterParameterContainer("source_container", " └ Source text container")
 	RegisterParameterString("source_shm", " └ Source SHM variable", "", 100, 999, "")
+	RegisterParameterBool("remove_empty_lines", "Remove empty lines", false)
 
 	RegisterRadioButton("output_mode", "Output mode", 0, outputModes)
 	RegisterParameterContainer("output_container", " └ Output text container (or this)")
 	RegisterParameterString("output_shm", " └ Output SHM variable", "", 100, 999, "")
 
 	RegisterParameterString("separator_text", "Separator text", "", 100, 999, "")
-	RegisterParameterBool("separator_from_start", "Insert the separator in front?", false)
+	RegisterParameterBool("separator_from_start", "Insert the separator in front", false)
 
 	RegisterPushButton("process", "Process", 1)
 end sub
@@ -92,10 +93,18 @@ Sub Process()
 		sourceText = CStr(System.Map[GetParameterString("source_shm")])
 	end if
 	sourceText.Trim()
+	arrCrawlItems.Clear()
+
+	if sourceText == "" then exit sub
 	sourceText.Split(delimiter, arrSourteText)
 
-	arrCrawlItems.Clear()
-	if sourceText == "" then exit sub
+	for i=0 to arrSourteText.ubound
+		arrSourteText[i].trim()
+		if arrSourteText[i] == "" then
+			arrSourteText.erase(i)
+			i -= 1
+		end if
+	next
 
 	for i=0 to arrSourteText.ubound
 		if GetParameterBool("separator_from_start") then
