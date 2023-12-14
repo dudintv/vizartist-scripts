@@ -1,9 +1,9 @@
-RegisterPluginVersion(1,1,0)
+RegisterPluginVersion(1,1,2)
 Dim info As String = "Crawl
 Developer: Dmitry Dudin
 http://dudin.tv"
 
-Dim cTemplates, cProduction, cArea As Container
+Dim cTemplates, cProduction, cArea, cInput As Container
 Dim animationStatus, intentionStatus, delimiter, console As String
 
 Dim startX, endX As Double
@@ -27,7 +27,7 @@ sourceModes.Push("text")
 sourceModes.Push("container")
 sourceModes.Push("SHM")
 Dim SOURCE_MODE_TEXT = 0
-Dim SOURCE_MODE_CONATINER = 1
+Dim SOURCE_MODE_CONTAINER = 1
 Dim SOURCE_MODE_SHM = 2
 
 Dim BUTTON_INIT = 1
@@ -58,11 +58,21 @@ end sub
 sub OnParameterChanged(parameterName As String)
 	OnInit()
 	SendGuiParameterShow("source_text", CInt(sourceMode == SOURCE_MODE_TEXT))
-	SendGuiParameterShow("source_container", CInt(sourceMode == SOURCE_MODE_CONATINER))
+	SendGuiParameterShow("source_container", CInt(sourceMode == SOURCE_MODE_CONTAINER))
 	SendGuiParameterShow("source_shm", CInt(sourceMode == SOURCE_MODE_SHM))
 	if(parameterName == "source_text") then PrepareItems()
-end sub
 
+	if sourceMode == SOURCE_MODE_CONTAINER then
+		System.Map.UnregisterChangedCallback(GetParameterString("source_shm"))
+
+		cInput = GetParameterContainer("source_container")
+		if cInput <> null then cInput.geometry.RegisterTextChangedCallback()
+	elseif sourceMode == SOURCE_MODE_SHM then
+		if cInput <> null then cInput.geometry.UnregisterChangedCallback()
+
+		System.Map.RegisterChangedCallback(GetParameterString("source_shm"))
+	end if
+end sub
 sub OnInit()
 	sourceMode = GetParameterInt("source_mode")
 	cTemplates = GetParameterContainer("templates")
@@ -111,6 +121,14 @@ sub OnExecPerField()
 	end if
 end sub
 
+sub OnGeometryChanged(geom As Geometry)
+	PrepareItems()
+end sub
+
+sub OnSharedMemoryVariableChanged(map As SharedMemory, mapKey As String)
+	PrepareItems()
+end sub
+
 '-----------------------------------------
 
 Sub CleanupProduction()
@@ -121,7 +139,7 @@ End Sub
 Sub PrepareItems()
 	if sourceMode == SOURCE_MODE_TEXT then
 		sourceText = GetParameterString("source_text")
-	elseif sourceMode == SOURCE_MODE_CONATINER then
+	elseif sourceMode == SOURCE_MODE_CONTAINER then
 		sourceText = GetParameterContainer("source_container").geometry.text
 	elseif sourceMode == SOURCE_MODE_SHM then
 		sourceText = CStr(System.Map[GetParameterString("source_shm")])
