@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,4,2)
+RegisterPluginVersion(1,4,3)
 Dim info As String = "Read and normalize a text file periodically.
 Developer: Dmitry Dudin, http://dudin.tv"
 
@@ -214,9 +214,20 @@ Sub PrepareFrontMatterFields()
 	frontMatterFields.Clear()
 	for i=0 to arrFrontMatterLines.ubound
 		Dim theFieldNameSeparatorIndex = arrFrontMatterLines[i].Find(":")
+		
 		if theFieldNameSeparatorIndex > 0 then
 			field.name = arrFrontMatterLines[i].GetSubstring(0, Min(theFieldNameSeparatorIndex, arrFrontMatterLines[i].length))
+		end if
+			
+		if theFieldNameSeparatorIndex > 0 AND theFieldNameSeparatorIndex < arrFrontMatterLines[i].length-1 then
 			field.value = arrFrontMatterLines[i].GetSubstring(Min(theFieldNameSeparatorIndex + 1, arrFrontMatterLines[i].length-1), arrFrontMatterLines[i].length)
+		else
+			println("theFieldNameSeparatorIndex = " & theFieldNameSeparatorIndex)
+			println("arrFrontMatterLines[i].length = " & arrFrontMatterLines[i].length-1)
+			field.value = ""
+		end if
+		
+		if theFieldNameSeparatorIndex > 0 then
 			frontMatterFields.Push(field)
 		end if
 	next
