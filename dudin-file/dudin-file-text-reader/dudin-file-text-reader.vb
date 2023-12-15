@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,4,1)
+RegisterPluginVersion(1,4,2)
 Dim info As String = "Read and normalize a text file periodically.
 Developer: Dmitry Dudin, http://dudin.tv"
 
@@ -81,7 +81,7 @@ sub OnInit()
 	frontMatterPrefix = GetParameterString("front_matter_prefix")
 	frontMatterPrefix.trim()
 
-	interval = 0.1 'set a very small delay for the very first try
+	interval = 0.2 'set a very small delay for the very first try
 	hasFrontMatter = GetParameterBool("has_front_matter")
 
 	if GetParameterInt("front_matter_data_output_mode") == OUTPUT_FM_TO_OTHER then
@@ -91,12 +91,14 @@ sub OnInit()
 		cDataTarget = GetParameterContainer("target")
 	end if
 
+	tick = 0
 	ReadFile()
 end sub
 sub OnParameterChanged(parameterName As String)
 	if parameterName == "console" then exit sub
 
 	OnInit()
+	tick = 0
 	ReadFile()
 
 	SendGuiParameterShow("target", CInt(GetParameterInt("data_output_mode") == OUTPUT_DATA_TO_OTHER_GEOM))
@@ -114,11 +116,12 @@ sub OnExecPerField()
 	if tick > interval/System.CurrentRefreshRate then
 		ReadFile()
 		interval = GetParameterDouble("interval")
+		tick = 0
 	end if
 end sub
 
 sub ReadFile()
-	tick = 0
+	println("ReadFile tick = " & tick)
 	console = ""
 
 	if GetParameterBool("split_filepath") then
@@ -212,8 +215,8 @@ Sub PrepareFrontMatterFields()
 	for i=0 to arrFrontMatterLines.ubound
 		Dim theFieldNameSeparatorIndex = arrFrontMatterLines[i].Find(":")
 		if theFieldNameSeparatorIndex > 0 then
-			field.name = arrFrontMatterLines[i].GetSubstring(0, theFieldNameSeparatorIndex)
-			field.value = arrFrontMatterLines[i].GetSubstring(theFieldNameSeparatorIndex + 1, arrFrontMatterLines[i].length)
+			field.name = arrFrontMatterLines[i].GetSubstring(0, Min(theFieldNameSeparatorIndex, arrFrontMatterLines[i].length))
+			field.value = arrFrontMatterLines[i].GetSubstring(Min(theFieldNameSeparatorIndex + 1, arrFrontMatterLines[i].length-1), arrFrontMatterLines[i].length)
 			frontMatterFields.Push(field)
 		end if
 	next
@@ -286,5 +289,4 @@ Sub Report()
 	end if
 
 	this.ScriptPluginInstance.SetParameterString("console",console)
-	SendGuiRefresh()
 End Sub
