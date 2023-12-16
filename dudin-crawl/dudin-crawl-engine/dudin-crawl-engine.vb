@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,1,2)
+RegisterPluginVersion(1,1,3)
 Dim info As String = "Crawl
 Developer: Dmitry Dudin
 http://dudin.tv"
@@ -186,6 +186,8 @@ Sub InsertNextItem()
 	if cLast <> null then
 		newItemPositionX = cLast.position.x + cLast.GetTransformedBoundingBoxDimensions().x + GetParameterDouble("gap")
 	end if
+	
+	if currentItemIndex > arrCrawlItems.ubound then exit sub
 
 	Dim cNew As Container = arrCrawlItems[currentItemIndex].cTemplate.CopyTo(cProduction, TL_DOWN)
 	cNew.position.xyz = CVertex(newItemPositionX, 0, 0)
