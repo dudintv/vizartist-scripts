@@ -121,7 +121,6 @@ sub OnExecPerField()
 end sub
 
 sub ReadFile()
-	println("ReadFile tick = " & tick)
 	console = ""
 
 	if GetParameterBool("split_filepath") then
