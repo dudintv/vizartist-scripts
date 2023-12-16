@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,4,4)
+RegisterPluginVersion(1,4,5)
 Dim info As String = "Read and normalize a text file periodically.
 Developer: Dmitry Dudin, http://dudin.tv"
 
@@ -221,8 +221,6 @@ Sub PrepareFrontMatterFields()
 		if theFieldNameSeparatorIndex > 0 AND theFieldNameSeparatorIndex < arrFrontMatterLines[i].length-1 then
 			field.value = arrFrontMatterLines[i].GetSubstring(Min(theFieldNameSeparatorIndex + 1, arrFrontMatterLines[i].length-1), arrFrontMatterLines[i].length)
 		else
-			println("theFieldNameSeparatorIndex = " & theFieldNameSeparatorIndex)
-			println("arrFrontMatterLines[i].length = " & arrFrontMatterLines[i].length-1)
 			field.value = ""
 		end if
 		
