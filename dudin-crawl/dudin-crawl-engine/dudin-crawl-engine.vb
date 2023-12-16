@@ -173,7 +173,6 @@ Sub PrepareItems()
 End Sub
 
 Sub InsertNextItem()
-	println("InsertNextItem| intentionStatus = " & intentionStatus)
 	if intentionStatus == "stop" Then
 		'do not insert a new item
 		exit sub
