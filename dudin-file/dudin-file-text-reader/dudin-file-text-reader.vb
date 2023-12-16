@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,4,3)
+RegisterPluginVersion(1,4,4)
 Dim info As String = "Read and normalize a text file periodically.
 Developer: Dmitry Dudin, http://dudin.tv"
 
@@ -52,7 +52,7 @@ sub OnInitParameters()
 
 	RegisterParameterBool("has_front_matter", "Enable Front Matter (---)", false)
 	RegisterRadioButton("front_matter_data_output_mode", " └ Output to:", OUTPUT_FM_TO_SHM, arrFrontMatterModes)
-	RegisterParameterString("front_matter_prefix", "     └ Prefix for SHM variables names", "", 100, 999, "")
+	RegisterParameterString("front_matter_prefix", "     └ Prefix for output names", "", 100, 999, "")
 	RegisterParameterString("front_matter_shm_var_name", "     └ SHM system variable name", "", 100, 999, "")
 	RegisterParameterContainer("front_matter_target", "     └ Container with text")
 
