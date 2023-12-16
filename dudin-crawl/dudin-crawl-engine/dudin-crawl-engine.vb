@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,1,3)
+RegisterPluginVersion(1,1,4)
 Dim info As String = "Crawl
 Developer: Dmitry Dudin
 http://dudin.tv"
@@ -173,6 +173,7 @@ Sub PrepareItems()
 End Sub
 
 Sub InsertNextItem()
+	println("InsertNextItem| intentionStatus = " & intentionStatus)
 	if intentionStatus == "stop" Then
 		'do not insert a new item
 		exit sub
@@ -201,7 +202,7 @@ Sub InsertNextItem()
 End Sub
 
 Sub Start()
-	'println(cProduction.ChildContainerCount)
+	intentionStatus = ""
 	currentItemIndex = -1 'to start from "0"
 	InsertNextItem()
 	animationStatus = "play"
