@@ -1,5 +1,9 @@
 ## Moving/arranging animations to certain directors
 
+#### Version 1.3.0 16 December 2023
+* add filter to includeor exclude containers by their names
+* add prefix for directors names
+
 #### Version 1.1.2 (29.09.2022)
 * a small refactor
 
