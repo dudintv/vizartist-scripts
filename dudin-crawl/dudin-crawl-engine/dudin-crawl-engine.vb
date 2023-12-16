@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,1,4)
+RegisterPluginVersion(1,1,5)
 Dim info As String = "Crawl
 Developer: Dmitry Dudin
 http://dudin.tv"
@@ -146,6 +146,7 @@ Sub PrepareItems()
 	end if
 	sourceText.Trim()
 	sourceText.Split(delimiter, arrSourteText)
+	println("sourceText = " & sourceText)
 
 	arrCrawlItems.Clear()
 	if sourceText == "" then exit sub
@@ -168,7 +169,7 @@ Sub PrepareItems()
 			item.cTemplate = cTemplates.FirstChildContainer
 		end if
 		arrCrawlItems.Push(item)
-		PrintItem(item)
+		'PrintItem(item)
 	next
 End Sub
 
@@ -179,13 +180,18 @@ Sub InsertNextItem()
 	end if
 
 	currentItemIndex += 1
-	currentItemIndex = currentItemIndex mod arrCrawlItems.size
+	if arrCrawlItems.size > 0 then
+		currentItemIndex = currentItemIndex mod arrCrawlItems.size
+	else
+		currentItemIndex = 0
+	end if
 
 	Dim cLast = cProduction.FirstChildContainer
 	Dim newItemPositionX = startX
 	if cLast <> null then
 		newItemPositionX = cLast.position.x + cLast.GetTransformedBoundingBoxDimensions().x + GetParameterDouble("gap")
 	end if
+	if newItemPositionX < startX then newItemPositionX = startX ' to avoid instant showing the new element in the middle of the crawl
 	
 	if currentItemIndex > arrCrawlItems.ubound then exit sub
 
@@ -196,7 +202,7 @@ Sub InsertNextItem()
 	else
 		cNew.geometry.text = arrCrawlItems[currentItemIndex].text
 	end if
-	cNew.RecomputeMatrix()
+	'cNew.RecomputeMatrix()
 	arrActiveItems.push(cNew)
 End Sub
 
