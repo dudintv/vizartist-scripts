@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,1,0)
+RegisterPluginVersion(1,1,1)
 Dim info As String = "Crawl manager
 Developer: Dmitry Dudin
 http://dudin.tv"
@@ -57,6 +57,7 @@ sub OnInit()
 
 	cOutput = GetParameterContainer("output_container")
 	if cOutput == null then cOutput = this
+	Process()
 end sub
 sub OnParameterChanged(parameterName As String)
 	OnInit()
@@ -95,7 +96,6 @@ Sub Process()
 	sourceText.Trim()
 	arrCrawlItems.Clear()
 
-	if sourceText == "" then exit sub
 	sourceText.Split(delimiter, arrSourteText)
 
 	for i=0 to arrSourteText.ubound
@@ -105,15 +105,18 @@ Sub Process()
 			i -= 1
 		end if
 	next
+	
+	Dim separatorText = GetParameterString("separator_text")
+	separatorText.trim()
 
 	for i=0 to arrSourteText.ubound
-		if GetParameterBool("separator_from_start") then
+		if GetParameterBool("separator_from_start") AND separatorText <> "" then
 			arrCrawlItems.Push(GetParameterString("separator_text"))
 		end if
 
 		arrCrawlItems.Push(arrSourteText[i])
 
-		if NOT GetParameterBool("separator_from_start") then
+		if NOT GetParameterBool("separator_from_start") AND separatorText <> "" then
 			arrCrawlItems.Push(GetParameterString("separator_text"))
 		end if
 	next
@@ -127,4 +130,3 @@ Sub Process()
 		System.Map[GetParameterString("output_shm")] = result
 	end if
 End Sub
-
