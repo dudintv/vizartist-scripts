@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,2,1)
+RegisterPluginVersion(1,3,0)
 Dim info As String = "Table-like text sorting
 Sorting multiline text according specific value in each line
 Developer: Dmitry Dudin, http://dudin.tv"
@@ -11,6 +11,14 @@ arrTypes.Push("Container")
 arrTypes.Push("SHM")
 Dim TYPE_CONTAINER = 0
 Dim TYPE_SHM = 1
+
+Dim arrFilterTypes As Array[String]
+arrFilterTypes.Push("None")
+arrFilterTypes.Push("Include")
+arrFilterTypes.Push("Exclude")
+Dim FILTER_TYPE_NONE = 0
+Dim FILTER_TYPE_INCLUDE = 1
+Dim FILTER_TYPE_EXCLUDE = 2
 
 Dim arrSortableType As Array[String]
 arrSortableType.Push("string")
@@ -31,6 +39,9 @@ sub OnInitParameters()
 	RegisterRadioButton("output_type", "Output to", TYPE_CONTAINER, arrTypes)
 	RegisterParameterContainer("output_container", " └ Output container (or this)")
 	RegisterParameterString("output_var", " └ Output SHM system name", "", 999, 999, "")
+	RegisterRadioButton("filter_type", "Filter", FILTER_TYPE_NONE, arrFilterTypes)
+	RegisterParameterInt("filter_field", " └ Filter by field #",1, -999, 999)
+	RegisterParameterString("filter_list", " └ Filter list", "", 999, 999, "")
 	RegisterParameterBool("direction", "Direction A->Z (1->9)", false)
 	RegisterParameterBool("auto_sort", "Auto sorting (when input is changing)", false)
 	RegisterPushButton("go", "Sort it!", 1)
@@ -78,6 +89,8 @@ sub OnParameterChanged(parameterName As String)
 	SendGuiParameterShow("input_var", CInt(GetParameterInt("input_type") == TYPE_SHM))
 	SendGuiParameterShow("output_container", CInt(GetParameterInt("output_type") == TYPE_CONTAINER))
 	SendGuiParameterShow("output_var", CInt(GetParameterInt("output_type") == TYPE_SHM))
+	SendGuiParameterShow("filter_list", CInt(GetParameterInt("filter_type") <> FILTER_TYPE_NONE))
+	SendGuiParameterShow("filter_field", CInt(GetParameterInt("filter_type") <> FILTER_TYPE_NONE))
 end sub
 
 sub OnGeometryChanged(geom As Geometry)
@@ -153,6 +166,38 @@ sub OnExecAction(buttonId As Integer)
 	end if
 end sub
 
+Function FilterLines(arr_lines As Array[String]) As Array[String]
+	Dim arr_filtered_lines As Array[String]
+	Dim arr_filter_list As Array[String]
+	Dim s_filter_list = GetParameterString("filter_list")
+	s_filter_list.Trim()
+	if s_filter_list == "" then
+		FilterLines = arr_lines
+		Exit function
+	end if
+	
+	s_filter_list.split(",", arr_filter_list)
+	for line_index=0 to arr_lines.ubound
+		Dim is_item_found_in_list = false
+		Dim line_fileds As Array[String]
+		arr_lines[line_index].split(GetParameterString("fields_separator"), line_fileds)
+		Dim value_to_filter = line_fileds[GetParameterInt("filter_field")-1]
+		value_to_filter.trim()
+		for filter_index=0 to arr_filter_list.ubound
+			arr_filter_list[filter_index].trim()
+			if value_to_filter == arr_filter_list[filter_index] then
+				is_item_found_in_list = true
+				exit for
+			end if
+		next
+		if (GetParameterInt("filter_type") == FILTER_TYPE_INCLUDE AND is_item_found_in_list) or (GetParameterInt("filter_type") == FILTER_TYPE_EXCLUDE AND NOT is_item_found_in_list) then
+			arr_filtered_lines.push(arr_lines[line_index])
+		end if
+	next
+	
+	FilterLines = arr_filtered_lines
+End Function
+
 Function SortArrayLines(input_string As String, line_separator As String, data_separator As String, element_to_sort As Integer, direction As Boolean, datatype As String) As String
 	Dim arr_input_string As Array[String]
 	Dim arr_output_string As Array[String]
@@ -169,13 +214,17 @@ Function SortArrayLines(input_string As String, line_separator As String, data_s
 		SortArrayLines = input_string
 		exit function
 	end if
+	
+	if GetParameterInt("filter_type") <> FILTER_TYPE_NONE then
+		arr_input_string = FilterLines(arr_input_string)
+	end if
 
 	arr_output_string.Clear()
 	arr_sorter_data.Clear()
 	for i=0 to arr_input_string.ubound
 		arr_output_string.push(arr_input_string[i])
 		if data_separator <> "" then
-			'if there is the separator — extract data for sroting
+			'if there is the separator — extract data for sorting
 			arr_input_string[i].Split(data_separator, arr_line_string)
 			if element_to_sort > arr_line_string.ubound then
 				arr_sorter_data.Push(arr_line_string[arr_line_string.ubound])
