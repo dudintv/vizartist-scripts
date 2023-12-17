@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,2,0)
+RegisterPluginVersion(1,3,0)
 Dim info As String = "Moving/arrange animation channels to certain directors. to Developer: Dmitry Dudin, dudin.tv"
 
 Dim cRoot As Container
@@ -100,7 +100,6 @@ Sub ArrangeAnimation()
 		arr_c.Clear()
 		arr_c_parts[i].GetContainerAndSubContainers(arr_c, false)
 		for y=0 to arr_c.ubound
-			println(IsFilterPassed(arr_c[y].name))
 			if IsFilterPassed(arr_c[y].name) AND arr_c[y].GetChannelsOfObject(arr_ch) > 0 then
 				for j=0 to arr_ch.ubound
 					arr_ch[j].MoveToDirector(dir)
@@ -122,7 +121,6 @@ Function IsFilterPassed(name As String) As Boolean
 	for i=0 to arrFilterNames.ubound
 		if arrFilterNames[i] == name then isNameFound = true
 	next
-	println("name = " & name & "  " & isNameFound)
 	
 	Dim includePass = GetParameterInt("filter_type") == FILTER_TYPE_INCLUDE AND isNameFound
 	Dim excludePass = GetParameterInt("filter_type") == FILTER_TYPE_EXCLUDE AND NOT isNameFound
