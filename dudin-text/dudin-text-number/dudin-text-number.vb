@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,0,0)
+RegisterPluginVersion(1,1,0)
 
 Dim cSource, cSign, cInteger, cComma, cFraction, cSuffix As Container
 Dim xInteger, xComma, xFraction, xSuffix As Double
@@ -35,13 +35,14 @@ sub OnInitParameters()
 
 	RegisterParameterBool("hide_on_zero", "Hide when zero", false)
 	RegisterParameterBool("show_positive_sign", "Show positive sign (+123)", false)
+	RegisterParameterBool("auto_remove_non_numbers", "Auto-remove non numbers", false)
 
 	RegisterParameterDouble("kerning_sign", "Kerning after sign", 0, -999999, 999999)
 	RegisterParameterDouble("kerning_integer", "Kerning after integer", 0, -999999, 999999)
 	RegisterParameterDouble("kerning_comma", "Kerning after comma", 0, -999999, 999999)
 	RegisterParameterDouble("kerning_fraction", "Kerning after fraction", 0, -999999, 999999)
 
-	RegisterParameterDouble("inertia", "Inertia (1 = disabled)", 7, 1, 999999)
+	RegisterParameterDouble("inertia", "Inertia (1 = disabled)", 5, 1, 999999)
 end sub
 
 sub OnGuiStatus()
@@ -149,6 +150,9 @@ End Sub
 Function PrepareDoubleValue(s as String) as Double
 	s.trim()
 	s.substitute(",", ".", true)
+	if GetParameterBool("auto_remove_non_numbers") then
+		s.Substitute("[^1-9.]", "", true) 'remove non-number-and-dot symbols
+	end if
 	PrepareDoubleValue = CDbl(s)
 End Function
 
