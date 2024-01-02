@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,1,0)
+RegisterPluginVersion(1,1,1)
 
 Dim cSource, cSign, cInteger, cComma, cFraction, cSuffix As Container
 Dim xInteger, xComma, xFraction, xSuffix As Double
