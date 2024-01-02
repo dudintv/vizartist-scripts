@@ -151,7 +151,7 @@ Function PrepareDoubleValue(s as String) as Double
 	s.trim()
 	s.substitute(",", ".", true)
 	if GetParameterBool("auto_remove_non_numbers") then
-		s.Substitute("[^1-9.]", "", true) 'remove non-number-and-dot symbols
+		s.Substitute("[^0-9.]", "", true) 'remove non-number-and-dot symbols
 	end if
 	PrepareDoubleValue = CDbl(s)
 End Function
