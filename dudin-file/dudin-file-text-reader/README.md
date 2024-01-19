@@ -2,7 +2,9 @@
 
 This script recognizes data from text formatted as a table. By default, it splits text into rows by "new line". And, split to cells by "|" (vertical pipe).
 
-Also, you can have "Front Matter" section in the beginning in the file. The script separates "Front Matter" from the data by one line with `---` _(three or more hyphens)_.
+Also, you can have "Front Matter" section in the beginning in the file.
+
+The script separates "Front Matter" from the data by one line with `---` _(three or more hyphens)_.
 
 Each line of "Front Matter" separates by ":", for example: "name: value".
 
