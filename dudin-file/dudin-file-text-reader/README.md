@@ -1,5 +1,22 @@
 ## Text file reader
 
+This script recognizes data from text formatted as a table. By default, it splits text into rows by "new line". And, split to cells by "|" (vertical pipe).
+
+Also, you can have "Front Matter" section in the beginning in the file. The script separates "Front Matter" from the data by one line with "---" (three or more hyphens).
+
+Each line of "Front Matter" separates by ":", for example: "name: value".
+
+Full file example:
+
+data: 20 January 2024
+source: internet
+--------------
+1|Orange is orange|news
+2|Plum is purple|news
+3|Kiwi is green|weather
+
+# Versions
+
 #### Version 1.4 (9 December 2023)
 * add internal console for debug information
 * add splitting of the file path to make easier to control only the file name independently from the root path
