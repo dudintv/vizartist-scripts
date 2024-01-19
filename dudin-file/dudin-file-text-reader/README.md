@@ -8,12 +8,14 @@ Each line of "Front Matter" separates by ":", for example: "name: value".
 
 Full file example:
 
+```
 data: 20 January 2024
 source: internet
 --------------
 1|Orange is orange|news
 2|Plum is purple|news
 3|Kiwi is green|weather
+```
 
 # Versions
 
