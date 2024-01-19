@@ -14,10 +14,13 @@ Full file example:
 data: 20 January 2024
 source: internet
 --------------
+id|title|category
 1|Orange is orange|news
 2|Plum is purple|news
 3|Kiwi is green|weather
 ```
+
+As you can notice the line with `id|title|category` can be ignored and used only for operator convenience.
 
 # Versions
 
