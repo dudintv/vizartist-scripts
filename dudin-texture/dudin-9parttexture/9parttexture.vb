@@ -1,8 +1,29 @@
+RegisterPluginVersion(1,0,0)
 Dim info As String = "The script create asset of nine sub-containers
 for stretching central parts and fixing border.
 
-Developer: Dmitry Dudin.  Version 0.5 (24 dec 2018)
+Dmitry Dudin, https://dudin.tv/scripts/9-part-texture
 "
+
+Dim arrAxisModes As Array[String]
+arrAxisModes.Push("X -> width")
+arrAxisModes.Push("X -> height")
+arrAxisModes.Push("Y -> width")
+arrAxisModes.Push("Y -> height")
+arrAxisModes.Push("Z -> width")
+arrAxisModes.Push("Z -> height")
+arrAxisModes.Push("XY")
+arrAxisModes.Push("YZ")
+arrAxisModes.Push("XZ")
+Dim AXIS_MODE_X_WIDTH = 0
+Dim AXIS_MODE_X_HEIGHT = 1
+Dim AXIS_MODE_Y_WIDTH = 2
+Dim AXIS_MODE_Y_HEIGHT = 3
+Dim AXIS_MODE_Z_WIDTH = 4
+Dim AXIS_MODE_Z_HEIGHT = 5
+Dim AXIS_MODE_XY = 6
+Dim AXIS_MODE_YZ = 7
+Dim AXIS_MODE_XZ = 8
 
 sub OnInitParameters()
 	RegisterInfoText(info)
@@ -15,17 +36,21 @@ sub OnInitParameters()
 	RegisterParameterDouble("border_right", "Right border %", 0, 0, 100)
 	RegisterParameterDouble("border_bottom", "Bottom border %", 0, 0, 100)
 	
-	RegisterParameterBool("size_by_gabarit", "Get size from container", true)
+	RegisterParameterBool("size_by_gabarit", "Get size from container", false)
+	RegisterRadioButton("axis_mode", "Get sizes from axis:", AXIS_MODE_XY, arrAxisModes)
 	RegisterParameterDouble("width", "Width", 100, 0, 10000)
 	RegisterParameterDouble("height", "Height", 100, 0, 10000)
 	RegisterParameterContainer("gabarit", "Size source")
-	RegisterParameterDouble("gabarit_multiplyer", "Magnifier", 100, 0, 100000)
+	RegisterParameterDouble("offset", "Offset", 100, -999999, 999999)
+	RegisterParameterBool("separate_offset", "Separate offset", false)
+	RegisterParameterDouble("offset_x", "Offset X", 100, -999999, 999999)
+	RegisterParameterDouble("offset_y", "Offset Y", 100, -999999, 999999)
 end sub
 
 Dim c, cGabarit As Container
 Dim arrC As Array[Container]
 Dim borderLeft, borderTop, borderRight, borderBottom As Double
-Dim width, height, koeficient As Double
+Dim width, height, offsetX, offsetY As Double
 Dim posX, posY, posTX, posTY, scaleX, scaleY, scaleTX, scaleTY As Array[Double]
 
 sub OnInit()
@@ -34,30 +59,29 @@ sub OnGeometryChanged(geom As Geometry)
 	OnInit()
 end sub
 sub OnParameterChanged(parameterName As String)
-	if GetParameterBool("border_simple") then
-		SendGuiParameterShow("borders", 1)
-		SendGuiParameterShow("border_left", 0)
-		SendGuiParameterShow("border_top", 0)
-		SendGuiParameterShow("border_right", 0)
-		SendGuiParameterShow("border_bottom", 0)
-	else
-		SendGuiParameterShow("borders", 0)
-		SendGuiParameterShow("border_left", 1)
-		SendGuiParameterShow("border_top", 1)
-		SendGuiParameterShow("border_right", 1)
-		SendGuiParameterShow("border_bottom", 1)
-	end if
-	if GetParameterBool("size_by_gabarit") then
-		SendGuiParameterShow("width", 0)
-		SendGuiParameterShow("height", 0)
-		SendGuiParameterShow("gabarit", 1)
-		SendGuiParameterShow("gabarit_multiplyer", 1)
-	else
-		SendGuiParameterShow("width", 1)
-		SendGuiParameterShow("height", 1)
-		SendGuiParameterShow("gabarit", 0)
-		SendGuiParameterShow("gabarit_multiplyer", 0)
-	end if
+	Dim isBorderSimple = GetParameterBool("border_simple")
+	SendGuiParameterShow("borders",       CInt(isBorderSimple))
+	SendGuiParameterShow("border_left",   CInt(NOT isBorderSimple))
+	SendGuiParameterShow("border_top",    CInt(NOT isBorderSimple))
+	SendGuiParameterShow("border_right",  CInt(NOT isBorderSimple))
+	SendGuiParameterShow("border_bottom", CInt(NOT isBorderSimple))
+	
+	Dim isSizeByGabarit = GetParameterBool("size_by_gabarit")
+	SendGuiParameterShow("axis_mode", CInt(isSizeByGabarit))
+	SendGuiParameterShow("gabarit",   CInt(isSizeByGabarit))
+	
+	Dim axisMode = GetParameterInt("axis_mode")
+	Dim hasWidth = axisMode == AXIS_MODE_X_HEIGHT OR axisMode == AXIS_MODE_Y_HEIGHT OR axisMode == AXIS_MODE_Z_HEIGHT
+	Dim hasHeight = axisMode == AXIS_MODE_X_WIDTH OR axisMode == AXIS_MODE_Y_WIDTH OR axisMode == AXIS_MODE_Z_WIDTH	
+	SendGuiParameterShow("width",  CInt(hasWidth  OR NOT isSizeByGabarit))
+	SendGuiParameterShow("height", CInt(hasHeight OR NOT isSizeByGabarit))
+	
+	Dim isOffsetSeparate = GetParameterBool("separate_offset")
+	SendGuiParameterShow("offset",   CInt(isSizeByGabarit AND NOT isOffsetSeparate))
+	SendGuiParameterShow("offset_x", CInt(isSizeByGabarit AND isOffsetSeparate))
+	SendGuiParameterShow("offset_y", CInt(isSizeByGabarit AND isOffsetSeparate))
+	
+	SendGuiParameterShow("separate_offset", CInt(isSizeByGabarit))
 	
 	Make9Part()
 end sub
@@ -161,13 +185,51 @@ Dim vGabarit1, vGabarit2, old_vGabarit1, old_vGabarit2, vLocalGabarit1, vLocalGa
 
 Sub GetGabaritSize()
 	cGabarit = GetParameterContainer("gabarit")
-	koeficient = GetParameterDouble("gabarit_multiplyer")/100.0
+	
+	if GetParameterBool("separate_offset") then
+		offsetX = GetParameterDouble("offset_x")
+		offsetY = GetParameterDouble("offset_y")
+	else
+		offsetX = GetParameterDouble("offset")
+		offsetY = GetParameterDouble("offset")
+	end if
+	offsetX += - borderLeft - borderRight
+	offsetY += - borderTop  - borderBottom
 	
 	cGabarit.GetTransformedBoundingBox(vGabarit1, vGabarit2)
 	vLocalGabarit1 = this.WorldPosToLocalPos(vGabarit1)
 	vLocalGabarit2 = this.WorldPosToLocalPos(vGabarit2)
-	width  = vLocalGabarit2.X - vLocalGabarit1.X - borderLeft - borderRight + 10*koeficient
-	height = vLocalGabarit2.Y - vLocalGabarit1.Y - borderTop - borderBottom + 10*koeficient
+	
+	Select Case GetParameterInt("axis_mode")
+	Case AXIS_MODE_X_WIDTH, AXIS_MODE_Y_WIDTH, AXIS_MODE_Z_WIDTH
+		height = GetParameterDouble("height")
+	Case AXIS_MODE_X_HEIGHT, AXIS_MODE_Y_HEIGHT, AXIS_MODE_Z_HEIGHT
+		width  = GetParameterDouble("width")
+	End Select
+	
+	Select Case GetParameterInt("axis_mode")
+	Case AXIS_MODE_X_WIDTH
+		width  = vLocalGabarit2.X - vLocalGabarit1.X + offsetX
+	Case AXIS_MODE_X_HEIGHT
+		height = vLocalGabarit2.X - vLocalGabarit1.X + offsetY
+	Case AXIS_MODE_Y_WIDTH
+		width  = vLocalGabarit2.Y - vLocalGabarit1.Y + offsetX
+	Case AXIS_MODE_Y_HEIGHT
+		height = vLocalGabarit2.Y - vLocalGabarit1.Y + offsetY
+	Case AXIS_MODE_Z_WIDTH
+		width  = vLocalGabarit2.Z - vLocalGabarit1.Z + offsetX
+	Case AXIS_MODE_Z_HEIGHT
+		height = vLocalGabarit2.Z - vLocalGabarit1.Z + offsetY
+	Case AXIS_MODE_XY
+		width  = vLocalGabarit2.X - vLocalGabarit1.X + offsetX
+		height = vLocalGabarit2.Y - vLocalGabarit1.Y + offsetY
+	Case AXIS_MODE_YZ
+		width  = vLocalGabarit2.Z - vLocalGabarit1.Z + offsetX
+		height = vLocalGabarit2.Y - vLocalGabarit1.Y + offsetY
+	Case AXIS_MODE_XZ
+		width  = vLocalGabarit2.X - vLocalGabarit1.X + offsetX
+		height = vLocalGabarit2.Z - vLocalGabarit1.Z + offsetY
+	End Select
 	
 	if width < 0 then width = 0
 	if height < 0 then height = 0

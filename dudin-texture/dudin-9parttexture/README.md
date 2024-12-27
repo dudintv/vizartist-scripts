@@ -1,9 +1,11 @@
-## 9 part texture — for strething texture with saving borders part. Usefull for frames and shadows.
----
-## 9 part texture — для растягивания текстуры с сохранением пропорций бордюра. Удобно для рамок и теней.
+## 9-part texture — for strething textures with keeping borders parts. Suitable for frames, shadows, and stretchable backgrounds
 
-#### Version 0.5 (30 dec 2018)
-* Trasnlate in Enginsh
+#### 1.0 (09 Oktober 2024)
+* Enable all possible axis modes, including by only one axis
+* Enable offset as separated by width and height
 
-#### Версия 0.41 (25 июня 2015)
-* Первая задокументированная версия. Готовая к использованию в большинстве сценариев.
+#### 0.5 (30 December 2018)
+* Trasnlated in Enginsh
+
+#### 0.41 (25 June 2015)
+* THe first documented version. Ready to use in the most common cases.
