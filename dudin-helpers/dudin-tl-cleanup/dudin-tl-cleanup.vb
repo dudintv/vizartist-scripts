@@ -10,9 +10,16 @@ Dim d As Director
 Dim c As Container
 Dim pToggle As PluginInstance
 
+sub OnInitPlugin()
+    RegisterPlugin("TL-cleanup")
+    RegisterPluginDisplayName("Transition Logic Cleanup")
+    RegisterPluginFolder("DudinPlugins")
+    RegisterPluginType(PLUGIN_TYPE_FUNCTION)
+end sub
+
 sub OnInitParameters()
-	RegisterPushButton("clear", "Clear all TL layers in the scene", 1)
-	RegisterPushButton("zero", "Set all directors to Zero", 2)
+	RegisterPushButton("clear", "Clear geometries in all TL layers", 1)
+	RegisterPushButton("zero", "Set all directors to zero", 2)
 end sub
 
 sub OnExecAction(buttonId As Integer)
