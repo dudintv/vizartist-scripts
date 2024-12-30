@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,5,0)
+RegisterPluginVersion(1,6,0)
 Dim info As String = "Autofollow for multiple containers.
 Check maximum point of selected containers
 and align this_container to this point (in global).
@@ -7,7 +7,7 @@ Developer: Dmitry Dudin, dudin.tv
 
 ' SETTINGS
 ' just set up count of container for observing
-Dim quantity_of_container As Integer = 2
+Dim quantity_of_container As Integer = 1
 
 Dim thresholdZero As Double = 0.001
 Dim thresholdMove As Double = 0.01
@@ -45,12 +45,12 @@ Dim i As Integer
 'use vertexes for easy world to local transformation
 Dim min, max, mid, new As Vertex
 Dim v1, v2, v_world, thisSize As Vertex
-Dim defY,defX As Double
+Dim defY, defX, toDefault As Double
 
 ' for sub-container targets
 Dim isChildMode, isRealtimeRetarget As Boolean
 
- 
+
 sub OnInitParameters()
 	RegisterInfoText(info)
 	RegisterRadioButton("mode", "Follow axis:", 0, arr_mode)
@@ -61,6 +61,7 @@ sub OnInitParameters()
 	RegisterParameterDouble("zeroY", "Y-pos if self empty:", 0, -1000.0, 1000.0)
 	RegisterParameterDouble("defY", "Y-pos default:", 0, -1000.0, 1000.0)
 	RegisterParameterDouble("shiftY", "Y-shift:", 0, -1000.0, 1000.0)
+	RegisterParameterDouble("toDefault", "To default (0-100%):", 0, 0, 100.0)
 	RegisterParameterDouble("inertia", "Itertia (1=none)", 1, 1, 1000.0)
 	RegisterRadioButton("pause_mode", "└ Pause direction", 0, arrPauseMode)
 	RegisterParameterInt("pause_less", "   └ Pause <- (frames)", 0, 0, 1000)
@@ -113,11 +114,11 @@ sub OnParameterChanged(parameterName As String)
 		SendGuiParameterShow("shiftY",HIDE)
 		SendGuiParameterShow("shiftZ",SHOW)
 	End Select
-	
+
 	SendGuiParameterShow("pause_mode", CInt( GetParameterDouble("inertia") > 1 ))
-	SendGuiParameterShow("pause_less", CInt( (GetParameterInt("pause_mode") == PAUSE_MODE_LESS OR GetParameterInt("pause_mode") == PAUSE_MODE_BOTH) AND GetParameterDouble("inertia") > 1 )) 
-	SendGuiParameterShow("pause_more", CInt( (GetParameterInt("pause_mode") == PAUSE_MODE_MORE OR GetParameterInt("pause_mode") == PAUSE_MODE_BOTH) AND GetParameterDouble("inertia") > 1 )) 
-	
+	SendGuiParameterShow("pause_less", CInt( (GetParameterInt("pause_mode") == PAUSE_MODE_LESS OR GetParameterInt("pause_mode") == PAUSE_MODE_BOTH) AND GetParameterDouble("inertia") > 1 ))
+	SendGuiParameterShow("pause_more", CInt( (GetParameterInt("pause_mode") == PAUSE_MODE_MORE OR GetParameterInt("pause_mode") == PAUSE_MODE_BOTH) AND GetParameterDouble("inertia") > 1 ))
+
 	For i = 1 to quantity_of_container
 		SendGuiParameterShow("c_name" & i, CInt(isChildMode))
 	Next
@@ -166,19 +167,19 @@ end sub
 
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
- 
+
 sub OnExecPerField()
 	if isChildMode AND isRealtimeRetarget then
 		FindTargets()
 	end if
 
 	thisSize = this.GetTransformedBoundingBoxDimensions()
-	
+
 	arr_sized.Clear
 	For i = 0 to arr_c.ubound
 		if IsHaveSize(arr_c[i]) then arr_sized.Push(arr_c[i])
 	Next
-	
+
 	Select Case GetParameterInt("mode")
 	Case MODE_X
 		If IsHaveSize(this) Then
@@ -218,7 +219,7 @@ sub OnExecPerField()
 			'this is empty
 			new.x = GetParameterDouble("zeroX")
 		End If
- 
+
 	Case MODE_Y
 		If IsHaveSize(this) Then
 			If arr_sized.size > 0 Then
@@ -257,7 +258,7 @@ sub OnExecPerField()
 			'this is empty
 			new.y = GetParameterDouble("zeroY")
 		End If
-	
+
 	Case MODE_Z
 		If IsHaveSize(this) Then
 			If arr_sized.size > 0 Then
@@ -297,9 +298,23 @@ sub OnExecPerField()
 			new.z = GetParameterDouble("zeroZ")
 		End If
 	End Select
-	
-	'animate to new point
+
 	new = this.WorldPosToLocalPos(new)
+
+	'consider "to default"
+	toDefault = 1-GetParameterDouble("toDefault")/100
+	Select Case GetParameterInt("mode")
+	Case MODE_X
+		new.x = GetParameterDouble("defX") + (new.x - GetParameterDouble("defX"))*toDefault
+	Case MODE_Y
+		'TODO
+	Case MODE_Z
+		'TODO
+	End Select
+
+
+
+	'animate to new point
 	Select Case GetParameterInt("mode")
 	Case MODE_X
 		Animate(this.position.x, new.x)
@@ -326,12 +341,12 @@ Sub Animate(ByRef thisValue as Double, newValue As Double)
 			End If
 		End If
 	end if
-	
+
 	If iPauseDownTicks > 0 then
 		iPauseDownTicks -= 1
 		Exit Sub
 	End if
-	
+
 	If Abs(newValue - thisValue) > thresholdMove Then
 		thisValue += (newValue - thisValue)/GetParameterDouble("inertia")
 	End If

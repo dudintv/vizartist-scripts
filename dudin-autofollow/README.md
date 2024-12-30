@@ -1,8 +1,11 @@
 ## Autofollow
 
+#### 1.5 (30.12.2022)
+* added "to default" slider to be able smoothly transition between default and calculated positions
+
 #### 1.5 (10.09.2022)
-* exposed "inertia" to UI, where 1 = instant following (like standard Autofollow), when the "inertia" is bigger than this container is slower 
-* added pauses before react with animation 
+* exposed "inertia" to UI, where 1 = instant following (like standard Autofollow), when the "inertia" is bigger than this container is slower
+* added pauses before react with animation
 
 #### 1.4 (09.09.2022)
 * added searching targets inside containers by path (supports "." as a separator)
@@ -14,4 +17,4 @@
 * translated to English
 
 #### 1.1 (10.05.2010)
-* добавил указание позиции при нулевом размере this контейнера
+* added pointing the default position then "this" container is abound zero size
