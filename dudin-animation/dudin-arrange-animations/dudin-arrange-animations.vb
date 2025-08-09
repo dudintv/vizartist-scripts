@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,3,0)
+RegisterPluginVersion(1,4,0)
 Dim info As String = "Moving/arrange animation channels to certain directors. to Developer: Dmitry Dudin, dudin.tv"
 
 Dim cRoot As Container
@@ -29,18 +29,20 @@ sub OnInitParameters()
 	RegisterInfoText(info)
 	RegisterParameterContainer("root", "Root container (or this)")
 	RegisterRadioButton("type", "Where to place", 0, arr_type)
-	RegisterParameterString("single_dir_name", "Director Name", "", 40, 999, "")
+	RegisterParameterString("single_dir_name", " └ Director Name", "", 40, 999, "")
 	RegisterParameterString("prefix_dir_name", " └ Prefix for directors names", "", 40, 999, "")
 	RegisterParameterBool("offset_on", "Offset director", false)
-	RegisterParameterDouble("offset_start", "Offset start (sec)", 0, -999999, 999999)
-	RegisterParameterDouble("offset_step", "Offset step (sec)", 0, -999999, 999999)
+	RegisterParameterDouble("offset_start", " └ Offset start (sec)", 0, -999999, 999999)
+	RegisterParameterDouble("offset_step", " └ Offset step (sec)", 0, -999999, 999999)
+	RegisterParameterBool("reverse_order", " └ Reverse order", false)
 	RegisterRadioButton("filter_type", "Filter by container names (a,b,c)", FILTER_TYPE_NONE, arrFilterTypes)
-	RegisterParameterString("filter_list", " └ Filter name", "", 999, 999, "")
+	RegisterParameterString("filter_list", "Filter name", "", 999, 999, "")
 	RegisterPushButton("arrange", "Arrange animations", 1)
 end sub
 
 sub OnGuiStatus()
 	SendGuiParameterShow("single_dir_name", CInt(GetParameterInt("type") == 0))
+	SendGuiParameterShow("reverse_order", CInt(GetParameterBool("offset_on")))
 	SendGuiParameterShow("offset_start", CInt(GetParameterBool("offset_on")))
 	SendGuiParameterShow("offset_step", CInt(GetParameterBool("offset_on")))
 	SendGuiParameterShow("filter_list", CInt(GetParameterInt("filter_type") <> FILTER_TYPE_NONE))
@@ -93,7 +95,11 @@ Sub ArrangeAnimation()
 		
 		'setup offset
 		if GetParameterBool("offset_on") then
-			offset = offset_start + offset_step*i
+			if GetParameterBool("reverse_order") then
+				offset = offset_start - offset_step*(arr_c_parts.ubound - i)
+			else
+				offset = offset_start + offset_step*i
+			end if
 			dir.offset = offset
 		end if
 		
