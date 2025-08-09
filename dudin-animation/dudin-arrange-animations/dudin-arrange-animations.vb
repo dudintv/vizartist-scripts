@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,4,0)
+RegisterPluginVersion(1,5,0)
 Dim info As String = "Moving/arrange animation channels to certain directors. to Developer: Dmitry Dudin, dudin.tv"
 
 Dim cRoot As Container
@@ -35,8 +35,8 @@ sub OnInitParameters()
 	RegisterParameterDouble("offset_start", " └ Offset start (sec)", 0, -999999, 999999)
 	RegisterParameterDouble("offset_step", " └ Offset step (sec)", 0, -999999, 999999)
 	RegisterParameterBool("reverse_order", " └ Reverse order", false)
-	RegisterRadioButton("filter_type", "Filter by container names (a,b,c)", FILTER_TYPE_NONE, arrFilterTypes)
-	RegisterParameterString("filter_list", "Filter name", "", 999, 999, "")
+	RegisterRadioButton("filter_type", "Filter by container names", FILTER_TYPE_NONE, arrFilterTypes)
+	RegisterParameterString("filter_list", "Filter name, support regex (a,b,c)", "", 99, 999, "")
 	RegisterPushButton("arrange", "Arrange animations", 1)
 end sub
 
@@ -125,7 +125,7 @@ Function IsFilterPassed(name As String) As Boolean
 	
 	Dim isNameFound = false
 	for i=0 to arrFilterNames.ubound
-		if arrFilterNames[i] == name then isNameFound = true
+		if name.Match(arrFilterNames[i]) then isNameFound = true
 	next
 	
 	Dim includePass = GetParameterInt("filter_type") == FILTER_TYPE_INCLUDE AND isNameFound
