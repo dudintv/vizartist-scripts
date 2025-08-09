@@ -96,7 +96,7 @@ Sub ArrangeAnimation()
 		'setup offset
 		if GetParameterBool("offset_on") then
 			if GetParameterBool("reverse_order") then
-				offset = offset_start - offset_step*(arr_c_parts.ubound - i)
+				offset = offset_start + offset_step*(arr_c_parts.ubound - i)
 			else
 				offset = offset_start + offset_step*i
 			end if
@@ -132,3 +132,4 @@ Function IsFilterPassed(name As String) As Boolean
 	Dim excludePass = GetParameterInt("filter_type") == FILTER_TYPE_EXCLUDE AND NOT isNameFound
 	IsFilterPassed = includePass OR excludePass
 End Function
+
