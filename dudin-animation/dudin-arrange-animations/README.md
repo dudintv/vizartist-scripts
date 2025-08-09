@@ -1,5 +1,8 @@
 ## Moving/arranging animations to certain directors
 
+#### Version 1.5.0 09 August 2025
+* support regex for the filtering
+
 #### Version 1.4.0 09 August 2025
 * add reverse order for directrs offset
 
