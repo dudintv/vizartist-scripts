@@ -1,5 +1,8 @@
 ## Moving/arranging animations to certain directors
 
+#### Version 1.4.0 09 August 2025
+* add reverse order for directrs offset
+
 #### Version 1.3.0 16 December 2023
 * add filter to includeor exclude containers by their names
 * add prefix for directors names
