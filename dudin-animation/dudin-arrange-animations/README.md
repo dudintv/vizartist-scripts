@@ -1,5 +1,10 @@
 ## Moving/arranging animations to certain directors
 
+#### Version 1.6.0 12 August 2025
+* add suffix for items directors
+* make regex as an optional
+* make offset more flexible: 1) don't change 2) reset to 0 3) stages effect
+
 #### Version 1.5.0 09 August 2025
 * support regex for the filtering
 
