@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,5,0)
+RegisterPluginVersion(1,6,0)
 Dim info As String = "Moving/arrange animation channels to certain directors. to Developer: Dmitry Dudin, dudin.tv"
 
 Dim cRoot As Container
@@ -25,28 +25,41 @@ Dim FILTER_TYPE_NONE = 0
 Dim FILTER_TYPE_INCLUDE = 1
 Dim FILTER_TYPE_EXCLUDE = 2
 
+Dim arrOffsetTypes As Array[String]
+arrOffsetTypes.Push("Don't change")
+arrOffsetTypes.Push("Reset to 0")
+arrOffsetTypes.Push("Stager effect")
+Dim OFFSET_TYPE_DONT_CHANGE = 0
+Dim OFFSET_TYPE_RESET = 1
+Dim OFFSET_TYPE_STAGER = 2
+
 sub OnInitParameters()
 	RegisterInfoText(info)
 	RegisterParameterContainer("root", "Root container (or this)")
 	RegisterRadioButton("type", "Where to place", 0, arr_type)
 	RegisterParameterString("single_dir_name", " └ Director Name", "", 40, 999, "")
 	RegisterParameterString("prefix_dir_name", " └ Prefix for directors names", "", 40, 999, "")
-	RegisterParameterBool("offset_on", "Offset director", false)
+	RegisterParameterString("suffix_dir_name", " └ Suffix for directors names", "", 40, 999, "")
+	'RegisterParameterBool("offset_on", "Offset director", false)
+	RegisterRadioButton("offset_type", "Offset of directors", 0, arrOffsetTypes)
 	RegisterParameterDouble("offset_start", " └ Offset start (sec)", 0, -999999, 999999)
 	RegisterParameterDouble("offset_step", " └ Offset step (sec)", 0, -999999, 999999)
 	RegisterParameterBool("reverse_order", " └ Reverse order", false)
 	RegisterRadioButton("filter_type", "Filter by container names", FILTER_TYPE_NONE, arrFilterTypes)
-	RegisterParameterString("filter_list", "Filter name, support regex (a,b,c)", "", 99, 999, "")
+	RegisterParameterString("filter_list", " └ Filter name (a,b,c)", "", 99, 999, "")
+	RegisterParameterBool("regex", " └ Use regex syntax (a|b|c)", false)
 	RegisterPushButton("arrange", "Arrange animations", 1)
 end sub
 
 sub OnGuiStatus()
+	Dim isStagerOffset = GetParameterInt("offset_type") == OFFSET_TYPE_STAGER
 	SendGuiParameterShow("single_dir_name", CInt(GetParameterInt("type") == 0))
-	SendGuiParameterShow("reverse_order", CInt(GetParameterBool("offset_on")))
-	SendGuiParameterShow("offset_start", CInt(GetParameterBool("offset_on")))
-	SendGuiParameterShow("offset_step", CInt(GetParameterBool("offset_on")))
+	SendGuiParameterShow("reverse_order", CInt(isStagerOffset))
+	SendGuiParameterShow("offset_start", CInt(isStagerOffset))
+	SendGuiParameterShow("offset_step", CInt(isStagerOffset))
 	SendGuiParameterShow("filter_list", CInt(GetParameterInt("filter_type") <> FILTER_TYPE_NONE))
 	SendGuiParameterShow("prefix_dir_name", Cint(GetParameterInt("type") <> 0))
+	SendGuiParameterShow("suffix_dir_name", Cint(GetParameterInt("type") <> 0))
 end sub
 
 sub OnInit()
@@ -83,9 +96,9 @@ Sub ArrangeAnimation()
 		if GetParameterInt("type") == ARRANGE_TO_SINGLE_DIR then
 			dir_name = GetParameterString("single_dir_name")
 		elseif GetParameterInt("type") == ARRANGE_TO_DIRS_BY_CONTS_NAME then
-			dir_name = GetParameterString("prefix_dir_name") & arr_c_parts[i].name
+			dir_name = GetParameterString("prefix_dir_name") & arr_c_parts[i].name & GetParameterString("suffix_dir_name")
 		elseif GetParameterInt("type") == ARRANGE_TO_DIRS_BY_CONTS_NAME_PLUS_INDEX then
-			dir_name = GetParameterString("prefix_dir_name") & arr_c_parts[i].name & CStr(i+1)
+			dir_name = GetParameterString("prefix_dir_name") & arr_c_parts[i].name & GetParameterString("suffix_dir_name") & CStr(i+1)
 		end if
 		dir = Stage.FindDirector(dir_name)
 		if dir == null then
@@ -94,13 +107,15 @@ Sub ArrangeAnimation()
 		end if
 		
 		'setup offset
-		if GetParameterBool("offset_on") then
+		if GetParameterInt("offset_type") == OFFSET_TYPE_STAGER then
 			if GetParameterBool("reverse_order") then
 				offset = offset_start + offset_step*(arr_c_parts.ubound - i)
 			else
 				offset = offset_start + offset_step*i
 			end if
 			dir.offset = offset
+		elseif GetParameterInt("offset_type") == OFFSET_TYPE_RESET then
+			dir.offset = 0
 		end if
 		
 		arr_c.Clear()
@@ -125,11 +140,14 @@ Function IsFilterPassed(name As String) As Boolean
 	
 	Dim isNameFound = false
 	for i=0 to arrFilterNames.ubound
-		if name.Match(arrFilterNames[i]) then isNameFound = true
+		if GetParameterBool("regex") then
+			if name.Match(arrFilterNames[i]) then isNameFound = true
+		else
+			if name == arrFilterNames[i] then isNameFound = true
+		end if
 	next
 	
 	Dim includePass = GetParameterInt("filter_type") == FILTER_TYPE_INCLUDE AND isNameFound
 	Dim excludePass = GetParameterInt("filter_type") == FILTER_TYPE_EXCLUDE AND NOT isNameFound
 	IsFilterPassed = includePass OR excludePass
 End Function
-
