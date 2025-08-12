@@ -46,7 +46,7 @@ sub OnInitParameters()
 	RegisterParameterDouble("offset_step", " └ Offset step (sec)", 0, -999999, 999999)
 	RegisterParameterBool("reverse_order", " └ Reverse order", false)
 	RegisterRadioButton("filter_type", "Filter by container names", FILTER_TYPE_NONE, arrFilterTypes)
-	RegisterParameterString("filter_list", " └ Filter name (a,b,c)", "", 99, 999, "")
+	RegisterParameterString("filter", " └ Filter name (a,b,c)", "", 99, 999, "")
 	RegisterParameterBool("regex", " └ Use regex syntax (a|b|c)", false)
 	RegisterPushButton("arrange", "Arrange animations", 1)
 end sub
@@ -57,7 +57,7 @@ sub OnGuiStatus()
 	SendGuiParameterShow("reverse_order", CInt(isStagerOffset))
 	SendGuiParameterShow("offset_start", CInt(isStagerOffset))
 	SendGuiParameterShow("offset_step", CInt(isStagerOffset))
-	SendGuiParameterShow("filter_list", CInt(GetParameterInt("filter_type") <> FILTER_TYPE_NONE))
+	SendGuiParameterShow("filter", CInt(GetParameterInt("filter_type") <> FILTER_TYPE_NONE))
 	SendGuiParameterShow("prefix_dir_name", Cint(GetParameterInt("type") <> 0))
 	SendGuiParameterShow("suffix_dir_name", Cint(GetParameterInt("type") <> 0))
 end sub
@@ -73,7 +73,7 @@ sub OnInit()
 	offset_start = GetParameterDouble("offset_start")
 	offset_step = GetParameterDouble("offset_step")
 	
-	GetParameterString("filter_list").split(",", arrFilterNames)
+	GetParameterString("filter").split(",", arrFilterNames)
 	for i=0 to arrFilterNames.ubound
 		arrFilterNames[i].trim()
 	next
@@ -141,7 +141,7 @@ Function IsFilterPassed(name As String) As Boolean
 	Dim isNameFound = false
 	for i=0 to arrFilterNames.ubound
 		if GetParameterBool("regex") then
-			if name.Match(arrFilterNames[i]) then isNameFound = true
+			if name.Match(GetParameterString("filter")) then isNameFound = true
 		else
 			if name == arrFilterNames[i] then isNameFound = true
 		end if
@@ -151,3 +151,6 @@ Function IsFilterPassed(name As String) As Boolean
 	Dim excludePass = GetParameterInt("filter_type") == FILTER_TYPE_EXCLUDE AND NOT isNameFound
 	IsFilterPassed = includePass OR excludePass
 End Function
+
+
+
