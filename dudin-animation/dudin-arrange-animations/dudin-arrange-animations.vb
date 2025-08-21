@@ -5,9 +5,9 @@ Dim cRoot As Container
 Dim arr_c_parts, arr_c As Array[Container]
 Dim arr_ch As Array[Channel]
 Dim dir, parentDir As Director
-Dim dir_name, parentDirPath As String
+Dim dir_name As String
 Dim offset_start, offset_step, offset As Double
-Dim arrFilterNames, arrParentDirNames As Array[String]
+Dim arrFilterNames As Array[String]
 
 Dim arr_type As Array[String]
 arr_type.Push("To single director")
@@ -53,7 +53,8 @@ end sub
 
 sub OnGuiStatus()
 	Dim isStagerOffset = GetParameterInt("offset_type") == OFFSET_TYPE_STAGER
-	SendGuiParameterShow("single_dir_name", CInt(GetParameterInt("type") == 0))
+	SendGuiParameterShow("single_dir_name", CInt(GetParameterInt("type") == ARRANGE_TO_SINGLE_DIR))
+	SendGuiParameterShow("parent_dir", CInt(GetParameterInt("type") <> ARRANGE_TO_SINGLE_DIR))
 	SendGuiParameterShow("reverse_order", CInt(isStagerOffset))
 	SendGuiParameterShow("offset_start", CInt(isStagerOffset))
 	SendGuiParameterShow("offset_step", CInt(isStagerOffset))
@@ -91,8 +92,6 @@ sub OnExecAction(buttonId As Integer)
 end sub
 
 Sub ArrangeAnimation()
-	GetParentDirector()
-	
 	for i=0 to arr_c_parts.ubound
 		'setup director
 		if GetParameterInt("type") == ARRANGE_TO_SINGLE_DIR then
@@ -103,20 +102,24 @@ Sub ArrangeAnimation()
 			dir_name = GetParameterString("prefix_dir_name") & arr_c_parts[i].name & GetParameterString("suffix_dir_name") & CStr(i+1)
 		end if
 		
-		if parentDir <> null then
-			dir = parentDir.FindSubDirector(dir_name)
+		if GetParameterInt("type") == ARRANGE_TO_SINGLE_DIR then
+			dir = GetDirectorByPath(dir_name, true)
 		else
-			dir = Stage.FindDirector(dir_name)
-		end if
-		
-		if dir == null then
-			if parentDir <> null then 
-				dir = parentDir.AddDirector(TL_DOWN)
-				println("! dir = " & dir.name)
+			parentDir = GetDirectorByPath(GetParameterString("parent_dir"), true)
+			if parentDir <> null then
+				dir = parentDir.FindSubDirector(dir_name)
 			else
-				dir = Stage.RootDirector.AddDirector(TL_NEXT)
+				dir = Stage.FindDirector(dir_name)
 			end if
-			dir.name = dir_name
+			
+			if dir == null then
+				if parentDir <> null then 
+					dir = parentDir.AddDirector(TL_DOWN)
+				else
+					dir = Stage.RootDirector.AddDirector(TL_NEXT)
+				end if
+				dir.name = dir_name
+			end if
 		end if
 		
 		'setup offset
@@ -143,23 +146,31 @@ Sub ArrangeAnimation()
 	next
 End Sub
 
-sub GetParentDirector()
-	parentDirPath = GetParameterString("parent_dir")
-	parentDirPath.trim()
-	parentDirPath.split("/", arrParentDirNames)
-	parentDir = null
-	for i=0 to arrParentDirNames.ubound
-	println("arrParentDirNames[i] = " & arrParentDirNames[i])
-		arrParentDirNames[i].trim()
-		if parentDir == null then
-			parentDir = Stage.FindDirector(arrParentDirNames[i])
+function GetDirectorByPath(_path As String, _createIfNotExist As Boolean) As Director
+	Dim _arrDirNames As Array[String]
+	Dim _foundDir As Director
+	
+	_path.trim()
+	_path.split("/",_arrDirNames)
+	_foundDir = null
+	
+	for i=0 to _arrDirNames.ubound
+		_arrDirNames[i].trim()
+		if _foundDir == null then
+			_foundDir = Stage.FindDirector(_arrDirNames[i])
+			if _createIfNotExist AND _foundDir == null then _foundDir = Stage.RootDirector.AddDirector(TL_NEXT)
 		else
-			parentDir = parentDir.FindSubDirector(arrParentDirNames[i])
+			Dim _nextFoundDir As Director = _foundDir.FindSubDirector(_arrDirNames[i])
+			if _createIfNotExist AND _nextFoundDir == null then
+				_nextFoundDir = _foundDir.AddDirector(TL_DOWN)
+				_nextFoundDir.name = _arrDirNames[i]
+			end if
+			_foundDir = _nextFoundDir
 		end if
 	next
 	
-	println("parentDir = " & parentDir.name)
-end sub
+	GetDirectorByPath = _foundDir 
+end function
 
 Function IsFilterPassed(name As String) As Boolean
 	Dim hasFilter = GetParameterInt("filter_type") <> FILTER_TYPE_NONE
@@ -182,3 +193,10 @@ Function IsFilterPassed(name As String) As Boolean
 	Dim excludePass = GetParameterInt("filter_type") == FILTER_TYPE_EXCLUDE AND NOT isNameFound
 	IsFilterPassed = includePass OR excludePass
 End Function
+
+
+
+
+
+
+
