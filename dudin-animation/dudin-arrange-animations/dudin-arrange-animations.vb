@@ -1,13 +1,13 @@
-RegisterPluginVersion(1,6,0)
+RegisterPluginVersion(1,7,0)
 Dim info As String = "Moving/arrange animation channels to certain directors. to Developer: Dmitry Dudin, dudin.tv"
 
 Dim cRoot As Container
 Dim arr_c_parts, arr_c As Array[Container]
 Dim arr_ch As Array[Channel]
-Dim dir As Director
-Dim dir_name As String
+Dim dir, parentDir As Director
+Dim dir_name, parentDirPath As String
 Dim offset_start, offset_step, offset As Double
-Dim arrFilterNames As Array[String]
+Dim arrFilterNames, arrParentDirNames As Array[String]
 
 Dim arr_type As Array[String]
 arr_type.Push("To single director")
@@ -38,9 +38,9 @@ sub OnInitParameters()
 	RegisterParameterContainer("root", "Root container (or this)")
 	RegisterRadioButton("type", "Where to place", 0, arr_type)
 	RegisterParameterString("single_dir_name", " └ Director Name", "", 40, 999, "")
+	RegisterParameterString("parent_dir", " └ Parent director (path: a/b/c)", "", 40, 999, "")
 	RegisterParameterString("prefix_dir_name", " └ Prefix for directors names", "", 40, 999, "")
 	RegisterParameterString("suffix_dir_name", " └ Suffix for directors names", "", 40, 999, "")
-	'RegisterParameterBool("offset_on", "Offset director", false)
 	RegisterRadioButton("offset_type", "Offset of directors", 0, arrOffsetTypes)
 	RegisterParameterDouble("offset_start", " └ Offset start (sec)", 0, -999999, 999999)
 	RegisterParameterDouble("offset_step", " └ Offset step (sec)", 0, -999999, 999999)
@@ -91,6 +91,8 @@ sub OnExecAction(buttonId As Integer)
 end sub
 
 Sub ArrangeAnimation()
+	GetParentDirector()
+	
 	for i=0 to arr_c_parts.ubound
 		'setup director
 		if GetParameterInt("type") == ARRANGE_TO_SINGLE_DIR then
@@ -100,9 +102,20 @@ Sub ArrangeAnimation()
 		elseif GetParameterInt("type") == ARRANGE_TO_DIRS_BY_CONTS_NAME_PLUS_INDEX then
 			dir_name = GetParameterString("prefix_dir_name") & arr_c_parts[i].name & GetParameterString("suffix_dir_name") & CStr(i+1)
 		end if
-		dir = Stage.FindDirector(dir_name)
+		
+		if parentDir <> null then
+			dir = parentDir.FindSubDirector(dir_name)
+		else
+			dir = Stage.FindDirector(dir_name)
+		end if
+		
 		if dir == null then
-			dir = Stage.RootDirector.AddDirector(TL_NEXT)
+			if parentDir <> null then 
+				dir = parentDir.AddDirector(TL_DOWN)
+				println("! dir = " & dir.name)
+			else
+				dir = Stage.RootDirector.AddDirector(TL_NEXT)
+			end if
 			dir.name = dir_name
 		end if
 		
@@ -130,6 +143,24 @@ Sub ArrangeAnimation()
 	next
 End Sub
 
+sub GetParentDirector()
+	parentDirPath = GetParameterString("parent_dir")
+	parentDirPath.trim()
+	parentDirPath.split("/", arrParentDirNames)
+	parentDir = null
+	for i=0 to arrParentDirNames.ubound
+	println("arrParentDirNames[i] = " & arrParentDirNames[i])
+		arrParentDirNames[i].trim()
+		if parentDir == null then
+			parentDir = Stage.FindDirector(arrParentDirNames[i])
+		else
+			parentDir = parentDir.FindSubDirector(arrParentDirNames[i])
+		end if
+	next
+	
+	println("parentDir = " & parentDir.name)
+end sub
+
 Function IsFilterPassed(name As String) As Boolean
 	Dim hasFilter = GetParameterInt("filter_type") <> FILTER_TYPE_NONE
 	
@@ -151,6 +182,3 @@ Function IsFilterPassed(name As String) As Boolean
 	Dim excludePass = GetParameterInt("filter_type") == FILTER_TYPE_EXCLUDE AND NOT isNameFound
 	IsFilterPassed = includePass OR excludePass
 End Function
-
-
-
