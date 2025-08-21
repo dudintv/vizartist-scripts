@@ -1,5 +1,8 @@
 ## Moving/arranging animations to certain directors
 
+#### Version 1.7.0 22 August 2025
+* can specify root director by path
+
 #### Version 1.6.0 12 August 2025
 * add suffix for items directors
 * make regex as an optional
