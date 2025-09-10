@@ -9,7 +9,7 @@
 * make offset more flexible: 1) don't change 2) reset to 0 3) stages effect
 
 #### Version 1.5.0 09 August 2025
-* support regex for the filtering
+* support regex for the filtering (e.g. .*_out|.*_change)
 
 #### Version 1.4.0 09 August 2025
 * add reverse order for directrs offset
