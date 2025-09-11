@@ -85,6 +85,7 @@ sub SyncMasks()
 				console &= "\n"
 			end if
 		next
+		console &= "\n"
 	next
 	
 	Report()
@@ -110,4 +111,5 @@ sub Report()
 
 	this.ScriptPluginInstance.SetParameterString("console",console)
 end sub
+
 
