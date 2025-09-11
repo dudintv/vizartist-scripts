@@ -65,7 +65,7 @@ sub SyncMasks()
 					
 					if GetParameterInt("type") == SOURCE_TYPE_ABSOLUTE then
 						' keep the same
-						console &= ", Tracking Object: " & arrcItems[0].name & "/../" & sContainerIdSource
+						console &= " -- Tracking Object: " & arrcItems[0].name & "/../" & sContainerIdSource
 					elseif GetParameterInt("type") == SOURCE_TYPE_RELATIVE then
 						' find relative
 						iContainerIdSource = CInt( sContainerIdSource.GetSubstring(1, sContainerIdSource.Length-1) )
@@ -73,12 +73,14 @@ sub SyncMasks()
 						cRef = arrcTarget[ iRelativeIndex ]
 						sContainerIdSource = "#" & CStr(cRef.VizId)
 						
-						console &= ", Tracking Object: " & arrcItems[i].name & "/../" & cRef.name & "(#" & cRef.VizId & ")"
+						console &= " -- Tracking Object: " & arrcItems[i].name & "/../" & cRef.name & "(#" & cRef.VizId & ")"
 					end if
 					
 					
 					
 					System.SendCommand("#" & arrcTarget[y].vizid & "*WINDOW_MASK*TRACK*OBJECT SET " & sContainerIdSource)
+				else
+					console &= " -- NO TRACKING OBJECT"
 				end if
 				console &= "\n"
 			end if
