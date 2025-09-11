@@ -17,7 +17,7 @@ Dim SOURCE_TYPE_RELATIVE = 1
 sub OnInitParameters()
 	RegisterInfoText(info)
 	RegisterParameterContainer("root", "Root container (or this)")
-	RegisterRadioButton("type", "Source type", SOURCE_TYPE_ABSOLUTE, arrSourceTypes)
+	RegisterRadioButton("type", "Tracking Object copying type", SOURCE_TYPE_ABSOLUTE, arrSourceTypes)
 	RegisterPushButton("arrange", "Sync Traking Objects in Window Masks", 1)
 	RegisterParameterText("console", "", 900, 200)
 end sub
