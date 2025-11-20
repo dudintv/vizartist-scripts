@@ -1,5 +1,8 @@
 ## Autofollow
 
+#### 1.7 (20.11.2022)
+* consider the target and self container size as empty if the corresponding container is not active
+
 #### 1.5 (30.12.2022)
 * added "to default" slider to be able smoothly transition between default and calculated positions
 
