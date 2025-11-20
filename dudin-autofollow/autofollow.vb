@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,6,0)
+RegisterPluginVersion(1,7,0)
 Dim info As String = "Autofollow for multiple containers.
 Check maximum point of selected containers
 and align this_container to this point (in global).
@@ -56,10 +56,10 @@ sub OnInitParameters()
 	RegisterRadioButton("mode", "Follow axis:", 0, arr_mode)
 	RegisterRadioButton("direction", "Direction:", 0, arr_direction)
 	RegisterParameterDouble("zeroX", "X-pos if self empty:", 0, -1000.0, 1000.0)
-	RegisterParameterDouble("defX", "X-pos default:", 0, -1000.0, 1000.0)
+	RegisterParameterDouble("defX", "X-pos if empty target:", 0, -1000.0, 1000.0)
 	RegisterParameterDouble("shiftX", "X-shift:", 0, -1000.0, 1000.0)
 	RegisterParameterDouble("zeroY", "Y-pos if self empty:", 0, -1000.0, 1000.0)
-	RegisterParameterDouble("defY", "Y-pos default:", 0, -1000.0, 1000.0)
+	RegisterParameterDouble("defY", "Y-pos if empty target:", 0, -1000.0, 1000.0)
 	RegisterParameterDouble("shiftY", "Y-shift:", 0, -1000.0, 1000.0)
 	RegisterParameterDouble("toDefault", "To default (0-100%):", 0, 0, 100.0)
 	RegisterParameterDouble("inertia", "Itertia (1=none)", 1, 1, 1000.0)
@@ -125,10 +125,14 @@ sub OnParameterChanged(parameterName As String)
 	SendGuiParameterShow("is_realtime_retarget", CInt(isChildMode))
 end sub
 
-Function IsHaveSize(_c As Container) As Boolean
+Function HaveSize(_c As Container) As Boolean
+	if _c.Active == false then
+		HaveSize = false
+		exit function
+	end if
 	_c.RecomputeMatrix()
 	_c.GetTransformedBoundingBox(v1,v2)
-	IsHaveSize = (v2.x > v1.x + thresholdZero OR v2.x < v1.x - thresholdZero) AND (v2.y > v1.y + thresholdZero OR v2.y < v1.y - thresholdZero)
+	HaveSize = (v2.x > v1.x + thresholdZero OR v2.x < v1.x - thresholdZero) AND (v2.y > v1.y + thresholdZero OR v2.y < v1.y - thresholdZero)
 End Function
 
 Function FindSubContainerByPath(ByVal _c As Container, _path as String) As Container
@@ -177,12 +181,12 @@ sub OnExecPerField()
 
 	arr_sized.Clear
 	For i = 0 to arr_c.ubound
-		if IsHaveSize(arr_c[i]) then arr_sized.Push(arr_c[i])
+		if HaveSize(arr_c[i]) then arr_sized.Push(arr_c[i])
 	Next
 
 	Select Case GetParameterInt("mode")
 	Case MODE_X
-		If IsHaveSize(this) Then
+		If HaveSize(this) Then
 			If arr_sized.size > 0 Then
 				If GetParameterInt("direction") == 0 Then
 					arr_sized[0].GetTransformedBoundingBox(v1,v2)
@@ -221,7 +225,7 @@ sub OnExecPerField()
 		End If
 
 	Case MODE_Y
-		If IsHaveSize(this) Then
+		If HaveSize(this) Then
 			If arr_sized.size > 0 Then
 				If GetParameterInt("direction") == 0 Then
 					arr_sized[0].GetTransformedBoundingBox(v1,v2)
@@ -260,7 +264,7 @@ sub OnExecPerField()
 		End If
 
 	Case MODE_Z
-		If IsHaveSize(this) Then
+		If HaveSize(this) Then
 			If arr_sized.size > 0 Then
 				If GetParameterInt("direction") == 0 Then
 					arr_sized[0].GetTransformedBoundingBox(v1,v2)
@@ -351,3 +355,4 @@ Sub Animate(ByRef thisValue as Double, newValue As Double)
 		thisValue += (newValue - thisValue)/GetParameterDouble("inertia")
 	End If
 End Sub
+
