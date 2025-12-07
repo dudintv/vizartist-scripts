@@ -1,13 +1,18 @@
-RegisterPluginVersion(1,0,0)
+RegisterPluginVersion(1,1,0)
 
 dim cRoot as Container
 dim arrcItems, allItemContainers as Array[Container]
-dim pi as PluginInstance
+dim arrpi as Array[PluginInstance]
 dim currentId, newId, itemName, containerName as String
 dim console as String
 
+dim appsmPluginNames As StringMap
+appsmPluginNames["ControlText"] = "(TXT)"
+appsmPluginNames["ControlContainer"] = "(CTNR)"
+
 sub OnInitParameters()
 	RegisterParameterContainer("root", "Root container")
+	RegisterParameterBool("add_type", "Add Control plugin type as suffix", true)
 	RegisterPushButton("go", "Rename Control Ids", 1)
 	RegisterParameterText("console", "", 999, 999)
 end sub
@@ -25,15 +30,19 @@ sub OnExecAction(buttonId As Integer)
 	for i=0 to arrcItems.ubound
 		arrcItems[i].GetContainerAndSubContainers(allItemContainers, false)
 		for y=0 to allItemContainers.ubound
-			pi = allItemContainers[y].GetFunctionPluginInstance("ControlText")
-			if pi <> null then
+			arrpi = GetControlPlugins(allItemContainers[y])
+			println("---")
+			for k=0 to arrpi.ubound
 				itemName = arrcItems[i].name
 				itemName.substitute("_", "-", true)
 				containerName = allItemContainers[y].name
 				containerName.substitute("_", "-", true)
 			
-				currentId = pi.GetParameterString("field_id")
+				currentId = arrpi[k].GetParameterString("field_id")
 				newId = itemName & "-" & containerName
+				if GetParameterBool("add_type") then
+					newId &= appsmPluginNames[arrpi[k].PluginName]
+				end if
 				
 				if currentId == newId then
 					console &= "[HAVEN'T CHANGE] " & newId
@@ -41,11 +50,34 @@ sub OnExecAction(buttonId As Integer)
 					console &= currentId & "  --->  " & newId
 				end if
 				console &= "\n"
-				pi.SetParameterString("field_id", newId)
-			end if
+				arrpi[k].SetParameterString("field_id", newId)
+			next
 		next
 	next
 	
 	this.ScriptPluginInstance.SetParameterString("console",console)
 end sub
+
+
+
+
+function GetControlPlugins(_c as Container) as Array[PluginInstance]
+	dim _arrpiResult as Array[PluginInstance]
+	_c.GetFunctionPluginInstances(_arrpiResult)
+	for i=0 to _arrpiResult.ubound
+		println("_arrpiResult[i].PluginName = " & _arrpiResult[i].PluginName)
+		if not appsmPluginNames.ContainsKey(_arrpiResult[i].PluginName) then
+			_arrpiResult.erase(i)
+			i -= 1
+		end if
+	next
+	
+	for i=0 to _arrpiResult.ubound
+		println("_arrpiResult i = " & _arrpiResult[i].PluginName)
+	next
+	
+	GetControlPlugins = _arrpiResult
+end function
+
+
 
