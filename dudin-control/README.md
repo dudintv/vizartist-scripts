@@ -1,4 +1,4 @@
-Control Plugins Ids Renamer
+# Control Plugins Ids Renamer
 
 It helps to rename control ids to make them unique for avoiding using ControlList.
 
