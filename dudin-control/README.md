@@ -2,6 +2,34 @@
 
 It helps to rename control ids to make them unique for avoiding using ControlList.
 
+E.g. if you have this structure:
+
+```
+object
+└ script
+└ root
+  └ item1
+    └ label (with ControlText)
+    └ photo (with ControlImage)
+  └ item2
+    └ label (with ControlText)
+    └ photo (with ControlImage)
+```
+
+then all control plugins obtain the following ids:
+
+```
+item1-label(TXT)
+item1-photo(IMG)
+item2-label(TXT)
+item2-photo(IMG)
+```
+
+### version 1.2.0
+
+* support more control plugins (the most common)
+* add checkbox "add type suffix"
+
 ### version 1.1.0
 
 * add renaming ControlContainer plugins
