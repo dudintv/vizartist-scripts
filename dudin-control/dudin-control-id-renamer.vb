@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,1,0)
+RegisterPluginVersion(1,2,0)
 
 dim cRoot as Container
 dim arrcItems, allItemContainers as Array[Container]
@@ -7,14 +7,24 @@ dim currentId, newId, itemName, containerName as String
 dim console as String
 
 dim appsmPluginNames As StringMap
-appsmPluginNames["ControlText"] = "(TXT)"
+
 appsmPluginNames["ControlContainer"] = "(CTNR)"
+appsmPluginNames["ControlImage"] = "(IMG)"
+appsmPluginNames["ControlHideOnEmpty"] = "(HIDE)"
+appsmPluginNames["ControlNum"] = "(NUM)"
+appsmPluginNames["ControlOmo"] = "(OMO)"
+appsmPluginNames["ControlParameter"] = "(PARAM)"
+appsmPluginNames["ControlText"] = "(TXT)"
 
 sub OnInitParameters()
-	RegisterParameterContainer("root", "Root container")
+	RegisterParameterContainer("root", "Root container of the list")
 	RegisterParameterBool("add_type", "Add Control plugin type as suffix", true)
 	RegisterPushButton("go", "Rename Control Ids", 1)
 	RegisterParameterText("console", "", 999, 999)
+end sub
+
+sub OnInit()
+	this.ScriptPluginInstance.SetParameterString("console", "")
 end sub
 
 sub OnExecAction(buttonId As Integer)
@@ -45,7 +55,7 @@ sub OnExecAction(buttonId As Integer)
 				end if
 				
 				if currentId == newId then
-					console &= "[HAVEN'T CHANGE] " & newId
+					console &= "[HAVEN'T CHANGED] " & newId
 				else
 					console &= currentId & "  --->  " & newId
 				end if
@@ -78,6 +88,8 @@ function GetControlPlugins(_c as Container) as Array[PluginInstance]
 	
 	GetControlPlugins = _arrpiResult
 end function
+
+
 
 
 
