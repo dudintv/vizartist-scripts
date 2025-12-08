@@ -25,7 +25,12 @@ item2-label(TXT)
 item2-photo(IMG)
 ```
 
-### version 1.2.0
+### version 1.3.0, 08.12.2025
+
+* optionaly change corresponding descriptions
+* skip plugins by regex in its id
+
+### version 1.2.0, 07.12.2025
 
 * support more control plugins (the most common)
 * add checkbox "add type suffix"
