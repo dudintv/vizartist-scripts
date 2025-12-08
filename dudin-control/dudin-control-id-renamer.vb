@@ -1,10 +1,10 @@
-RegisterPluginVersion(1,2,0)
+RegisterPluginVersion(1,3,0)
 
 dim cRoot as Container
 dim arrcItems, allItemContainers as Array[Container]
 dim arrpi as Array[PluginInstance]
 dim currentId, newId, itemName, containerName as String
-dim console as String
+dim console, skipRegex as String
 
 dim appsmPluginNames As StringMap
 
@@ -19,7 +19,10 @@ appsmPluginNames["ControlText"] = "(TXT)"
 sub OnInitParameters()
 	RegisterParameterContainer("root", "Root container of the list")
 	RegisterParameterBool("add_type", "Add Control plugin type as suffix", true)
-	RegisterPushButton("go", "Rename Control Ids", 1)
+	RegisterParameterBool("rename_id", "Rename IDs", true)
+	RegisterParameterBool("rename_description", "Rename descriptions", true)
+	RegisterParameterString("skip_regex", "Skip if ID has regex:", "", 99, 999, "")
+	RegisterPushButton("go", "   Rename   ", 1)
 	RegisterParameterText("console", "", 999, 999)
 end sub
 
@@ -30,6 +33,7 @@ end sub
 sub OnExecAction(buttonId As Integer)
 	console = ""
 	cRoot = GetParameterContainer("root")
+	skipRegex = GetParameterString("skip_regex")
 	arrcItems.clear()
 	if cRoot == null then cRoot = this
 	
@@ -41,7 +45,6 @@ sub OnExecAction(buttonId As Integer)
 		arrcItems[i].GetContainerAndSubContainers(allItemContainers, false)
 		for y=0 to allItemContainers.ubound
 			arrpi = GetControlPlugins(allItemContainers[y])
-			println("---")
 			for k=0 to arrpi.ubound
 				itemName = arrcItems[i].name
 				itemName.substitute("_", "-", true)
@@ -49,18 +52,31 @@ sub OnExecAction(buttonId As Integer)
 				containerName.substitute("_", "-", true)
 			
 				currentId = arrpi[k].GetParameterString("field_id")
-				newId = itemName & "-" & containerName
-				if GetParameterBool("add_type") then
-					newId &= appsmPluginNames[arrpi[k].PluginName]
-				end if
 				
-				if currentId == newId then
-					console &= "[HAVEN'T CHANGED] " & newId
+				
+				if skipRegex <> "" AND currentId.Match(skipRegex) then
+					'skippng
+					console &= "[SKIPPED] " & currentId
 				else
-					console &= currentId & "  --->  " & newId
+					newId = itemName & "-" & containerName
+					if GetParameterBool("add_type") then
+						newId &= appsmPluginNames[arrpi[k].PluginName]
+					end if
+					
+					if currentId == newId then
+						console &= "[HAVEN'T CHANGED] " & newId
+					else
+						console &= currentId & "  --->  " & newId
+					end if
+					
+					if GetParameterBool("rename_id") then	
+						arrpi[k].SetParameterString("field_id", newId)
+					end if
+					if GetParameterBool("rename_description") then	
+						arrpi[k].SetParameterString("description", newId)
+					end if
 				end if
 				console &= "\n"
-				arrpi[k].SetParameterString("field_id", newId)
 			next
 		next
 	next
@@ -74,22 +90,14 @@ end sub
 function GetControlPlugins(_c as Container) as Array[PluginInstance]
 	dim _arrpiResult as Array[PluginInstance]
 	_c.GetFunctionPluginInstances(_arrpiResult)
+	
+	'search for allowed control plugins
 	for i=0 to _arrpiResult.ubound
-		println("_arrpiResult[i].PluginName = " & _arrpiResult[i].PluginName)
 		if not appsmPluginNames.ContainsKey(_arrpiResult[i].PluginName) then
 			_arrpiResult.erase(i)
 			i -= 1
 		end if
 	next
 	
-	for i=0 to _arrpiResult.ubound
-		println("_arrpiResult i = " & _arrpiResult[i].PluginName)
-	next
-	
 	GetControlPlugins = _arrpiResult
 end function
-
-
-
-
-
