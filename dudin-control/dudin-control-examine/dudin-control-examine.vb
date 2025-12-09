@@ -87,7 +87,7 @@ sub OnExecAction(buttonId As Integer)
 		for k=0 to level-1
 			levelShift &= "   "
 		next
-		console &= levelShift & name & " — " & CStr(arrSceneContainers[i].c.Texture) & textureMessage & textMessage & omoMessage
+		console &= levelShift & name & "   " & textureMessage & textMessage & omoMessage
 		console &= "\n"
 	next
 	
