@@ -6,15 +6,19 @@ Structure SceneContainer
 End Structure
 
 dim arrc as Array[Container]
-dim name, console as String
+dim name, console, levelShift as String
 dim arrSceneContainers as Array[SceneContainer]
 dim maxNameLength, level as Integer
-dim hasTexture as Boolean
+
+dim textureMessage, textMessage, omoMessage as String
+dim hasTexture, hasImageControl, isTextureIgnored as Boolean
+dim hasText, hasTextControl, isTextIgnored as Boolean
+dim hasOmo, hasOmoControl, isOmoIgnored as Boolean
 
 sub OnInitParameters()
 	RegisterParameterContainer("root", "Root Container (or whole scene)")
 	RegisterPushButton("check", "Check the scene", 1)
-	RegisterParameterText("console", "", 999, 999)
+	RegisterParameterText("console", "", 999, 299)
 end sub
 
 sub OnExecAction(buttonId As Integer)
@@ -33,16 +37,62 @@ sub OnExecAction(buttonId As Integer)
 	for i=0 to arrSceneContainers.ubound
 		level = arrSceneContainers[i].level
 		name = arrSceneContainers[i].c.name
+		
+		'CONTROL IMAGE
 		hasTexture = arrSceneContainers[i].c.Texture <> null
-		console &= level & " | " & name & "|" & CStr(arrSceneContainers[i].c.Texture) & hasTexture
+		textureMessage = ""
+		if hasTexture then
+			hasImageControl = arrSceneContainers[i].c.GetFunctionPluginInstance("ControlImage") <> null
+			isTextureIgnored = name.Find("[I]") >= 0
+			if hasImageControl then
+				textureMessage = " [I ✔]"
+			elseif isTextureIgnored then
+				textureMessage = " [I ~]"
+			else
+				textureMessage = " [I ✘✘✘✘✘]"
+			end if
+		end if
+		
+		'CONTROL TEXT
+		hasText = arrSceneContainers[i].c.Geometry <> null AND System.SendCommand("0 #"&arrSceneContainers[i].c.vizId&"*GEOM*OBJECT_TYPE GET") == "GEOM_TEXT"
+		textMessage = ""
+		if hasText then
+			hasTextControl = arrSceneContainers[i].c.GetFunctionPluginInstance("ControlText") <> null
+			isTextIgnored = name.Find("[T]") >= 0
+			if hasTextControl then
+				textMessage = " [T ✔]"
+			elseif isTextIgnored then
+				textMessage = " [T ~]"
+			else
+				textMessage = " [T ✘✘✘✘✘]"
+			end if
+		end if
+		
+		'CONTROL OMO
+		hasOmo = arrSceneContainers[i].c.GetFunctionPluginInstance("Omo") <> null
+		omoMessage = ""
+		if hasOmo then
+			hasOmoControl = arrSceneContainers[i].c.GetFunctionPluginInstance("ControlOmo") <> null
+			isOmoIgnored = name.Find("[O]") >= 0
+			if hasOmoControl then
+				omoMessage = " [O ✔]"
+			elseif isOmoIgnored then
+				omoMessage = " [O ~]"
+			else
+				omoMessage = " [O ✘✘✘✘✘]"
+			end if
+		end if
+		
+		levelShift = ""
+		for k=0 to level-1
+			levelShift &= "   "
+		next
+		console &= levelShift & name & " — " & CStr(arrSceneContainers[i].c.Texture) & textureMessage & textMessage & omoMessage
 		console &= "\n"
 	next
 	
 	this.ScriptPluginInstance.SetParameterString("console",console)
 end sub
-
-
-
 
 sub MakeFullSceneTree(ByRef _out As Array[SceneContainer]) 
 	dim _root = Scene.RootContainer
