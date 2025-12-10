@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,3,0)
+RegisterPluginVersion(1,4,0)
 
 dim cRoot as Container
 dim arrcItems, allItemContainers as Array[Container]
@@ -18,6 +18,7 @@ appsmPluginNames["ControlText"] = "(TXT)"
 
 sub OnInitParameters()
 	RegisterParameterContainer("root", "Root container of the list")
+	RegisterParameterBool("root_prefix", "Prefix from parent", false)
 	RegisterParameterBool("add_type", "Add Control plugin type as suffix", true)
 	RegisterParameterBool("rename_id", "Rename IDs", true)
 	RegisterParameterBool("rename_description", "Rename descriptions", true)
@@ -59,6 +60,13 @@ sub OnExecAction(buttonId As Integer)
 					console &= "[SKIPPED] " & currentId
 				else
 					newId = itemName & "-" & containerName
+					
+					
+					if GetParameterBool("root_prefix") then
+						dim prefix = cRoot.name
+						prefix.substitute("_", "-", true)
+						newId = cRoot.name & "-" & newId
+					end if
 					if GetParameterBool("add_type") then
 						newId &= appsmPluginNames[arrpi[k].PluginName]
 					end if
