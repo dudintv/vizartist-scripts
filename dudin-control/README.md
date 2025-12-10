@@ -25,6 +25,10 @@ item2-label(TXT)
 item2-photo(IMG)
 ```
 
+### version 1.4.0, 10.12.2025
+
+* add prefix from the root container name
+
 ### version 1.3.0, 08.12.2025
 
 * optionaly change corresponding descriptions
