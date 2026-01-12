@@ -17,7 +17,7 @@ appsmPluginNames["ControlParameter"] = "(PARAM)"
 appsmPluginNames["ControlText"] = "(TXT)"
 
 sub OnInitParameters()
-	RegisterParameterContainer("root", "Root container of the list")
+	RegisterParameterContainer("root", "Root (or this)")
 	RegisterParameterBool("root_prefix", "Prefix from parent", false)
 	RegisterParameterBool("add_type", "Add Control plugin type as suffix", true)
 	RegisterParameterBool("rename_id", "Rename IDs", true)
