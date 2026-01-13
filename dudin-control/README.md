@@ -25,6 +25,10 @@ item2-label(TXT)
 item2-photo(IMG)
 ```
 
+### version 1.5.0, 13.01.2026
+
+* support getting ID names from suffix of containers names
+
 ### version 1.4.0, 10.12.2025
 
 * add prefix from the root container name
