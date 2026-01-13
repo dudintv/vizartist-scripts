@@ -1,9 +1,9 @@
-RegisterPluginVersion(1,4,0)
+RegisterPluginVersion(1,5,0)
 
 dim cRoot as Container
 dim arrcItems, allItemContainers as Array[Container]
 dim arrpi as Array[PluginInstance]
-dim currentId, newId, itemName, containerName as String
+dim currentId, newId, itemName, containerName, suffixSeparator as String
 dim console, skipRegex as String
 
 dim appsmPluginNames As StringMap
@@ -23,12 +23,18 @@ sub OnInitParameters()
 	RegisterParameterBool("rename_id", "Rename IDs", true)
 	RegisterParameterBool("rename_description", "Rename descriptions", true)
 	RegisterParameterString("skip_regex", "Skip if ID has regex:", "", 99, 999, "")
+	RegisterParameterBool("has_name_from_siffux", "Get ids name from suffix", true)
+	RegisterParameterString("suffix_separator", "Suffix separator", ":", 6, 6, "")
 	RegisterPushButton("go", "   Rename   ", 1)
 	RegisterParameterText("console", "", 999, 999)
 end sub
 
 sub OnInit()
 	this.ScriptPluginInstance.SetParameterString("console", "")
+end sub
+sub OnParameterChanged(parameterName As String)
+	SendGuiParameterShow("suffix_separator", CInt(GetParameterBool("has_name_from_siffux")))
+	suffixSeparator = GetParameterString("suffix_separator")
 end sub
 
 sub OnExecAction(buttonId As Integer)
@@ -50,7 +56,12 @@ sub OnExecAction(buttonId As Integer)
 				itemName = arrcItems[i].name
 				itemName.substitute("_", "-", true)
 				containerName = allItemContainers[y].name
+				if GetParameterBool("has_name_from_siffux") then
+					dim suffixStartPos = containerName.Find(suffixSeparator) + suffixSeparator.Length
+					containerName = containerName.Right(containerName.Length - suffixStartPos)
+				end if
 				containerName.substitute("_", "-", true)
+				containerName.substitute(":", "-", true)
 			
 				currentId = arrpi[k].GetParameterString("field_id")
 				
@@ -109,3 +120,6 @@ function GetControlPlugins(_c as Container) as Array[PluginInstance]
 	
 	GetControlPlugins = _arrpiResult
 end function
+
+
+
