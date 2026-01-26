@@ -25,6 +25,11 @@ item2-label(TXT)
 item2-photo(IMG)
 ```
 
+### version 2.0.0, 26.01.2026
+
+* support smart numeric naming
+* extended UI
+
 ### version 1.5.0, 13.01.2026
 
 * support getting ID names from suffix of containers names
