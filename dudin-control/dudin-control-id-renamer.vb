@@ -214,7 +214,6 @@ sub OnExecAction(buttonId As Integer)
 		containersWithControls = GetContainersWithControls(arrItems[i])
 		for y=0 to containersWithControls.ubound
 			containerName = containersWithControls[y].name
-			'console &= " └ conatiner = " & containerName & "\n"
 			arrP = containersWithControls[y].arrP
 
 			if containersWithControls[y].isIgnored then
@@ -223,7 +222,6 @@ sub OnExecAction(buttonId As Integer)
 				for k=0 to arrP.ubound
 
 					currentFieldId = arrP[k].GetParameterString("field_id")
-					'console &= "currentFieldId = " & currentFieldId & "\n"
 
 					dim shouldIgnoreByControlId = false
 					if GetParameterBool("has_filter") AND GetParameterBool("has_filter_by_control_id") then
@@ -341,7 +339,6 @@ function GetContainersWithControls(_c As Container) as Array[ContainerWithContro
 	for i=0 to _arrChild.UBound
 		_arrP = GetControlPlugins(_arrChild[i])
 		if _arrP.size > 0 then
-			'console &= " └ _arrChild = " & _arrChild[i].name & "("& _arrP.size &")" & "\n"
 			dim _cWithControls As ContainerWithControls
 			_cWithControls.c = _arrChild[i]
 			_cWithControls.arrP = _arrP
@@ -368,7 +365,6 @@ function GetContainersWithControls(_c As Container) as Array[ContainerWithContro
 					_cWithControls.isIgnored = _arrChild[i].name.Match(GetParameterString("filter_by_container_name_regex"))
 				end select
 			end if
-			'console &= "    └ name = " & _cWithControls.name & "["&_cWithControls.nameOrder&"]" & "\n"
 			_arrResult.Push(_cWithControls)
 		end if
 	next
