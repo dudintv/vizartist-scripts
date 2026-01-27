@@ -37,6 +37,7 @@ or
 ### version 2.1.0, 27.01.2026
 
 * fix: show container name separator in case if "has_same_number_for_same_name" is true, even when the container mode is "index"
+* print out descriptions in the UI console
 
 ### version 2.0.0, 26.01.2026
 
