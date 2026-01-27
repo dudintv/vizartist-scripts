@@ -300,6 +300,7 @@ sub OnExecAction(buttonId As Integer)
 						case DESCRIPTION_TOTAL
 							newDescription = itemName & " " & containersWithControls[y].c.name & " " & appSmPluginNames[arrP[k].PluginName]
 						end select
+						
 
 						'APPLY
 						if GetParameterBool("has_rename_id") then
@@ -316,6 +317,7 @@ sub OnExecAction(buttonId As Integer)
 							if buttonId == BUTTON_RENAME then
 								arrP[k].SetParameterString("description", newDescription)
 							end if
+							console &= "   |   " & newDescription
 						end if
 
 					end if
