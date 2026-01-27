@@ -25,9 +25,20 @@ item2-label(TXT)
 item2-photo(IMG)
 ```
 
+or
+
+```
+0101
+0102
+0201
+0202
+```
+
 ### version 2.0.0, 26.01.2026
 
+* WARNING: it works well only when one control per continaier
 * support smart numeric naming
+* filter by container names and IDs with including and excluding rules
 * extended UI
 
 ### version 1.5.0, 13.01.2026
