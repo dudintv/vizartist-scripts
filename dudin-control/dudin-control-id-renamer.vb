@@ -1,4 +1,4 @@
-RegisterPluginVersion(2,0,0)
+RegisterPluginVersion(2,1,0)
 
 dim cRoot as Container
 dim arrItems, allItemContainers as Array[Container]
@@ -163,9 +163,9 @@ sub OnParameterChanged(parameterName As String)
 	hasContainerName = GetParameterInt("container_mode") == CONTAINER_NAME OR GetParameterInt("container_mode") == CONTAINER_NAME_INDEX
 	SendGuiParameterShow("container_index_width", CInt(hasId AND hasContainer AND hasContainerIndex))
 	SendGuiParameterShow("has_same_number_for_same_name", CInt(hasId AND hasContainer AND hasContainerIndex))
-	SendGuiParameterShow("get_container_name_from", CInt(hasId AND hasContainer AND hasContainerName))
+	SendGuiParameterShow("get_container_name_from", CInt(hasId AND hasContainer AND (hasContainerName OR GetParameterBool("has_same_number_for_same_name"))))	
 	hasContainerNameSeparator = GetParameterInt("get_container_name_from") == GET_CONTAINER_NAME_FROM_SUFFIX
-	SendGuiParameterShow("container_name_separator", CInt(hasId AND hasContainer AND hasContainerName AND hasContainerNameSeparator))
+	SendGuiParameterShow("container_name_separator", CInt(hasId AND hasContainer AND (hasContainerName OR GetParameterBool("has_same_number_for_same_name")) AND hasContainerNameSeparator))
 
 	'suffix
 	SendGuiParameterShow("has_suffix", CInt(hasId))
