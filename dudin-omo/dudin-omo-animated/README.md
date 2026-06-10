@@ -1,4 +1,4 @@
-## Animated OMO. Show off one elemnet and keep away others (with a cool animation)
+## Animated OMO. Show off one element and keep away others (with a cool animation)
 
 #### Version 2.5.0 (1 September 2020)
 * ADD: selector of two types transformation moving: "through base state" and "through hidden state" 
