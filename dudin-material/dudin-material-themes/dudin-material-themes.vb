@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,1,0)
+RegisterPluginVersion(1,2,0)
 Dim info As String = "
 Theme Materials Switcher
 Developer: Dmitry Dudin
@@ -9,7 +9,7 @@ Dim arrcSources As Array[Array[Container]]
 Dim arrcTargets As Array[Array[Container]]
 Dim arrsThemes As Array[String]
 Dim arrsTags As Array[String]
-Dim s, console, sName As String
+Dim s, console, sName, sThemeType As String
 Dim cSourceRoot, cTargetRoot As Container
 Dim m As Material
 Dim iPrevOmo = GetFunctionPluginInstance("Omo").GetParameterInt("vis_con")
@@ -17,9 +17,11 @@ Dim iCurrentOmo As Integer
 
 Dim SWITCH_MODE_NUMBER = 0
 Dim SWITCH_MODE_OMO = 1
+Dim SWITCH_MODE_SHM = 2
 Dim arrSwitchModes As Array[String]
 arrSwitchModes.Push("Number")
 arrSwitchModes.Push("From Omo")
+arrSwitchModes.Push("SHM Variable")
 
 Structure Tagged
 	sTag As String
@@ -35,6 +37,8 @@ sub OnInitParameters()
 	RegisterParameterContainer("targets_root", "Targets root [or whole scene]")
 	RegisterRadioButton("switch_mode", "Switch mode", 1, arrSwitchModes)
 	RegisterParameterInt("current_theme_index", " └ Current Theme", 0, 0, 999)
+	RegisterParameterString("shm_variable", " └ SHM Variable Name", "", 40, 999, "")
+	RegisterParameterBool("has_omo_sync", " └ Sync to Omo", true)
 	RegisterParameterText("console", "", 600, 240)
 end sub
 
@@ -45,23 +49,22 @@ sub OnInit()
 	console = ""
 	GetSource()
 	GetTargets()
-	this.ScriptPluginInstance.SetParameterString("console",console)
+	this.ScriptPluginInstance.SetParameterString("console", console)
 end sub
 sub OnParameterChanged(parameterName As String)
 	SendGuiParameterShow("current_theme_index", CInt(GetParameterInt("switch_mode") == SWITCH_MODE_NUMBER))
+	SendGuiParameterShow("shm_variable", CInt(GetParameterInt("switch_mode") == SWITCH_MODE_SHM))
+	SendGuiParameterShow("has_omo_sync", CInt(GetParameterInt("switch_mode") <> SWITCH_MODE_OMO))
 
 	if parameterName <> "console" then
 		OnInit()
+		UpdateTheme()
 	end if
-	
-
-	if GetParameterInt("switch_mode") == SWITCH_MODE_NUMBER then
-		if parameterName == "switch_mode" OR parameterName == "current_theme_index" then
-			ApplyTheme(GetParameterInt("current_theme_index"))
-		end if
-	elseif GetParameterInt("switch_mode") == SWITCH_MODE_OMO then
-		iPrevOmo = -1
-		ApplyTheme(cSourceRoot.GetFunctionPluginInstance("Omo").GetParameterInt("vis_con"))
+end sub
+sub OnExecAction(buttonId As Integer)
+	if buttonId == 1 then
+		OnInit()
+		UpdateTheme()
 	end if
 end sub
 
@@ -75,6 +78,15 @@ sub OnExecPerField()
 		end if
 	end if
 end sub
+
+sub OnSharedMemoryVariableChanged(map As SharedMemory, mapKey As String)
+	if GetParameterInt("switch_mode") == SWITCH_MODE_SHM then
+		if mapKey == GetParameterString("shm_variable") then
+			ApplyTheme(CInt(System.Map[GetParameterString("shm_variable")]))
+		end if
+	end if
+end sub
+
 
 ''''''''''''''''''''''''''''''
 
@@ -156,7 +168,8 @@ sub GetTargets()
 	for i=0 to arrcRawTargets.ubound
 		sName = arrcRawTargets[i].name
 		for t=0 to arrsTags.ubound
-			if sName.Find("<" & arrsTags[t] & ">") >= 0 then
+			'if sName.Find("<" & arrsTags[t] & ">") >= 0 then
+			if sName.Match("<" & arrsTags[t] & ".*>") then
 				arrcTargets[t].Push(arrcRawTargets[i])
 			end if
 		next
@@ -175,14 +188,44 @@ end sub
 
 sub ApplyTheme(themeIndex As Integer)
 	if themeIndex > arrcThemes.ubound then themeIndex = arrcThemes.ubound
-	println("themeIndex = " & themeIndex)
+	cSourceRoot.GetFunctionPluginInstance("Omo").SetParameterInt("vis_con", themeIndex)
 	for t=0 to arrsTags.ubound
 		m = arrcSources[t][themeIndex].Material
 		for i=0 to arrcTargets[t].ubound
-			arrcTargets[t][i].Material = m
+			sThemeType = GetThemeType(arrcTargets[t][i].name, arrsTags[t])
+			if sThemeType == "omo" then
+				arrcTargets[t][i].GetFunctionPluginInstance("Omo").SetParameterInt("vis_con", themeIndex)
+			else
+				arrcTargets[t][i].Material = m
+			end if
 		next
 	next
 end sub
+
+sub UpdateTheme()
+	if GetParameterInt("switch_mode") == SWITCH_MODE_NUMBER then
+		ApplyTheme(GetParameterInt("current_theme_index"))
+	elseif GetParameterInt("switch_mode") == SWITCH_MODE_OMO then
+		iPrevOmo = -1
+		ApplyTheme(cSourceRoot.GetFunctionPluginInstance("Omo").GetParameterInt("vis_con"))
+	elseif GetParameterInt("switch_mode") == SWITCH_MODE_SHM then
+		System.Map.RegisterChangedCallback(GetParameterString("shm_variable"))
+		ApplyTheme(CInt(System.Map[GetParameterString("shm_variable")]))
+	end if
+end sub
+
+function GetThemeType(_name As String, _tag As String) As String
+	Dim _sStart = "<" & _tag & ":"
+	Dim _iStart = _name.Find(_sStart)
+	if _iStart < 0 then
+		GetThemeType = ""
+		exit function
+	end if
+	Dim _sMiddle = _name.GetSubstring(_iStart + _sStart.Length, _name.Length - _iStart)
+	Dim _iEnd = _sMiddle.Find(">")
+	Dim _type = _sMiddle.GetSubstring(0, _iEnd)
+	GetThemeType = _type
+end function
 
 '''''''''''''''''''''''''''''''
 
@@ -208,3 +251,6 @@ Sub GetAllContainersInScene(_arrc As Array[Container])
 		_c = _c.NextContainer
 	Loop While _c <> null
 End Sub
+
+
+
