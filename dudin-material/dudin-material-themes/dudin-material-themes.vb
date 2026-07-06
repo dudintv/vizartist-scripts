@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,0,0)
+RegisterPluginVersion(1,1,0)
 Dim info As String = "
 Theme Materials Switcher
 Developer: Dmitry Dudin
@@ -12,6 +12,14 @@ Dim arrsTags As Array[String]
 Dim s, console, sName As String
 Dim cSourceRoot, cTargetRoot As Container
 Dim m As Material
+Dim iPrevOmo = GetFunctionPluginInstance("Omo").GetParameterInt("vis_con")
+Dim iCurrentOmo As Integer
+
+Dim SWITCH_MODE_NUMBER = 0
+Dim SWITCH_MODE_OMO = 1
+Dim arrSwitchModes As Array[String]
+arrSwitchModes.Push("Number")
+arrSwitchModes.Push("From Omo")
 
 Structure Tagged
 	sTag As String
@@ -25,25 +33,46 @@ sub OnInitParameters()
 	RegisterPushButton("init", "Init", 1)
 	RegisterParameterContainer("sources_root", "Sources root [or this]")
 	RegisterParameterContainer("targets_root", "Targets root [or whole scene]")
-	RegisterParameterInt("current_theme_index", "Current Theme", 0, 0, 999)
+	RegisterRadioButton("switch_mode", "Switch mode", 1, arrSwitchModes)
+	RegisterParameterInt("current_theme_index", " └ Current Theme", 0, 0, 999)
 	RegisterParameterText("console", "", 600, 240)
 end sub
 
 sub OnInit()
+	cSourceRoot = GetParameterContainer("sources_root")
+	if cSourceRoot == null then cSourceRoot = this
+	
 	console = ""
 	GetSource()
 	GetTargets()
 	this.ScriptPluginInstance.SetParameterString("console",console)
 end sub
 sub OnParameterChanged(parameterName As String)
+	SendGuiParameterShow("current_theme_index", CInt(GetParameterInt("switch_mode") == SWITCH_MODE_NUMBER))
+
 	if parameterName <> "console" then
 		OnInit()
 	end if
 	
-	if parameterName == "current_theme_index" then
-		Dim _i As Integer = GetParameterInt("current_theme_index")
-		if _i > arrcThemes.ubound then _i = arrcThemes.ubound
-		ApplyTheme(_i)
+
+	if GetParameterInt("switch_mode") == SWITCH_MODE_NUMBER then
+		if parameterName == "switch_mode" OR parameterName == "current_theme_index" then
+			ApplyTheme(GetParameterInt("current_theme_index"))
+		end if
+	elseif GetParameterInt("switch_mode") == SWITCH_MODE_OMO then
+		iPrevOmo = -1
+		ApplyTheme(cSourceRoot.GetFunctionPluginInstance("Omo").GetParameterInt("vis_con"))
+	end if
+end sub
+
+
+sub OnExecPerField()
+	if GetParameterInt("switch_mode") == SWITCH_MODE_OMO then
+		iCurrentOmo = cSourceRoot.GetFunctionPluginInstance("Omo").GetParameterInt("vis_con")
+		if iPrevOmo <> iCurrentOmo then 
+			ApplyTheme(iCurrentOmo)
+			iPrevOmo = iCurrentOmo
+		end if
 	end if
 end sub
 
@@ -52,8 +81,6 @@ end sub
 function GetSource() as Boolean
 	arrsThemes.Clear()
 	arrsTags.Clear()
-	cSourceRoot = GetParameterContainer("sources_root")
-	if cSourceRoot == null then cSourceRoot = this
 	
 	' GET THEMES
 	GetFirstLevelChilds(cSourceRoot, arrcThemes)
@@ -147,6 +174,7 @@ sub GetTargets()
 end sub
 
 sub ApplyTheme(themeIndex As Integer)
+	if themeIndex > arrcThemes.ubound then themeIndex = arrcThemes.ubound
 	println("themeIndex = " & themeIndex)
 	for t=0 to arrsTags.ubound
 		m = arrcSources[t][themeIndex].Material
