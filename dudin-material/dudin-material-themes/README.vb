@@ -1,5 +1,9 @@
 # Material Theme Swither
 
+### 1.2.0
+
+* add support Omo switching by tag suffix, for example: "<bg:omo>"
+
 ### 1.1.0
 
 * the Current Theme can be changed by Omo plugin on the Source Root container
