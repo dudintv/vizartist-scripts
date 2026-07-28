@@ -1,4 +1,6 @@
 ## Upgrage Image Link
 
+It assists to original ImageLink to link image position, rotation, scaling and type mapping
+
 #### Version 1.0 (18 June 2020)
-* helps to link image position, rotation, scaling and type mapping
+* can link image position, rotation, scaling and type mapping
