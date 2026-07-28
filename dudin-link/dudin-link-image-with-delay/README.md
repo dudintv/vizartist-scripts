@@ -1,6 +1,6 @@
 # ImageLink with delay
 
-It synchronize the image with defined delay.
+It synchronizes the image (similar to *ImageLink* builtin plugin) with **delay**.
 
 ### 1.0.0, 28.07.2026
 
