@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,1,0)
+RegisterPluginVersion(1,2,0)
 
 '''''''''''''''''''''''
 ' Change it as you need:
@@ -29,6 +29,7 @@ sub OnInitParameters()
 	RegisterParameterInt("delay", "Sync delay (in frames)", 0, 0, 999999)
 	RegisterPushButton("sync_now", "Sync now", 1)
 	RegisterParameterBool("sync_init", "Sync immediate when init", true)
+	RegisterParameterBool("sync_when_hidden", "Allow if sourse is hidden", true)
 	for i=1 to TARGETS_AMOUNT
 		RegisterParameterContainer("target" & i, "Target " & i)
 	next
@@ -94,6 +95,9 @@ sub SyncImage()
 	if cSource == null OR cSource.Texture == null then
 		exit sub
 	end if
+	if NOT GetParameterBool("sync_when_hidden") AND NOT IsEffectivelyActive(this) then
+		exit sub
+	end if
 	
 	previousImage = cSource.Texture.Image
 	
@@ -108,4 +112,20 @@ sub OnExecAction(buttonId As Integer)
 		SyncImage()
 	end if
 end sub
+
+''''''''''''''''''
+
+Function IsEffectivelyActive(cont As Container) As Boolean
+    Dim _currentContainer As Container = cont
+    
+    Do While _currentContainer <> Null
+        If _currentContainer.Active == False Then
+            IsEffectivelyActive = False
+            Exit Function
+        End If
+        _currentContainer = _currentContainer.ParentContainer
+    Loop
+
+    IsEffectivelyActive = True
+End Function
 
