@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,0,0)
+RegisterPluginVersion(1,1,0)
 Dim info As String = "Developer: Dmitry Dudin
 
 Omo Link. It gets Omo value from \"this\" container 
@@ -7,7 +7,8 @@ all sub-conatainers of the Root container.
 
 It filters the target containes by name. 
 You can specify multiply names separated 
-by comma \",\". All extra spaces will be trimed.
+by comma \",\" and use asterisks \"*\" as wildcards. 
+All extra spaces will be trimed.
 "
 
 dim cRoot as Container
@@ -36,14 +37,17 @@ sub OnInit()
 	next
 	
 	arrcTargets.clear()
-	cRoot.GetContainerAndSubContainers(arrcChildren, false)
-	for n=0 to cTargetNames.ubound
-		findContainersByName(arrcChildren, cTargetNames[n], arrcTargets)
-	next
-
+	
+	if cRoot <> null then
+		cRoot.GetContainerAndSubContainers(arrcChildren, false)
+		for n=0 to cTargetNames.ubound
+			findContainersByName(arrcChildren, cTargetNames[n], arrcTargets)
+		next
+	end if
 	
 	pCurrentOmo = this.GetFunctionPluginInstance("Omo")
 end sub
+
 sub OnParameterChanged(parameterName As String)
 	OnInit()
 end sub
@@ -70,14 +74,81 @@ end sub
 
 '----------------------------------------------------
 
+' Evaluates wildcards (e.g. *Name, Name*, *Name*)
+Function MatchPattern(text As String, pattern As String) As Boolean
+	' Exact match
+	If text == pattern Then 
+		MatchPattern = true
+		exit function
+	End If
+	
+	' Catch all
+	If pattern == "*" Then 
+		MatchPattern = true
+		exit function
+	End If
+
+	Dim parts As Array[String]
+	pattern.Split("*", parts)
+
+	' No wildcard was found, and exact match failed
+	If parts.size == 1 Then
+		MatchPattern = false
+		exit function
+	End If
+
+	' Single wildcard (e.g. *suffix, prefix*, prefix*suffix)
+	If parts.size == 2 Then
+		If parts[0] == "" Then
+			MatchPattern = text.EndsWith(parts[1])
+			exit function
+		ElseIf parts[1] == "" Then
+			MatchPattern = text.StartsWith(parts[0])
+			exit function
+		Else
+			MatchPattern = text.StartsWith(parts[0]) And text.EndsWith(parts[1]) And text.length >= (parts[0].length + parts[1].length)
+			exit function
+		End If
+	End If
+	
+	' Wrap-around wildcards (e.g. *keyword*)
+	If parts.size == 3 And parts[0] == "" And parts[2] == "" Then
+		MatchPattern = (text.Find(parts[1]) <> -1)
+		exit function
+	End If
+
+	' Fallback for complex multi-wildcards
+	For i = 0 To parts.ubound
+		If parts[i] <> "" And text.Find(parts[i]) == -1 Then
+			MatchPattern = false
+			exit function
+		End If
+	Next
+	
+	MatchPattern = true
+End Function
+
+
 sub findContainersByName(_arrc as Array[Container], _name as String, ByRef _arrcOut as Array[Container])
-	dim _result as Array[Container]
+	dim bExists as Boolean
+	
 	for i=0 to _arrc.ubound
-		if _arrc[i].name == _name then
-			_arrcOut.push(_arrc[i])
+		' Pass the container name and the requested string into the MatchPattern function
+		if MatchPattern(_arrc[i].name, _name) then
+			
+			' Avoid pushing duplicates if multiple wildcards match the same container
+			bExists = false
+			for j=0 to _arrcOut.ubound
+				if _arrcOut[j] == _arrc[i] then
+					bExists = true
+					exit for
+				end if
+			next
+			
+			if not bExists then
+				_arrcOut.push(_arrc[i])
+			end if
+			
 		end if
 	next
 end sub
-
-
-
