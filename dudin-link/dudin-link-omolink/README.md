@@ -1,6 +1,6 @@
 ## Omo link
 
-### Version 1.1, 22 September 2025
+### Version 1.1, 22 September 2026
 
 * support "*" as wildcard in names
 
