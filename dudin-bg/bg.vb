@@ -1,4 +1,4 @@
-RegisterPluginVersion(1,14,0)
+RegisterPluginVersion(1,15,0)
 
 Dim info As String = "
 Developer: Dmitry Dudin, dudin.tv
@@ -92,14 +92,17 @@ Dim iPauseDownTicks As Integer
 
 sub OnInitParameters()
 	RegisterInfoText(info)
+	
+	RegisterParameterDouble("progress", "Progress (%)", 100.0, 0.0, 1000.0)
+	
 	RegisterRadioButton("fonChangeMode","How to change bg size", 0, arrFonShangeMode)
 	RegisterRadioButton("source",             "Source", 2, arrSource)
-	RegisterParameterString("sourcePath",     "└ Source path (\\\"sibling/sub/name\\\")", "", 100, 999, "")
+	RegisterParameterString("sourcePath",     "└ Source path (sibling/sub/name)", "", 100, 999, "")
 	RegisterParameterContainer("sourceOther", "└ Source container:")
 	RegisterRadioButton("modeSize",     "Get size from: ", 0, arrGetSizeFrom)
 	RegisterRadioButton("maxSizeMode",  "└ max size by asix:", 0, arrAxis)
 	RegisterParameterInt("numChild",    "└ Child index (0=none)", 1, 0, 100)
-	RegisterParameterString("numChildSubPath", "   └ Sub path (\\\"sub/name\\\")", "", 100, 999, "")
+	RegisterParameterString("numChildSubPath", "   └ Sub path (sub/name)", "", 100, 999, "")
 	RegisterRadioButton("mode",         "└ Axis to consider:", 0, arrConsideringAxis)
 	RegisterParameterDouble("xMulty",   "   └ Mult X", 1.0, 0.0, 10000000.0)
 	RegisterParameterDouble("xPadding", "   └ Add X", 0.0, -100000.0, 10000000.0)
@@ -126,7 +129,6 @@ sub OnInitParameters()
 	RegisterParameterBool("hideByZero", "Hide bg if size close to zero", TRUE)
 	RegisterParameterDouble("treshold", "└ Zero-size of source container", 0.1, 0.0, 1000.0)
 	
-	
 	RegisterParameterBool("positionX",        "Autofollow by X axis", FALSE)
 	RegisterRadioButton("positionAlignX",     "└ X Align", ALIGN_X_CENTER, arrAlignX)
 	RegisterParameterDouble("positionShiftX", "└ X shift", 0, -99999, 99999)
@@ -147,11 +149,7 @@ sub OnInitParameters()
 	RegisterParameterDouble("offTransition", "└ Off transition (0 - 100)", 0, 0.0, 100.0)
 end sub
 
-sub OnParameterChanged(parameterName As String)
-	maxSizeMode = GetParameterInt("maxSizeMode")
-end sub
- 
-sub OnGuiStatus()
+sub UpdateGUI()
 	sourceMode =  GetParameterInt("source")
 	if sourceMode == SOURCE_OTHER then
 		SendGuiParameterShow("sourcePath", HIDE)
@@ -310,6 +308,15 @@ sub OnGuiStatus()
 	SendGuiParameterShow("offTransition", CInt(  GetParameterBool("hasOffSize")  ))
 end sub
 
+sub OnInit()
+    UpdateGUI()
+end sub
+
+sub OnParameterChanged(parameterName As String)
+	maxSizeMode = GetParameterInt("maxSizeMode")
+	UpdateGUI()
+end sub
+ 
 Sub GetSourceContainer()
 	sourceMode =  GetParameterInt("source")
 	if sourceMode == SOURCE_FIRST then
@@ -323,12 +330,16 @@ Sub GetSourceContainer()
 			changingSourceTick -= 1
 		else
 			Dim newSource = GetContainerByPath(this, GetParameterString("sourcePath"))
-			curSourceId = newSource.VizId
-			if prevSourceId <> curSourceId then
-				changingSourceTick = changingSourceDelay
-				prevSourceId = curSourceId
-			else
-				cSource = newSource
+			if newSource <> null then
+				curSourceId = newSource.VizId
+				if prevSourceId <> curSourceId then
+					changingSourceTick = changingSourceDelay
+					prevSourceId = curSourceId
+				else
+					cSource = newSource
+				end if
+			else 
+				cSource = null
 			end if
 		end if
 	elseif sourceMode == SOURCE_OTHER then
@@ -348,25 +359,26 @@ Function GetContainerByPath(cRoot As Container, path As String) As Container
 	for i=0 to arrPathSteps.ubound
 		arrPathSteps[i].Trim()
 		numberStep = Cint(arrPathSteps[i])
-		' we have to ignore the case "numberStep == 0" because it means "no numbers"
 		if numberStep > 0 then
-			cResult = cResult.GetChildContainerByIndex(numberStep-1)
+			if cResult <> null then cResult = cResult.GetChildContainerByIndex(numberStep-1)
 		elseif numberStep < 0 then
-			cResult = cResult.GetChildContainerByIndex(cResult.ChildContainerCount - numberStep)
+			if cResult <> null then cResult = cResult.GetChildContainerByIndex(cResult.ChildContainerCount - numberStep)
 		elseif arrPathSteps[i] == "" then
 			cResult = scene.RootContainer
 		elseif arrPathSteps[i] == "." OR arrPathSteps[i] == "this" then
-			cResult = cResult ' to support pointing direct children
+			cResult = cResult 
 		elseif arrPathSteps[i] == ".." then
-			if i == 0 then
-				cResult = cResult.ParentContainer.ParentContainer
-			else
-				cResult = cResult.ParentContainer
+			if cResult <> null then
+				if i == 0 then
+					if cResult.ParentContainer <> null then cResult = cResult.ParentContainer.ParentContainer
+				else
+					cResult = cResult.ParentContainer
+				end if
 			end if
 		elseif i == 0 then
-			cResult = cResult.ParentContainer.FindSubContainer(arrPathSteps[i])
+			if cResult <> null AND cResult.ParentContainer <> null then cResult = cResult.ParentContainer.FindSubContainer(arrPathSteps[i])
 		else
-			cResult = cResult.FindSubContainer(arrPathSteps[i])
+			if cResult <> null then cResult = cResult.FindSubContainer(arrPathSteps[i])
 		end if
 	next
 	
@@ -414,7 +426,6 @@ sub OnExecPerField()
 		If size.X < sizeTreshold Then
 			If GetParameterBool("hideByZero") Then
 				cBg.Active = false
-				'Exit Sub
 			Else
 				cBg.Active = true
 				newSize.x = 0
@@ -432,7 +443,6 @@ sub OnExecPerField()
 		If size.Y < sizeTreshold Then
 			If GetParameterBool("hideByZero") Then
 				cBg.Active = false
-				'Exit Sub
 			Else
 				cBg.Active = true
 				newSize.y = 0
@@ -463,6 +473,12 @@ sub OnExecPerField()
 		End If
 	End If
 	
+	' --- APPLY PROGRESS MULTIPLIER ---
+	Dim progress As Double = GetParameterDouble("progress") / 100.0
+	If mode == MODE_X OR mode == MODE_XY Then newSize.x *= progress
+	If mode == MODE_Y OR mode == MODE_XY Then newSize.y *= progress
+	If mode == MODE_Z Then newSize.z *= progress
+	
 	'-------------------------------------------------------------------------------------------------
 	CalcPosition()
 	ApplyTransformationWithInertion()
@@ -470,42 +486,50 @@ sub OnExecPerField()
 End Sub
 
 Sub GetSourceSize()
-	'mode logic ("Source container size", "Max child", "Child by index")
 	modeSize = GetParameterInt("modeSize")
 	If modeSize == 0 Then
-		'mode: "Source container size"
 		cExactSource = cSource
 	ElseIf modeSize == 1 Then
-		'mode: "Max child"
 		child = cSource.FirstChildContainer
-		cMaxChild = child
-		size = GetLocalSize (child, cBg)
-		child = child.NextContainer
-		Do While child <> null
-			child.RecomputeMatrix()
-			childSize = GetLocalSize (child, cBg)
-			If maxSizeMode == 0 AND childSize.X > size.X Then cMaxChild = child
-			If maxSizeMode == 1 AND childSize.Y > size.Y Then cMaxChild = child
-			If maxSizeMode == 2 AND childSize.Z > size.Z Then cMaxChild = child
-			if cMaxChild == child then size = childSize
+		' GUARD: Prevent crash if target container has no children
+		If child == null Then
+			cExactSource = cSource
+			size = CVertex(0,0,0)
+		Else
+			cMaxChild = child
+			size = GetLocalSize (child, cBg)
 			child = child.NextContainer
-		Loop
-		cExactSource = cMaxChild
+			Do While child <> null
+				child.RecomputeMatrix()
+				childSize = GetLocalSize (child, cBg)
+				If maxSizeMode == 0 AND childSize.X > size.X Then cMaxChild = child
+				If maxSizeMode == 1 AND childSize.Y > size.Y Then cMaxChild = child
+				If maxSizeMode == 2 AND childSize.Z > size.Z Then cMaxChild = child
+				if cMaxChild == child then size = childSize
+				child = child.NextContainer
+			Loop
+			cExactSource = cMaxChild
+		End If
 	ElseIf modeSize == 2 Then
-		'mode: "Child by index"
 		cExactSource = cSource.GetChildContainerByIndex(GetParameterInt("numChild") - 1)
+		If cExactSource == null Then cExactSource = cSource ' GUARD
 	ElseIf modeSize == 3 Then
-		'mode: "Child by index + sub path"
 		cByIndex = cSource.GetChildContainerByIndex(GetParameterInt("numChild") - 1)
-		
-		if GetParameterString("numChildSubPath") == "" then
-			cExactSource = cByIndex
-		else
-			cExactSource = GetContainerByPath(cByIndex, "./" & GetParameterString("numChildSubPath"))
-		end if
+		If cByIndex == null Then
+			cExactSource = cSource ' GUARD
+		Else
+			if GetParameterString("numChildSubPath") == "" then
+				cExactSource = cByIndex
+			else
+				cExactSource = GetContainerByPath(cByIndex, "./" & GetParameterString("numChildSubPath"))
+			end if
+		End If
 	End If
-	cExactSource.RecomputeMatrix()
-	size = GetLocalSize(cExactSource, cBg)
+	
+	If cExactSource <> null Then
+		cExactSource.RecomputeMatrix()
+		size = GetLocalSize(cExactSource, cBg)
+	End If
 End Sub
 
 Sub CalcMinSize()
@@ -514,10 +538,8 @@ Sub CalcMinSize()
 	cMinZ = GetParameterContainer("zMinContainer")
 	
 	If modeMinX == 1 Then
-		'Min size from value
 		xMin = GetParameterDouble("xMin")
 	ElseIf modeMinX == 2 AND cMinX <> null Then
-		'Min size from container
 		minSize = GetLocalSize(cMinX, cBg)
 		If minSize.X > sizeTreshold AND minSize.Y > sizeTreshold Then
 			xMin = minSize.X/100.0 + GetParameterDouble("xMinAdd")/100.0
@@ -529,10 +551,8 @@ Sub CalcMinSize()
 	End If
 	
 	If modeMinY == 1 Then
-		'Min size from value
 		yMin = GetParameterDouble("yMin")
 	ElseIF modeMinY == 2 AND cMinY <> null Then
-		'Min size from container
 		minSize = GetLocalSize(cMinY, cBg)
 		yMin = minSize.Y/100.0
 		If minSize.X > sizeTreshold AND minSize.Y > sizeTreshold Then
@@ -561,7 +581,6 @@ Sub PreCalcFinishGabarits()
 	end if
 	cBg.RecomputeMatrix()
 	
-	' calculate the target bounding box like it's already finished
 	cBg.GetTransformedBoundingBox(vBg1, vBg2)
 	
 	if fonChangeMode == 0 then
@@ -579,7 +598,6 @@ Sub CalcPosition()
 	alignY = GetParameterInt("positionAlignY")
 	
 	if GetParameterBool("positionX") OR GetParameterBool("positionY") then
-		'cExactSource.GetTransformedBoundingBox(vSource1, vSource2)
 		Dim arrExactSourceVertexes = GetLocalGabaritVertexes(cExactSource, cBg)
 		vSource1 = arrExactSourceVertexes[0]
 		vSource2 = arrExactSourceVertexes[1]
