@@ -2,6 +2,11 @@
 
 Dynamically scales a group of containers, uniformly reducing their size if their total local width exceeds a defined limit. 
 
+### Version 1.1 (7 Oktober 2026)
+
+* Constant Visual Gap
+* Negative Scale Protection
+
 ### Version 1.0 (6 Oktober 2026)
 
 * Dynamic Drop Zones: The script provides configurable container slots. To change the number of available containers, modify the QUANTITY_OF_CONTAINERS constant at the top of the script.
