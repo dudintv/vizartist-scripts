@@ -1,10 +1,10 @@
-RegisterPluginVersion(1, 0, 0)
+RegisterPluginVersion(1, 1, 0)
 
 ' --- Plugin documentation and metadata ---
 Dim info = "Dynamic MaxSize
 Scales down multiple containers equally if their total width exceeds a target.
-To change the number of available containers, modify the QUANTITY_OF_CONTAINERS constant.
-Based on the builtin MaxSize logic with default scale values."
+Includes constant visual gap calculation for external layout tools.
+To change the number of available containers, modify the QUANTITY_OF_CONTAINERS constant."
 
 ' --- Scalable capacity limit ---
 Dim QUANTITY_OF_CONTAINERS As Integer = 2
@@ -24,12 +24,13 @@ Dim cTargets As Array[Container]
 
 '------------------------------------------------
 Sub OnInitParameters()
-    RegisterPluginVersion(1, 0, 0)
+    RegisterPluginVersion(1, 1, 1)
     RegisterInfoText(info)
     
-    ' Default scale settings
+    ' Default scale and layout settings
     RegisterParameterDouble("def_x", "Default x-scale", 1.0, 0.0, 100.0)
     RegisterParameterDouble("def_y", "Default y-scale", 1.0, 0.0, 100.0)
+    RegisterParameterDouble("gap", "Gap between containers", 10.0, -9999.0, 9999.0)
     
     ' Target configuration
     RegisterRadioButton("target_mode", "Max size", MODE_NUMERIC, targetModes)
@@ -74,7 +75,6 @@ End Sub
 
 Sub OnExecAction(buttonId As Integer)
     If buttonId == BUTTON_INIT_SCALE Then
-        ' Reset scale to defaults instantly
         Dim i As Integer
         For i = 0 To cTargets.Size - 1
             Dim c As Container = cTargets[i]
@@ -124,7 +124,6 @@ Function GetTargetWidth() As Double
         Exit Function
     End If
     
-    ' We use transformed bounding box for the target to respect its own world scaling
     tc.RecomputeMatrix()
     Dim v1, v2 As Vertex
     tc.GetTransformedBoundingBox(v1, v2)
@@ -136,35 +135,48 @@ Sub OnExecPerField()
     Dim targetW As Double = GetTargetWidth()
     If targetW <= 0.0 Then Exit Sub
     
+    Dim activeCount As Integer = 0
     Dim totalW As Double = 0.0
     Dim i As Integer
     
-    ' Sum up unscaled widths of all active targets
+    ' Sum up unscaled widths and count active targets
     For i = 0 To cTargets.Size - 1
-        totalW += GetLocalWidth(cTargets[i])
+        Dim c As Container = cTargets[i]
+        If CheckValidity(c) Then
+            activeCount += 1
+            totalW += GetLocalWidth(c)
+        End If
     Next
     
-    If totalW <= 0.0 Then Exit Sub
+    If activeCount == 0 Or totalW <= 0.0 Then Exit Sub
     
-    ' Read defaults
+    ' Read defaults and gap
     Dim defX As Double = GetParameterDouble("def_x")
     Dim defY As Double = GetParameterDouble("def_y")
+    Dim gap As Double = GetParameterDouble("gap")
+    
+    Dim totalGap As Double = CDbl(activeCount - 1) * gap
     
     Dim targetScaleX As Double = defX
     Dim targetScaleY As Double = defY
     
-    ' Check if total width AT default scale exceeds target
-    If (totalW * defX) > targetW Then
-        targetScaleX = targetW / totalW
+    ' Check if total width (containers + gaps) exceeds target
+    If (totalW * defX) + totalGap > targetW Then
+        ' Guard clause to prevent negative scale if gaps alone exceed target space
+        If targetW > totalGap Then
+            targetScaleX = (targetW - totalGap) / totalW
+        Else
+            targetScaleX = 0.001 
+        End If
         
-        ' If proportional scale is enabled, scale Y relative to the compression ratio of X
+        ' Proportional 2D scale logic
         If GetParameterBool("prop_scale") Then
             Dim ratio As Double = targetScaleX / defX
             targetScaleY = defY * ratio
         End If
     End If
     
-    ' Apply calculated scale
+    ' Apply calculated scale ONLY
     For i = 0 To cTargets.Size - 1
         Dim c As Container = cTargets[i]
         If CheckValidity(c) Then
