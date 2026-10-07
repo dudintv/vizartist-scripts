@@ -1,5 +1,9 @@
 ## BG takes size from "this" container and change size of another container with calculation
 
+#### Version 1.15.0 (7 Oktober 2026)
+
+* feature: "progress" as a controller for animations
+
 #### Version 1.14.0 (7 June 2023)
 * feature: "off-size" with transition between static "off" size and dynamic "on"
 
